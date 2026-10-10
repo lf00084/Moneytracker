@@ -1,0 +1,15 @@
+# Copy this file to .dev.vars and fill it in. .dev.vars is git-ignored.
+
+TURSO_DATABASE_URL=libsql://your-db-your-org.turso.io
+TURSO_AUTH_TOKEN=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Any long random string: openssl rand -base64 32
+SESSION_SECRET=
+
+# The URL you open in the browser, no trailing slash.
+# Local:      http://localhost:3000
+# Codespaces: https://<your-codespace>-3000.app.github.dev
+APP_URL=http://localhost:3000

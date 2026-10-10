@@ -8,9 +8,11 @@
 		"start": "vite preview",
 		"cf:deploy": "cf deploy --prebuilt",
 		"cf:typegen": "cf workers types",
+		"db:migrate": "node --env-file=.dev.vars scripts/migrate.mjs",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@libsql/client": "^0.15.0",
 		"@pitlane/assets": "0.1.0",
 		"remix": "3.0.0"
 	},

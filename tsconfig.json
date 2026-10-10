@@ -11,16 +11,7 @@
 		"allowImportingTsExtensions": true,
 		"jsx": "react-jsx",
 		"jsxImportSource": "remix/component",
-		"types": ["vite/client"],
-		"paths": { "~/*": ["./*"] }
+		"types": ["vite/client"]
 	},
-	"include": [
-		"app/**/*",
-		"bootstrap/**/*",
-		"resources/**/*",
-		"routes/**/*",
-		".cloudflare/types/index.d.ts",
-		"cloudflare.config.ts",
-		"vite.config.ts"
-	]
+	"include": ["bootstrap/**/*", ".cloudflare/types/index.d.ts", "cloudflare.config.ts", "vite.config.ts"]
 }

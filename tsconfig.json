@@ -1,19 +1,26 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["node", "remix/assets/types/hmr"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ESNext",
-    "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "remix/component",
-    "noEmit": true
-  },
-  "exclude": ["dist"]
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "remix/component",
+		"types": ["vite/client"],
+		"paths": { "~/*": ["./*"] }
+	},
+	"include": [
+		"app/**/*",
+		"bootstrap/**/*",
+		"resources/**/*",
+		"routes/**/*",
+		".cloudflare/types/index.d.ts",
+		"cloudflare.config.ts",
+		"vite.config.ts"
+	]
 }

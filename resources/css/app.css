@@ -1,0 +1,22 @@
+:root {
+	color-scheme: light dark;
+	font-family: system-ui, sans-serif;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+}
+
+nav {
+	display: flex;
+	gap: 1rem;
+	padding: 1rem 1.5rem;
+	border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+main {
+	max-width: 48rem;
+	margin: 0 auto;
+	padding: 1.5rem;
+}

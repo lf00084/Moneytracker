@@ -1,29 +1,30 @@
-import type { Handle, RemixNode } from 'remix/component'
-import { css } from 'remix/component'
-import { ImportMap } from 'remix/component/server'
+import type { Handle, RemixNode } from "remix/component";
 
-import { getAssetEntry } from '../middleware/asset-entry.ts'
+import { css } from "remix/component";
+import { ImportMap } from "remix/component/server";
 
-const rawCss = String.raw
+import { getAssetEntry } from "../middleware/asset-entry.ts";
+
+const rawCss = String.raw;
 
 export function Layout(handle: Handle<{ children?: RemixNode }>) {
-  return () => {
-      let { scriptEntry } = getAssetEntry()
-          let { href, importMap, preloads } = scriptEntry
+	return () => {
+		let { scriptEntry } = getAssetEntry();
+		let { href, importMap, preloads } = scriptEntry;
 
-              return (
-                    <html lang="en">
-                            <head>
-                                      <meta charSet="UTF-8" />
-                                                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                                                          <title>Server-Sent Events Demo</title>
-                                                                    <ImportMap value={importMap} />
-                                                                              {preloads.map((preloadHref) => (
-                                                                                          <link key={preloadHref} rel="modulepreload" href={preloadHref} />
-                                                                                                    ))}
-                                                                                                              <script type="module" src={href} />
-                                                                                                                        <style>
-                                                                                                                                    {rawCss`
+		return (
+			<html lang="en">
+				<head>
+					<meta charSet="UTF-8" />
+					<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+					<title>Server-Sent Events Demo</title>
+					<ImportMap value={importMap} />
+					{preloads.map((preloadHref) => (
+						<link key={preloadHref} rel="modulepreload" href={preloadHref} />
+					))}
+					<script type="module" src={href} />
+					<style>
+						{rawCss`
                                                                                                                                                 @layer reset {
                                                                                                                                                               * {
                                                                                                                                                                               box-sizing: border-box;
@@ -53,21 +54,21 @@ export function Layout(handle: Handle<{ children?: RemixNode }>) {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 `}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </style>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </head>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <body
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    mix={css({
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                fontFamily: 'system-ui, -apple-system, sans-serif',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            lineHeight: 1.5,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        padding: '2rem',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    maxWidth: '800px',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                margin: '0 auto',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            background: '#f5f5f5',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      })}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {handle.props.children}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </body>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          )
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+					</style>
+				</head>
+				<body
+					mix={css({
+						fontFamily: "system-ui, -apple-system, sans-serif",
+						lineHeight: 1.5,
+						padding: "2rem",
+						maxWidth: "800px",
+						margin: "0 auto",
+						background: "#f5f5f5",
+					})}
+				>
+					{handle.props.children}
+				</body>
+			</html>
+		);
+	};
+}

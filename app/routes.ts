@@ -1,9 +1,6 @@
-import { get, route } from 'remix/routes'
-
-export const assetsBase = '/assets'
+import { get, route } from "remix/routes";
 
 export const routes = route({
-  assets: `${assetsBase}/*path`,
-    home: get('/'),
-      messages: get('/messages'),
-      })
+	home: get("/"),
+	messages: get("/messages"),
+});

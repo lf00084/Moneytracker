@@ -1,0 +1,40 @@
+import { createMiddleware, createRouter, type MiddlewareContext } from 'remix/router'
+import { asyncContext } from 'remix/middleware/async-context'
+import { compression } from 'remix/middleware/compression'
+import { logger } from 'remix/middleware/logger'
+import { render } from 'remix/middleware/render'
+import { staticFiles } from 'remix/middleware/static'
+
+import rootController from './actions/controller.tsx'
+import { loadAssetEntry } from './middleware/asset-entry.ts'
+import { routes } from './routes.ts'
+import { assets } from './utils/assets.ts'
+
+const appMiddleware = createMiddleware(asyncContext(), loadAssetEntry(), render({ assets }))
+type AppContext = MiddlewareContext<typeof appMiddleware>
+
+declare module 'remix' {
+  interface RouterTypes {
+      context: AppContext
+        }
+        }
+
+        const middleware = []
+
+        if (process.env.NODE_ENV === 'development') {
+          middleware.push(logger())
+          }
+
+          middleware.push(compression())
+          middleware.push(
+            staticFiles('./public', {
+                cacheControl: 'no-store',
+                    etag: false,
+                        lastModified: false,
+                          }),
+                          )
+                          middleware.push(...appMiddleware)
+
+                          export const router = createRouter<AppContext>({ middleware })
+
+                          router.map(routes, rootController)

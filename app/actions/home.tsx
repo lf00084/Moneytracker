@@ -31,7 +31,7 @@ export function HomePage(handle: Handle<{ limit: number | null }>) {
 						color: "#333",
 					})}
 				>
-					Compression:
+					Compresson:
 				</label>
 				<div
 					mix={css({

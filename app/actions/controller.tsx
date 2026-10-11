@@ -1,70 +1,58 @@
-import { createController } from 'remix/router'
+import { createController } from "remix/router";
 
-import { routes } from '../routes.ts'
-import { assets } from '../utils/assets.ts'
-import { getMessageLimit } from '../utils/message-limit.ts'
-import { HomePage } from './home.tsx'
+import { routes } from "../routes.ts";
+import { getMessageLimit } from "../utils/message-limit.ts";
+
+import { HomePage } from "./home.tsx";
 
 export default createController(routes, {
-  actions: {
-      async assets({ request }) {
-            let assetResponse = await assets.fetch(request)
-                  return assetResponse ?? new Response('Not found', { status: 404 })
-                      },
-                          home({ render, url }) {
-                                let limit = getMessageLimit(url)
-                                      return render(<HomePage limit={limit} />)
-                                          },
-                                              messages({ request, url }) {
-                                                    let limit = getMessageLimit(url)
+	actions: {
+		home({ render, url }) {
+			const limit = getMessageLimit(url);
+			return render(<HomePage limit={limit} />);
+		},
+		messages({ request, url }) {
+			const limit = getMessageLimit(url);
+			const encoder = new TextEncoder();
 
-                                                          let stream = new ReadableStream({
-                                                                  start(controller) {
-                                                                            let messageCount = 0
+			const stream = new ReadableStream({
+				start(controller) {
+					let count = 0;
 
-                                                                                      let interval = setInterval(() => {
-                                                                                                  try {
-                                                                                                                messageCount++
+					const interval = setInterval(() => {
+						try {
+							count++;
+							const text = `Message #${count} at ${new Date().toLocaleTimeString()}`;
+							controller.enqueue(encoder.encode("event: message\n"));
+							controller.enqueue(
+								encoder.encode(`data: ${JSON.stringify({ count, message: text })}\n\n`),
+							);
 
-                                                                                                                              let timestamp = new Date().toLocaleTimeString()
-                                                                                                                                            let text = `Message #${messageCount} at ${timestamp}`
+							if (limit && count >= limit) {
+								clearInterval(interval);
+								controller.close();
+							}
+						} catch (error) {
+							console.error("Error enqueuing message:", error);
+							clearInterval(interval);
+						}
+					}, 1000);
 
-                                                                                                                                                          controller.enqueue(new TextEncoder().encode('event: message\n'))
-                                                                                                                                                                        controller.enqueue(
-                                                                                                                                                                                        new TextEncoder().encode(
-                                                                                                                                                                                                          `data: ${JSON.stringify({ count: messageCount, message: text })}\n\n`,
-                                                                                                                                                                                                                          ),
-                                                                                                                                                                                                                                        )
+					request.signal.addEventListener("abort", () => {
+						clearInterval(interval);
+						try {
+							controller.close();
+						} catch {}
+					});
+				},
+			});
 
-                                                                                                                                                                                                                                                      if (limit && messageCount >= limit) {
-                                                                                                                                                                                                                                                                      clearInterval(interval)
-                                                                                                                                                                                                                                                                                      controller.close()
-                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                } catch (error) {
-                                                                                                                                                                                                                                                                                                                              console.error('Error enqueuing message:', error)
-                                                                                                                                                                                                                                                                                                                                            clearInterval(interval)
-                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                  }, 1000)
-
-                                                                                                                                                                                                                                                                                                                                                                            request.signal.addEventListener('abort', () => {
-                                                                                                                                                                                                                                                                                                                                                                                        clearInterval(interval)
-
-                                                                                                                                                                                                                                                                                                                                                                                                    try {
-                                                                                                                                                                                                                                                                                                                                                                                                                  controller.close()
-                                                                                                                                                                                                                                                                                                                                                                                                                              } catch {
-                                                                                                                                                                                                                                                                                                                                                                                                                                            // Stream may already be closed.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                  })
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                          },
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                })
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      return new Response(stream, {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              headers: {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        'Content-Type': 'text/event-stream',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  'Cache-Control': 'no-cache',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Connection: 'keep-alive',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    },
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          })
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              },
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                },
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                })
+			return new Response(stream, {
+				headers: {
+					"Content-Type": "text/event-stream",
+					"Cache-Control": "no-cache",
+				},
+			});
+		},
+	},
+});

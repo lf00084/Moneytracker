@@ -3,16 +3,14 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"check": "vp check",
-		"check:fix": "vp check --fix",
-		"format": "vp fmt --check",
-		"format:fix": "vp fmt",
-		"lint": "vp lint",
-		"lint:fix": "vp lint --fix",
 		"typecheck": "tsc --noEmit",
 		"dev": "vite dev",
 		"build": "vite build",
 		"start": "vite preview",
+		"format": "oxfmt --check .",
+		"format:fix": "oxfmt .",
+		"lint": "oxlint",
+		"lint:fix": "oxlint --fix",
 		"cf:deploy": "bunx wrangler deploy",
 		"cf:typegen": "bunx wrangler types",
 		"db:local:migrate": "bunx wrangler d1 migrations apply DB --local",
@@ -27,9 +25,10 @@
 		"@cloudflare/vite-plugin": "^1.63.1",
 		"@pitlane/vite-plugin-remix": "0.8.0",
 		"@types/node": "^26.4.0",
+		"oxfmt": "latest",
+		"oxlint": "latest",
 		"typescript": "^6.0.3",
-		"vite": "npm:@voidzero-dev/vite-plus-core@0.3.3",
-		"vite-plus": "0.3.3",
+		"vite": "^8.3.4",
 		"wrangler": "^4.149.0"
 	}
 }

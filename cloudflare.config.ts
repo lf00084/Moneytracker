@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
 		 * role and the secrets already set on it, and a bad release is undone by rolling the
 		 * worker back to its previous version.
 		 */
-		name: "auth",
+		name: "moneytracker",
 		compatibilityDate: "2026-09-02",
 		/**
 		 * Node built-ins must resolve: the billing and JWT dependencies reach for them, so
@@ -32,22 +32,7 @@ export default defineConfig(({ mode }) => ({
 		 * lives with the worker that answers it, and a deploy claiming a hostname another
 		 * worker still holds is refused, so this line and that release are the same step.
 		 */
-		domains: ["auth.sergiodxa.com"],
-		triggers: [
-			/**
-			 * Enqueues the expired-session sweep at midnight UTC. Paired with the `auth` consumer
-			 * below, which is what reads the message this publishes.
-			 */
-			triggers.scheduled({ schedule: "0 0 * * *" }),
-			/**
-			 * A Cloudflare queue has exactly one consumer, so this worker owns the role. Three
-			 * deliveries are the sweep's whole budget; a message that spends them lands in
-			 * `auth-dlq`, so a failing night leaves a record.
-			 */
-			triggers.queue({ name: "auth", deadLetterQueue: "auth-dlq", maxRetries: 3 }),
-			/** Consumes the dead-letter queue so what `auth` gave up on is recorded and acked. */
-			triggers.queue({ name: "auth-dlq" }),
-		],
+		domains: [""],
 		env: {
 			DB: bindings.d1({ name: "auth", id: "1549b30f-b4ba-48b0-b08a-76b8003a37db" }),
 			KV: bindings.kv({ id: "848d0b8592b64956999bc9769bee6c8e" }),

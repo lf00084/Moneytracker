@@ -17,7 +17,7 @@ export function Layout(handle: Handle<{ children?: RemixNode }>) {
 				<head>
 					<meta charSet="UTF-8" />
 					<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-					<title>Server-Sent Events Demo</title>
+					<title>Moneytracker</title>
 					<ImportMap value={importMap} />
 					{preloads.map((preloadHref) => (
 						<link key={preloadHref} rel="modulepreload" href={preloadHref} />
@@ -25,45 +25,25 @@ export function Layout(handle: Handle<{ children?: RemixNode }>) {
 					<script type="module" src={href} />
 					<style>
 						{rawCss`
-                                                                                                                                                @layer reset {
-                                                                                                                                                              * {
-                                                                                                                                                                              box-sizing: border-box;
-                                                                                                                                                                                              margin: 0;
-                                                                                                                                                                                                              padding: 0;
-                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                        }
-
-                                                                                                                                                                                                                                                    @keyframes pulse {
-                                                                                                                                                                                                                                                                  0%,
-                                                                                                                                                                                                                                                                                100% {
-                                                                                                                                                                                                                                                                                                opacity: 1;
-                                                                                                                                                                                                                                                                                                              }
-                                                                                                                                                                                                                                                                                                                            50% {
-                                                                                                                                                                                                                                                                                                                                            opacity: 0.5;
-                                                                                                                                                                                                                                                                                                                                                          }
-                                                                                                                                                                                                                                                                                                                                                                      }
-
-                                                                                                                                                                                                                                                                                                                                                                                  @keyframes slideIn {
-                                                                                                                                                                                                                                                                                                                                                                                                from {
-                                                                                                                                                                                                                                                                                                                                                                                                                opacity: 0;
-                                                                                                                                                                                                                                                                                                                                                                                                                                transform: translateX(-20px);
-                                                                                                                                                                                                                                                                                                                                                                                                                                              }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            to {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            opacity: 1;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            transform: translateX(0);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                `}
+@layer reset{*{box-sizing:border-box;margin:0;padding:0}}
+h1{margin-bottom:1rem}
+p{margin-bottom:.75rem}
+form{display:grid;gap:1rem;margin-bottom:1rem}
+label{display:grid;gap:.25rem;font-weight:600}
+input{padding:.6rem;border:1px solid #ccc;border-radius:6px;font:inherit}
+button{padding:.7rem;border:0;border-radius:6px;background:#111;color:#fff;font:inherit;cursor:pointer}
+p[role=alert]{padding:.75rem;border-radius:6px;background:#ffebee;color:#c62828}
+a{color:#0b5fff}
+`}
 					</style>
 				</head>
 				<body
 					mix={css({
 						fontFamily: "system-ui, -apple-system, sans-serif",
 						lineHeight: 1.5,
-						padding: "2rem",
-						maxWidth: "800px",
+						padding: "2rem 1rem",
+						maxWidth: "420px",
 						margin: "0 auto",
-						background: "#f5f5f5",
 					})}
 				>
 					{handle.props.children}

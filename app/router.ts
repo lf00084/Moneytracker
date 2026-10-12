@@ -1,23 +1,13 @@
 import { asyncContext } from "remix/middleware/async-context";
-import { auth } from "remix/middleware/auth";
 import { logger } from "remix/middleware/logger";
 import { render } from "remix/middleware/render";
-import { session } from "remix/middleware/session";
 import { createMiddleware, createRouter, type MiddlewareContext } from "remix/router";
 
-import controller from "./controller.tsx";
-import { loadAssetEntry } from "./middleware/asset-entry.ts";
+import rootController from "./actions/controller.tsx";
 import { routes } from "./routes.ts";
-import { sessionCookie, sessionScheme, sessionStorage } from "./utils/auth.ts";
-import { assets } from "./utils/assets.ts";
 
-const appMiddleware = createMiddleware(
-	asyncContext(),
-	loadAssetEntry(),
-	render({ assets }),
-	session(sessionCookie, sessionStorage),
-	auth({ schemes: [sessionScheme] }),
-);
+// No `assets` option: every page is rendered on the server and ships no client scripts.
+const appMiddleware = createMiddleware(asyncContext(), render());
 type AppContext = MiddlewareContext<typeof appMiddleware>;
 
 declare module "remix" {
@@ -34,4 +24,4 @@ middleware.push(...appMiddleware);
 
 export const router = createRouter<AppContext>({ middleware });
 
-router.map(routes, controller);
+router.map(routes, rootController);

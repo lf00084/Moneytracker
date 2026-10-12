@@ -4,4 +4,4 @@ export default {
 	fetch(request: Request) {
 		return router.fetch(request);
 	},
-} satisfies ExportedHandler;
+};

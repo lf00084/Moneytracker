@@ -1,16 +1,9 @@
 {
+	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "moneytracker",
-	"main": "bootstrap/worker.ts",
+	"main": "./bootstrap/worker.ts",
 	"compatibility_date": "2026-09-02",
 	"compatibility_flags": ["nodejs_compat"],
-	"assets": { "directory": "dist/client" },
-	"observability": { "enabled": true },
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "moneytracker",
-			"database_id": "REPLACE_WITH_YOUR_D1_ID",
-			"migrations_dir": "db/d1-migrations"
-		}
-	]
+	"workers_dev": true,
+	"observability": { "enabled": true }
 }

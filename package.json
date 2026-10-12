@@ -6,25 +6,19 @@
 		"typecheck": "tsc --noEmit",
 		"dev": "vite dev",
 		"build": "vite build",
-		"start": "vite preview",
+		"preview": "vite preview",
+		"deploy": "vite build && wrangler deploy",
+		"cf:typegen": "wrangler types",
 		"format": "oxfmt --check .",
 		"format:fix": "oxfmt .",
 		"lint": "oxlint",
-		"lint:fix": "oxlint --fix",
-		"cf:deploy": "bun run build && bunx wrangler deploy",
-		"cf:typegen": "bunx wrangler types",
-		"db:generate": "bun db/generate-migrations.ts",
-		"db:local:migrate": "bun run db:generate && bunx wrangler d1 migrations apply DB --local",
-		"db:remote:migrate": "bun run db:generate && bunx wrangler d1 migrations apply DB --remote"
+		"lint:fix": "oxlint --fix"
 	},
 	"dependencies": {
-		"@pitlane/assets": "0.2.0",
-		"@pitlane/data-table-d1": "latest",
 		"remix": "3.0.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.63.1",
-		"@pitlane/vite-plugin-remix": "0.9.0",
 		"@types/node": "^26.4.0",
 		"oxfmt": "latest",
 		"oxlint": "latest",

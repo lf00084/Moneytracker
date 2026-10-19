@@ -1,6 +1,6 @@
 /** Small HTML builders shared by every screen. Everything is static sample markup. */
 
-const P: Record<string, string> = {
+export const P: Record<string, string> = {
 	sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 	moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
 	user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
@@ -17,6 +17,13 @@ const P: Record<string, string> = {
 	Bread: '<path d="M5 10a4 4 0 0 1 3-6.5h8A4 4 0 0 1 19 10v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/>',
 	Other: '<path d="M12 5v14M5 12h14"/>',
 	back: '<path d="M15 5l-7 7 7 7"/>',
+	chev: '<path d="M6 9l6 6 6-6"/>',
+	Food: '<path d="M6 3v7a2 2 0 0 0 4 0V3M8 3v18M17 21V3c-2.5 1.5-3.5 4.5-3.5 8H17"/>',
+	Bus: '<rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M8 21v-3M16 21v-3"/><circle cx="8.5" cy="14.5" r=".6"/><circle cx="15.5" cy="14.5" r=".6"/>',
+	Phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+	Gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8C10 8 8 7 8 5.5S10 3 12 8c2-5 4-3.5 4-2.5S14 8 12 8z"/>',
+	Cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/>',
+	Tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1"/>',
 	eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
 };
 
@@ -25,12 +32,12 @@ export const ic = (k: string) => `<svg class="ic" viewBox="0 0 24 24">${P[k] ?? 
 export const GOOGLE =
 	'<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
 
-const GOAT =
+export const GOAT =
 	'<svg viewBox="0 0 24 24"><rect width="24" height="24" fill="#000" stroke="#333" stroke-width=".6"/><path fill="#fff" d="M6.5 10C3.5 9 2.4 5.6 3.4 3.4c3 .9 5 2.7 6 5zM17.5 10c3-1 4.1-4.4 3.1-6.6-3 .9-5 2.7-6 5zM7.4 8.2h9.2l-1 7.3L12 21l-3.6-5.5z"/><path d="M9.2 11.4l2 1M14.8 11.4l-2 1" stroke="#000" stroke-width="1.5"/></svg>';
 
 export const logo = (href: string) => `<a class="logo" href="${href}">${GOAT}<span>moneytracker</span></a>`;
 
-export const themeBtn = `<button type="button" class="ib" data-theme-toggle aria-label="Theme"><svg class="ic t-sun" viewBox="0 0 24 24">${P.sun}</svg><svg class="ic t-moon" viewBox="0 0 24 24">${P.moon}</svg></button>`;
+export const themeIcons = `<svg class="ic t-sun" viewBox="0 0 24 24">${P.sun}</svg><svg class="ic t-moon" viewBox="0 0 24 24">${P.moon}</svg>`;
 
 // ---------- building blocks ----------
 
@@ -39,9 +46,9 @@ export const tg = (t: string, b: string) => `<div class="cd"><div class="tg">${t
 export const sec = (t: string, r: string, b: string) =>
 	`<div class="sc"><div class="sh"><span>${t}</span><span class="lb">${r}</span></div>${b}</div>`;
 
-type FieldOpts = { name?: string; t?: string; p?: string; f?: boolean };
+type FieldOpts = { name?: string; t?: string; p?: string; f?: boolean; keep?: string };
 export const fld = (label: string, value: string, o: FieldOpts = {}) =>
-	`<div class="fl"><label>${label}</label><input class="in${o.f ? " f" : ""}"${o.name ? ` name="${o.name}"` : ""}${
+	`<div class="fl"><label>${label}</label><input class="in${o.f ? " f" : ""}"${o.name ? ` name="${o.name}"` : ""}${o.keep ? ` data-keep="${o.keep}"` : ""}${
 		o.t ? ` type="${o.t}"` : ""
 	} value="${value}"${value ? "" : ` placeholder="${o.p ?? ""}"`} autocomplete="off"></div>`;
 
@@ -64,7 +71,8 @@ export const newPerson =
 	'<div class="sub">New person</div><form method="post" action="/debts" class="ln3"><input class="in" name="name" placeholder="Name"><input class="in n3" name="cig" placeholder="3"><input class="in n3" name="cur" value="MAD"><button class="btn xs">Add</button></form><div class="lb" style="margin-top:10px">Cleared: Karim (hidden). Type his name to bring him back.</div>';
 
 export const buyRows =
-	by("Paid Youssef", "13:40", "−24") + by("Bread", "13:00", "−4") + by("Smoke ×3", "09:30 · 3 × 2", "−6") + by("Coffee", "08:10", "−12");
+	'<div data-buys>' +
+	by("Paid Youssef", "13:40", "−24") + by("Bread", "13:00", "−4") + by("Smoke ×3", "09:30 · 3 × 2", "−6") + by("Coffee", "08:10", "−12") + "</div>";
 
 export const srcRows =
 	'<div class="rw"><div><div>Ad revenue</div><div class="lb">auto · every day 06:00</div></div><b class="pos">+64</b></div><div class="rw"><div><div>Tips</div><div class="lb">manual · added today</div></div><button type="button" class="btn xs o" style="opacity:.5">Add 120</button></div><div class="rw"><div><div>Salary</div><div class="lb">monthly · Nov 1</div></div><b class="pos">+8,000</b></div>';
@@ -104,16 +112,25 @@ export const H: Day[] = [
 // ---------- settings ----------
 
 export const editFields = () =>
-	fld("Name", "Sami", { f: true, name: "name" }) +
-	fld("Email", "sami@email.com", { t: "email", name: "email" }) +
-	fld("Phone", "+212 6 00 00 00 00", { t: "tel", name: "phone" }) +
-	fld("Bio", "Saving for the laptop", { name: "bio" });
+	fld("Name", "Sami", { f: true, name: "name", keep: "profile.name" }) +
+	fld("Email", "sami@email.com", { t: "email", name: "email", keep: "profile.email" }) +
+	fld("Phone", "+212 6 00 00 00 00", { t: "tel", name: "phone", keep: "profile.phone" }) +
+	fld("Bio", "Saving for the laptop", { name: "bio", keep: "profile.bio" });
 
 export const themeSwitch = () =>
-	`<div class="sg"><button type="button" data-set-theme="dark">${ic("moon")}Dark</button><button type="button" data-set-theme="light">${ic("sun")}White</button></div><div class="lb" style="margin-top:8px">Also the sun/moon button, top right.</div>`;
+	`<div class="sg"><button type="button" data-set-theme="dark">${ic("moon")}Dark</button><button type="button" data-set-theme="light">${ic("sun")}White</button></div><div class="lb" style="margin-top:8px">Also the sun/moon button in the bar.</div>`;
 
-export const priceFields =
-	'<div class="ln3"><div class="fl" style="margin:0;flex:1"><label>Smoke</label><input class="in" name="p_smoke" value="2"></div><div class="fl" style="margin:0;flex:1"><label>Coffee</label><input class="in" name="p_coffee" value="12"></div><div class="fl" style="margin:0;flex:1"><label>Bread</label><input class="in" name="p_bread" value="4"></div></div>';
+export type Quick = { n: string; p: string; i: string };
+export const QUICK_DEF: Quick[] = [
+	{ n: "Smoke", p: "2", i: "Smoke" },
+	{ n: "Coffee", p: "12", i: "Coffee" },
+	{ n: "Bread", p: "4", i: "Bread" },
+];
+export const ICON_KEYS = ["Smoke", "Coffee", "Bread", "Food", "Bus", "Phone", "Gift", "Cart", "Tag"];
+
+/** Quick buy editor. The rows are drawn by the page script from what is saved in the browser. */
+export const quickEditor = () =>
+	`<div class="lb" style="margin-bottom:6px">These are the buttons under Quick buy. Change a name, price or icon and it saves right away.</div><div data-qedit></div><div class="qadd" data-qadd><select class="in sel" data-ai aria-label="Icon">${ICON_KEYS.map((k) => `<option value="${k}">${k}</option>`).join("")}</select><input class="in" data-an placeholder="Name" autocomplete="off"><input class="in n3" data-ap placeholder="Price" inputmode="decimal" autocomplete="off"><button type="button" class="btn xs" data-qaddbtn>Add</button></div>`;
 
 // ---------- auth form ----------
 

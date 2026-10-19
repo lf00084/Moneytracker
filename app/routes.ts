@@ -1,29 +1,33 @@
 import { get, post, route } from "remix/routes";
 
 export const routes = route({
+	// Auth. UI only: signing in just redirects to the dashboard.
+	root: get("/"),
+	login: get("/login"),
+	signIn: post("/login"),
+	signup: get("/signup"),
+	signUp: post("/signup"),
+	logout: post("/logout"),
+
 	// Pages
-	home: get("/"),
-	stats: get("/stats"),
-	purchases: get("/purchases"),
-	add: get("/add"),
-	goals: get("/goals"),
-	wishes: get("/wishes"),
+	home: get("/home"),
 	debts: get("/debts"),
-	sources: get("/sources"),
-	source: get("/sources/:id"),
+	notes: get("/notes"),
+	goals: get("/goals"),
+	income: get("/income"),
+	plan: get("/plan"),
+	history: get("/history"),
+	profile: get("/profile"),
+	profileEdit: get("/profile/edit"),
 	settings: get("/settings"),
 
 	// Forms. Each one is wired to an empty handler that redirects back to its page.
-	saveBalance: post("/balance"),
-	createPurchase: post("/purchases"),
-	createEntry: post("/sources/:id/entries"),
-	deleteEntry: post("/sources/:id/entries/:entryId/delete"),
-	saveRate: post("/sources/:id/rate"),
-	createSource: post("/sources"),
-	createWish: post("/wishes"),
-	buyWish: post("/wishes/:id/bought"),
-	createDebt: post("/debts"),
-	payDebt: post("/debts/:id/pay"),
+	buy: post("/buy"),
+	addDebt: post("/debts"),
+	addNote: post("/notes"),
+	addWish: post("/goals"),
+	addSource: post("/income"),
+	addPlan: post("/plan"),
+	saveProfile: post("/profile/edit"),
 	saveSettings: post("/settings"),
-	signOut: post("/sign-out"),
 });

@@ -2,7 +2,7 @@ import { esc } from "../lib/html.ts";
 import type { DebtView, Goal, Source, State } from "../lib/data.ts";
 import { fmt } from "../lib/money.ts";
 import { dayLabel, dayOf, hhmm, longDay, today } from "../lib/time.ts";
-import { by, chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
+import { chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
 import { page } from "../ui/shell.ts";
 
 function calc(s: State) {
@@ -47,7 +47,7 @@ const debtRow = (s: State, d: DebtView) => {
 		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
-		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="neg">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
+		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
 		`<button type="button" class="btn xs o" data-pay>Pay</button></div>` +
 		panel("data-addp", "/debts", "Add to", "Add") +
 		panel("data-payp", "/debts/pay", "Pay", "Pay") +
@@ -62,14 +62,20 @@ const newPerson = (s: State) =>
 
 const owePair = (s: State) => {
 	const c = calc(s);
-	return `<div class="ow"><b class="neg big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="neg sm">${c.oweExtra}</span></div>`;
+	return `<div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>`;
 };
 
 const chev = `<span class="chev">${ic("chev")}</span>`;
 
+const tgp = (t: string, key: string, b: string) =>
+	`<div class="cd"><div class="tg th2"><span>${t}</span><button type="button" class="pl" data-plus="${key}" aria-label="Add">${ic("plus")}</button></div><div class="cb">${b}</div></div>`;
+
+const spendRow = (n: string, sub: string, a: string) =>
+	`<div class="by"><div><div>${n}</div><div class="lb">${sub}</div></div><b class="sp">${a}</b></div>`;
+
 const oweM = (s: State, open: boolean, key: string) => {
 	const c = calc(s);
-	return `<details class="cd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="neg big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="neg sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}${open ? newPerson(s) : ""}</div></details>`;
+	return `<details class="cd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}${open ? newPerson(s) : ""}</div></details>`;
 };
 
 const oweD = (s: State, open: boolean, key: string) => {
@@ -135,7 +141,7 @@ const srcRows = (s: State) =>
 		.map((x) => {
 			const right =
 				x.mode === "auto"
-					? `<b class="pos">+${fmt(x.amount)}</b>`
+					? `<b class="ea">+${fmt(x.amount)}</b>`
 					: `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(x.amount)}</button></form>`;
 			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto") : "manual"}</span></div><div class="lb">${srcLabel(x)}</div></div>${right}</div>`;
 		})
@@ -152,18 +158,16 @@ const incomeM = (s: State) => tg("Sources", srcRows(s)) + tg("Add a source", add
 
 const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
 
-const side = (t: string) => `<span class="lb" style="text-align:right;line-height:1.25;font-size:11px;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${t}</span>`;
-
 const cardsM = (s: State) => {
 	const c = calc(s);
-	const row = (big: string, right: string) => `<div class="ow" style="margin:0;align-items:center;gap:8px"><div class="big2 ${big.startsWith("+") ? "pos" : "neg"}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>${side(right)}</div>`;
-	return `<div class="two">${tg("Earned today", row(`+${fmt(c.earned)}`, c.earnedLine))}${tg("Bought today", row(`−${fmt(c.bought)}`, `${s.buys.length} buys`))}</div>`;
+	const row = (cls: string, big: string) => `<div class="big2 ${cls}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>`;
+	return `<div class="two">${tg("Earned today", row("ea", `+${fmt(c.earned)}`))}${tg("Bought today", row("sp", `−${fmt(c.bought)}`))}</div>`;
 };
 
 const buyRows = (s: State) =>
 	`<div>${
 		s.buys
-			.map((b) => by(esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
+			.map((b) => spendRow(esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
@@ -181,16 +185,16 @@ const quickBtns = (s: State, desk: boolean) => {
 
 const quickM = (s: State) =>
 	`<div data-qb><div class="qk" data-qgrid>${quickBtns(s, false)}</div><form method="post" action="/buy" data-qp hidden>${back(s)}${tg(
-		"<span data-qt>Smoke</span> · quantity × price",
-		'<input type="hidden" name="category" data-cat value="Smoke"><div class="fl" data-labelwrap hidden style="margin:0 0 12px"><label>What</label><input class="in" name="label" data-label autocomplete="off"></div><div class="pn"><div class="fl" style="margin:0"><label>Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div class="fl" style="margin:0;flex:1;min-width:90px"><label>Price each</label><input class="in" name="price" data-price value="" inputmode="decimal"></div></div><div class="tt"><span class="lb">Total</span><b class="neg" data-tot>0</b><button class="btn">Add</button></div>',
+		"<span data-qt>Smoke</span>",
+		'<input type="hidden" name="category" data-cat value="Smoke"><div class="fl" data-labelwrap hidden style="margin:0 0 12px"><label>What</label><input class="in" name="label" data-label autocomplete="off"></div><div class="pn2"><div class="pf"><label class="lb">Price each</label><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="pq"><label class="lb">Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div></div><button class="btn full">Add <span data-tot data-pre="· ">0</span></button>',
 	)}</form></div>`;
 
 const quickD = (s: State) =>
-	`<div data-qb><div class="qk4" data-qgrid>${quickBtns(s, true)}</div><form method="post" action="/buy" class="qrow" data-qp>${back(s)}<input type="hidden" name="category" data-cat value="Smoke"><div data-labelwrap hidden style="width:140px"><div class="lb">What</div><input class="in" name="label" data-label autocomplete="off"></div><div><div class="lb">Quantity</div><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div style="width:110px"><div class="lb">Price each</div><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="eq neg" data-tot data-pre="= ">= 0</div><button class="btn" style="margin-left:auto">Add</button></form></div>`;
+	`<div data-qb><div class="qk4" data-qgrid>${quickBtns(s, true)}</div><form method="post" action="/buy" class="qrow" data-qp>${back(s)}<input type="hidden" name="category" data-cat value="Smoke"><div data-labelwrap hidden style="width:140px"><div class="lb">What</div><input class="in" name="label" data-label autocomplete="off"></div><div><div class="lb">Quantity</div><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div style="width:110px"><div class="lb">Price each</div><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="eq sp" data-tot data-pre="= ">= 0</div><button class="btn" style="margin-left:auto">Add</button></form></div>`;
 
 const hero = (s: State) => {
 	const c = calc(s);
-	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v pos">+${fmt(c.earned)}</div><div class="lb">${c.earnedLine}</div></div><div><div class="lb">Bought today</div><div class="v neg">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v neg">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
+	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v ea">+${fmt(c.earned)}</div><div class="lb">${c.earnedLine}</div></div><div><div class="lb">Bought today</div><div class="v sp">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v sp">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
 };
 
 const noteList = (s: State, key: string) => {
@@ -238,7 +242,7 @@ const histM = (s: State) =>
 		.map((d) =>
 			tg(
 				esc(d.label),
-				`<div class="l1"><span><span class="lb">Earned</span> <b class="pos">+${fmt(d.earned)}</b></span><span><span class="lb">Bought</span> <b class="neg">−${fmt(d.bought)}</b></span><b>${dayNet(d.earned, d.bought)}</b></div>${chips(d.items.map(esc))}`,
+				`<div class="l1"><span><span class="lb">Earned</span> <b class="ea">+${fmt(d.earned)}</b></span><span><span class="lb">Bought</span> <b class="sp">−${fmt(d.bought)}</b></span><b>${dayNet(d.earned, d.bought)}</b></div>${chips(d.items.map(esc))}`,
 			),
 		)
 		.join("");
@@ -250,7 +254,7 @@ const histD = (s: State) => {
 		"Last 7 days",
 		`+${fmt(e)} earned · −${fmt(b)} bought`,
 		'<div class="th"><span>Day</span><span>Earned</span><span>Bought</span><span>Net</span><span>What</span></div>' +
-			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="pos">+${fmt(d.earned)}</b><b class="neg">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
+			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="ea">+${fmt(d.earned)}</b><b class="sp">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
 	);
 };
 
@@ -351,7 +355,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: cardsM(s) + tg("Income sources", srcRows(s)) + quickM(s) + tg(`Today's buys · ${s.buys.length}`, buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		mobile: cardsM(s) + tgp("Income sources", "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + quickM(s) + tgp(`Today's buys · ${s.buys.length}`, "buy", buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
 		desktop: dashboardD(s),
 	});
 

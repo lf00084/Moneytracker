@@ -1,0 +1,13 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "moneytracker",
+	"main": "./bootstrap/worker.ts",
+	"compatibility_date": "2026-09-02",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"observability": { "enabled": true },
+	"vars": {
+		"APP_ORIGIN": "https://moneytracker.YOUR-SUBDOMAIN.workers.dev",
+		"TURSO_DATABASE_URL": "https://lf-lf00084.aws-eu-west-1.turso.io"
+	}
+}

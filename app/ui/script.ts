@@ -78,6 +78,23 @@ d.addEventListener('click',function(e){
     if(!p.hidden){var i=p.querySelector('input[name=amount]');if(i)i.focus()}
     return
   }
+  if((q=t.closest('[data-plus]'))){
+    if(q.getAttribute('data-plus')==='src'){
+      var pn=q.closest('.cd').querySelector('[data-pnl]');
+      pn.hidden=!pn.hidden;
+      q.classList.toggle('on',!pn.hidden);
+      if(!pn.hidden){var fi=pn.querySelector('input[name=name]');if(fi)fi.focus()}
+    }else{
+      var ob=d.querySelector('.mm [data-q][data-o]');
+      if(ob){
+        pick(ob,false);
+        var qf=ob.closest('[data-qb]').querySelector('[data-qp]');
+        qf.scrollIntoView({behavior:'smooth',block:'center'});
+        var li=qf.querySelector('[data-label]');if(li)li.focus();
+      }
+    }
+    return
+  }
   if((q=t.closest('[data-q]'))){pick(q,false);return}
   if((q=t.closest('[data-step]'))){
     var f2=q.closest('[data-qp]'),i2=f2.querySelector('[data-qty]');

@@ -5,6 +5,7 @@ import { Session } from "remix/session";
 
 import * as act from "../lib/actions.ts";
 import { googleProvider } from "../lib/auth.ts";
+import { env } from "../env.ts";
 import { loadState, type Part, type State } from "../lib/data.ts";
 import {
 	setTheme,
@@ -125,6 +126,9 @@ export default createController(routes, {
 
 		// ---------- google ----------
 		googleLogin(ctx: Ctx) {
+			if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+				return fail(ctx, "/login", "Google login is not configured. Please sign in with email and password.");
+			}
 			return startExternalAuth(googleProvider, ctx as never, { returnTo: "/home" });
 		},
 		async googleCallback(ctx: Ctx) {
@@ -188,6 +192,20 @@ export default createController(routes, {
 			if (!user) return new Response(null, { status: 401 });
 			await setTheme(user.id, String(formOf(ctx).get("theme") ?? ""));
 			return new Response(null, { status: 204 });
+		},
+		async setBackground(ctx: Ctx) {
+			const user = userOf(ctx);
+			if (!user) return go("/login");
+			const f = formOf(ctx);
+			const url = String(f.get("url") ?? "");
+			const error = await act.validateAndSetBackground(user.id, url);
+			return error ? fail(ctx, "/settings", error) : go("/settings");
+		},
+		async resetBackground(ctx: Ctx) {
+			const user = userOf(ctx);
+			if (!user) return go("/login");
+			await act.resetUserBackground(user.id);
+			return go("/settings");
 		},
 
 		// ---------- account ----------

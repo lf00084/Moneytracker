@@ -1,6 +1,7 @@
 import { css } from "./css.ts";
-import { ic, logo, themeIcons } from "./parts.ts";
+import { clockWidget, ic, logo, themeIcons } from "./parts.ts";
 import { script, themeBoot } from "./script.ts";
+import { getTimePeriod, liveClockNow } from "../lib/time.ts";
 
 export type MobileTab = "home" | "notes" | "goals" | "history" | "profile" | "";
 export type DesktopTab = "home" | "notes" | "plan" | "history" | "settings" | "";
@@ -19,6 +20,8 @@ export type PageOptions = {
 	full?: boolean;
 	/** The signed-in user's saved theme. When set it wins over the browser's copy. */
 	theme?: string;
+	bgMode?: "auto" | "url";
+	bgUrl?: string;
 };
 
 /** Phone: icon-only bottom bar, like X. Home, Notes, Goals, History, Profile. */
@@ -34,7 +37,7 @@ const bottomBar = (a: MobileTab) =>
 		] as const
 	)
 		.map(([key, label, icon, href]) => `<a href="${href}" class="${a === key ? "on" : ""}" aria-label="${label}">${ic(icon)}</a>`)
-		.join("") +
+	.join("") +
 	"</nav>";
 
 /** Desktop: left sidebar, like X. */
@@ -55,15 +58,30 @@ const sidebar = (a: DesktopTab) =>
 	`<form method="post" action="/logout"><button class="sbl">${ic("out")}<span class="neg">Log out</span></button></form></aside>`;
 
 export function page(o: PageOptions): string {
-	let user = o.user !== false;
+	const user = o.user !== false;
+	const { timeStr, dateStr } = liveClockNow();
+	const period = getTimePeriod();
+	const isUrl = o.bgMode === "url" && !!o.bgUrl;
+	const clock = clockWidget(timeStr, dateStr);
+	const topBar = `<div class="top-status-bar">${clock}</div>`;
+
 	return (
-		`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +
+		`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}" data-period="${period}"><head><meta charset="utf-8">` +
 		`<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
 		`<meta name="theme-color" content="#121212"><title>${o.title} · moneytracker</title>` +
 		`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
-		`<style>${css}</style><script>${o.theme ? "" : themeBoot}</script></head><body><div class="app">` +
-		(user ? sidebar(o.desktopTab ?? "") : `<button type="button" class="ib tf" data-theme-toggle aria-label="Theme">${themeIcons}</button>`) +
-		`<main><div class="m mm">${o.mobile}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>` +
+		`<style>${css}</style><script>${o.theme ? "" : themeBoot}</script></head>` +
+		`<body data-bg-mode="${isUrl ? "url" : "auto"}"${isUrl ? ` data-bg-custom="${o.bgUrl}" style="--user-bg-url:url('${o.bgUrl}');"` : ""}>` +
+		`<div class="app">` +
+		(user
+			? sidebar(o.desktopTab ?? "")
+			: `<div class="tf-clock">${clock}<button type="button" class="ib" data-theme-toggle aria-label="Theme">${themeIcons}</button></div>`) +
+		`<main>` +
+		(user ? `<div class="m">${topBar}</div>` : "") +
+		`<div class="m mm">${o.mobile}</div>` +
+		(user ? `<div class="d">${topBar}</div>` : "") +
+		`<div class="d pg${o.full ? " full" : ""}">${o.desktop}</div>` +
+		`</main>` +
 		(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +
 		`</div><script>${script}</script></body></html>`
 	);

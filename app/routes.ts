@@ -38,6 +38,8 @@ export const routes = route({
 	saveSettings: post("/settings"),
 	quickBuy: post("/settings/quick"),
 	setTheme: post("/settings/theme"),
+	setBackground: post("/settings/background"),
+	resetBackground: post("/settings/background/reset"),
 
 	// Account
 	exportCsv: get("/export.csv"),

@@ -304,11 +304,48 @@ const profileM = (s: State) =>
 
 const editM = (s: State) => `<div style="display:flex;justify-content:center;margin:14px 0 0">${avatar(s)}</div>` + tg("Profile", profileForm(s, "/profile"));
 
-const settingsM = (s: State) => tg("Quick buys", quickEditor(s)) + tg("Money & income", prefsForm(s)) + tg("Data", dataButtons);
+const bgSection = (s: State) => {
+	const isUrl = s.user.bg_mode === "url" && !!s.user.bg_url;
+	const previewHtml = isUrl
+		? `<div style="margin-top:14px;border-radius:14px;overflow:hidden;border:1px solid var(--ln);height:130px;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url('${esc(
+				s.user.bg_url
+		  )}') center/cover;position:relative;display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-weight:600;font-size:12px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)">Current wallpaper preview</span></div>`
+		: `<div class="lb" style="margin-top:10px;padding:12px;border-radius:12px;background:var(--s2);text-align:center">Currently using iPhone 17 auto gradient (changes with time of day).</div>`;
+
+	return (
+		`<form method="post" action="/settings/background">` +
+		`<div class="lb" style="margin-bottom:8px">Enter an image URL (PNG or JPEG, up to 5 MB). A dark overlay is added so text stays readable.</div>` +
+		`<div class="ln">` +
+		`<input class="in" name="url" type="url" placeholder="https://..." value="${isUrl ? esc(s.user.bg_url) : ""}" autocomplete="off" style="font-size:14px">` +
+		`<button class="btn xs" style="flex:none">Check and apply</button>` +
+		`</div>` +
+		`</form>` +
+		previewHtml +
+		(isUrl
+			? `<form method="post" action="/settings/background/reset" style="margin-top:12px"><button class="btn o xs" style="width:100%">Use auto</button></form>`
+			: "")
+	);
+};
+
+const settingsM = (s: State) =>
+	err(s) +
+	tg("Background", bgSection(s)) +
+	tg("Quick buys", quickEditor(s)) +
+	tg("Money & income", prefsForm(s)) +
+	tg("Data", dataButtons);
 
 const settingsD = (s: State) =>
 	'<div class="hd"><h1 class="t">Settings</h1><span></span></div>' +
-	`<div class="g3"><div>${sec("Profile", "", profileForm(s, "/home"))}${sec("Account", "", `<form method="post" action="/logout"><button class="btn o">Log out</button></form>`)}</div><div>${sec("Appearance", "", themeSwitch())}${sec("Quick buys", "", quickEditor(s))}${sec("Money & income", "", prefsForm(s))}${sec("Data", "", dataButtons)}</div></div>`;
+	err(s) +
+	`<div class="g3"><div>${sec("Profile", "", profileForm(s, "/home"))}${sec("Background", "", bgSection(s))}${sec(
+		"Account",
+		"",
+		`<form method="post" action="/logout"><button class="btn o">Log out</button></form>`,
+	)}</div><div>${sec("Appearance", "", themeSwitch())}${sec("Quick buys", "", quickEditor(s))}${sec("Money & income", "", prefsForm(s))}${sec(
+		"Data",
+		"",
+		dataButtons,
+	)}</div></div>`;
 
 // ---------- desktop pages ----------
 
@@ -336,7 +373,11 @@ const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span 
 
 // ---------- pages ----------
 
-const base = (s: State) => ({ theme: s.user.theme });
+const base = (s: State) => ({
+	theme: s.user.theme,
+	bgMode: s.user.bg_mode as "auto" | "url",
+	bgUrl: s.user.bg_url,
+});
 
 export const homePage = (s: State) =>
 	page({

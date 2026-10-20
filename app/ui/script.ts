@@ -124,5 +124,35 @@ d.addEventListener('keydown',function(e){
     if(t.value.trim()){var f=t.closest('form');if(f.requestSubmit)f.requestSubmit();else f.submit()}
   }
 });
+
+/* ---------- live clock (Africa/Casablanca) ---------- */
+function updateLiveClock(){
+  var tEls = all('[data-clock-time]');
+  var dEls = all('[data-clock-date]');
+  if(!tEls.length) return;
+  var now = new Date();
+  try{
+    var tf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    var df = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', weekday: 'long', day: 'numeric', month: 'long' });
+    var tStr = tf.format(now);
+    var dStr = df.format(now);
+    tEls.forEach(function(el){ el.textContent = tStr; });
+    dEls.forEach(function(el){ el.textContent = dStr; });
+  }catch(err){}
+}
+setInterval(updateLiveClock, 1000);
+
+/* ---------- background fallback ---------- */
+var bgCustomEl = d.querySelector('[data-bg-custom]');
+if(bgCustomEl){
+  var bgUrl = bgCustomEl.getAttribute('data-bg-custom');
+  if(bgUrl){
+    var testImg = new Image();
+    testImg.onerror = function(){
+      bgCustomEl.classList.add('bg-fallback-auto');
+    };
+    testImg.src = bgUrl;
+  }
+}
 })();
 `;

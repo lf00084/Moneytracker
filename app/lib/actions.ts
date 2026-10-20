@@ -4,6 +4,7 @@ import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, 
 import { fmt, toMinor } from "./money.ts";
 import { extKey, parseJson, typeOf } from "./sources/index.ts";
 import { today } from "./time.ts";
+import { updateBg } from "./users.ts";
 import { ICON_KEYS } from "../ui/parts.ts";
 
 const id = () => crypto.randomUUID();
@@ -280,4 +281,95 @@ const lines = ["date,type,name,qty,amount"];
 for (const i of is) lines.push([i.day, "income", cell(names.get(i.source_id ?? "") ?? "Other"), 1, fmt(i.amount_minor).replace(/,/g, "")].join(","));
 for (const b of bs) lines.push([b.day, "buy", cell(b.name), b.qty, fmt(b.total_minor).replace(/,/g, "")].join(","));
 return lines.join("\n");
+}
+
+// ---------- background ----------
+
+export async function validateAndSetBackground(uid: string, rawUrl: string): Promise<string | null> {
+	const trimmed = rawUrl.trim();
+	if (!trimmed) return "Please enter an image URL.";
+
+	let parsed: URL;
+	try {
+		parsed = new URL(trimmed);
+	} catch {
+		return "Invalid address.";
+	}
+
+	if (parsed.protocol !== "https:") {
+		return "URL must use https.";
+	}
+
+	const host = parsed.hostname.toLowerCase();
+	if (
+		host === "localhost" ||
+		host === "127.0.0.1" ||
+		host === "::1" ||
+		host === "0.0.0.0" ||
+		host.endsWith(".local") ||
+		host.endsWith(".internal") ||
+		host.startsWith("10.") ||
+		host.startsWith("192.168.") ||
+		/^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+		host.startsWith("169.254.")
+	) {
+		return "Invalid address.";
+	}
+
+	let res: Response;
+	try {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 6000);
+		res = await fetch(parsed.toString(), {
+			signal: controller.signal,
+			headers: { "User-Agent": "Moneytracker/1.0" },
+		});
+		clearTimeout(timeoutId);
+	} catch {
+		return "Cannot download.";
+	}
+
+	if (!res.ok) {
+		return "Cannot download.";
+	}
+
+	const cl = res.headers.get("content-length");
+	if (cl && parseInt(cl, 10) > 5 * 1024 * 1024) {
+		return "Too large.";
+	}
+
+	const ct = (res.headers.get("content-type") || "").toLowerCase().trim();
+	if (!ct.startsWith("image/png") && !ct.startsWith("image/jpeg") && !ct.startsWith("image/jpg")) {
+		return "Not a PNG or JPEG.";
+	}
+
+	let buffer: ArrayBuffer;
+	try {
+		buffer = await res.arrayBuffer();
+	} catch {
+		return "Cannot download.";
+	}
+
+	if (buffer.byteLength > 5 * 1024 * 1024) {
+		return "Too large.";
+	}
+
+	if (buffer.byteLength < 8) {
+		return "Not a PNG or JPEG.";
+	}
+
+	const bytes = new Uint8Array(buffer.slice(0, 8));
+	const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+	const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+
+	if (!isPng && !isJpg) {
+		return "Not a PNG or JPEG.";
+	}
+
+	await updateBg(uid, { mode: "url", url: trimmed });
+	return null;
+}
+
+export async function resetUserBackground(uid: string) {
+	await updateBg(uid, { mode: "auto", url: "" });
 }

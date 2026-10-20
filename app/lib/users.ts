@@ -11,10 +11,12 @@ export type User = {
 	bio: string;
 	run_at: string;
 	week_start: string;
+	bg_mode: string;
+	bg_url: string;
 };
 
 const normEmail = (e: string) => e.trim().toLowerCase();
-const toUser = (r: User): User => ({
+const toUser = (r: any): User => ({
 	id: r.id,
 	email: r.email,
 	name: r.name,
@@ -24,11 +26,13 @@ const toUser = (r: User): User => ({
 	bio: r.bio ?? "",
 	run_at: r.run_at || "06:00",
 	week_start: r.week_start || "Monday",
+	bg_mode: r.bg_mode || "auto",
+	bg_url: r.bg_url ?? "",
 });
 
 export async function getUserById(id: string): Promise<User | null> {
 	const row = await db.find(users, id);
-	return row ? toUser(row as User) : null;
+	return row ? toUser(row) : null;
 }
 
 const newUserRow = (id: string, email: string, name: string, verified: number, now: number) => ({
@@ -42,6 +46,8 @@ const newUserRow = (id: string, email: string, name: string, verified: number, n
 	bio: "",
 	run_at: "06:00",
 	week_start: "Monday",
+	bg_mode: "auto",
+	bg_url: "",
 	created_at: now,
 	updated_at: now,
 });
@@ -178,4 +184,12 @@ export async function updatePrefs(userId: string, input: { currency: string; run
 export async function setTheme(userId: string, theme: string) {
 	if (theme !== "dark" && theme !== "light") return;
 	await db.update(users, userId, { theme, updated_at: Date.now() });
+}
+
+export async function updateBg(userId: string, input: { mode: "auto" | "url"; url?: string }) {
+	await db.update(users, userId, {
+		bg_mode: input.mode,
+		bg_url: input.mode === "url" ? (input.url ?? "").trim() : "",
+		updated_at: Date.now(),
+	});
 }

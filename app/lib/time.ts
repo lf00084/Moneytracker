@@ -29,3 +29,32 @@ export function dayLabel(day: string) {
 
 /** "Tue 13 Oct" for the page header. */
 export const longDay = (day: string) => nice(day);
+
+export function liveClockNow() {
+	const now = new Date();
+	const timeStr = new Intl.DateTimeFormat("en-GB", {
+		timeZone: TZ,
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hour12: false,
+	}).format(now);
+	const dateStr = new Intl.DateTimeFormat("en-GB", {
+		timeZone: TZ,
+		weekday: "long",
+		day: "numeric",
+		month: "long",
+	}).format(now);
+	return { timeStr, dateStr };
+}
+
+export function getTimePeriod(): "morning" | "day" | "evening" | "night" {
+	const hour = parseInt(
+		new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "numeric", hour12: false }).format(new Date()),
+		10
+	);
+	if (hour >= 5 && hour < 12) return "morning";
+	if (hour >= 12 && hour < 18) return "day";
+	if (hour >= 18 && hour < 22) return "evening";
+	return "night";
+}

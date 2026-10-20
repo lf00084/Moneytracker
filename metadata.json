@@ -1,0 +1,7 @@
+{
+  "name": "Moneytracker",
+  "description": "Quiet money tracker — track income, purchases, debts, goals, and daily finances.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

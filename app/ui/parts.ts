@@ -57,8 +57,8 @@ export const hd = (t: string, r: string, back?: string) =>
 		back ? `<a class="back" href="${back}">${ic("back")}<h1 class="t">${t}</h1></a>` : `<h1 class="t">${t}</h1>`
 	}<span class="lb">${r}</span></div>`;
 
-export const clockWidget = (timeStr: string, dateStr: string) =>
-	`<div class="live-clock" data-tz="Africa/Casablanca" aria-label="Local Casablanca time"><div class="clock-time" data-clock-time>${timeStr}</div><div class="clock-date" data-clock-date>${dateStr}</div></div>`;
+export const clockWidget = (timeStr: string, dateStr: string, subDateStr = "") =>
+	`<div class="live-clock" data-tz="Africa/Casablanca" aria-label="Local Casablanca time"><div class="clock-time" data-clock-time>${timeStr}</div><div class="clock-date" data-clock-date>${dateStr}</div><div class="clock-subdate" data-clock-subdate dir="ltr">${subDateStr}</div></div>`;
 
 export const chips = (a: string[]) => `<div class="chips" style="margin:0">${a.map((i) => `<span class="chip">${i}</span>`).join("")}</div>`;
 

@@ -129,15 +129,20 @@ d.addEventListener('keydown',function(e){
 function updateLiveClock(){
   var tEls = all('[data-clock-time]');
   var dEls = all('[data-clock-date]');
+  var sEls = all('[data-clock-subdate]');
   if(!tEls.length) return;
   var now = new Date();
   try{
-    var tf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    var tf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', hour12: false });
     var df = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', weekday: 'long', day: 'numeric', month: 'long' });
+    var nf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', day: '2-digit', month: '2-digit', year: 'numeric' });
+    var af = new Intl.DateTimeFormat('ar-MA', { timeZone: 'Africa/Casablanca', weekday: 'long' });
     var tStr = tf.format(now);
     var dStr = df.format(now);
+    var sStr = '<span class="clock-num">' + nf.format(now) + '</span> <span class="clock-dot">·</span> <span class="clock-ar">' + af.format(now) + '</span>';
     tEls.forEach(function(el){ el.textContent = tStr; });
     dEls.forEach(function(el){ el.textContent = dStr; });
+    sEls.forEach(function(el){ el.innerHTML = sStr; });
   }catch(err){}
 }
 setInterval(updateLiveClock, 1000);

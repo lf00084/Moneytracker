@@ -36,7 +36,6 @@ export function liveClockNow() {
 		timeZone: TZ,
 		hour: "2-digit",
 		minute: "2-digit",
-		second: "2-digit",
 		hour12: false,
 	}).format(now);
 	const dateStr = new Intl.DateTimeFormat("en-GB", {
@@ -45,7 +44,18 @@ export function liveClockNow() {
 		day: "numeric",
 		month: "long",
 	}).format(now);
-	return { timeStr, dateStr };
+	const numDate = new Intl.DateTimeFormat("en-GB", {
+		timeZone: TZ,
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	}).format(now);
+	const arabicDay = new Intl.DateTimeFormat("ar-MA", {
+		timeZone: TZ,
+		weekday: "long",
+	}).format(now);
+	const subDateStr = `<span class="clock-num">${numDate}</span> <span class="clock-dot">·</span> <span class="clock-ar">${arabicDay}</span>`;
+	return { timeStr, dateStr, subDateStr };
 }
 
 export function getTimePeriod(): "morning" | "day" | "evening" | "night" {

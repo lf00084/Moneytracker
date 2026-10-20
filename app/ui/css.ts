@@ -40,9 +40,27 @@ button:active,.btn:active,.sbl:active,.qk button:active,.qk4 button:active,.chip
 /* live clock */
 .top-status-bar{display:flex;justify-content:flex-end;align-items:center;padding:12px 16px 2px}
 .live-clock{display:flex;flex-direction:column;align-items:flex-end;text-align:right;user-select:none}
-.clock-time{font-size:22px;font-weight:700;letter-spacing:-0.03em;line-height:1;font-family:var(--font-sys)}
-.clock-date{font-size:11px;font-weight:500;opacity:.72;margin-top:2px;letter-spacing:-0.01em;font-family:var(--font-sys)}
+.clock-time{font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1;font-family:var(--font-sys)}
+.clock-date{font-size:13px;font-weight:600;opacity:.88;margin-top:3px;letter-spacing:-0.01em;font-family:var(--font-sys)}
+.clock-subdate{font-size:12px;font-weight:600;opacity:.82;margin-top:3px;letter-spacing:0.02em;direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:center;justify-content:flex-end;gap:5px}
+.clock-num{font-family:var(--font-sys);font-variant-numeric:tabular-nums;font-weight:600}
+.clock-dot{opacity:.5}
+.clock-ar{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI Arabic","Noto Sans Arabic","Geeza Pro",system-ui,sans-serif;font-weight:600;font-size:12px}
 .tf-clock{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:14px;z-index:30;display:flex;align-items:center;gap:12px}
+
+/* Centered middle auth */
+.auth-viewport{min-height:100dvh;width:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;box-sizing:border-box}
+.auth-center-wrap{width:100%;max-width:440px;margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.auth-glass-box{width:100%;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:28px;padding:38px 32px 34px;box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%)}
+@media(max-width:480px){.auth-glass-box{padding:30px 20px 26px;border-radius:24px}}
+.auth-logo-center{display:flex;justify-content:center;margin-bottom:16px}
+.auth-title{text-align:center;font-size:38px;font-weight:700;letter-spacing:-0.04em;line-height:1.15;margin-bottom:8px;font-family:var(--font-sys);color:var(--ink)}
+.auth-sub{text-align:center;color:var(--mu);font-size:14px;margin-bottom:22px;letter-spacing:-0.01em}
+.auth-err-banner{background:rgba(255,90,77,0.15);border:1px solid rgba(255,90,77,0.35);border-radius:12px;padding:10px 14px;color:var(--neg);font-size:13px;font-weight:500;text-align:center;margin:12px 0}
+.auth-switch-wrap{display:flex;justify-content:center;margin-top:22px;text-align:center}
+.lnk-switch{font-size:14px;color:var(--mu);text-decoration:none;transition:color .15s}
+.lnk-switch b{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.lnk-switch:hover{color:var(--ink)}
 
 /* responsive switch: .m = mobile only, .d = desktop only */
 @media(min-width:900px){.m{display:none!important}}
@@ -202,14 +220,16 @@ html[data-theme=light] .qk4 button{background:rgba(255,255,255,0.7);box-shadow:0
 .sl h2{font-size:92px;line-height:.9;letter-spacing:-.07em;font-weight:700}
 .sr{padding:56px 90px;display:flex;flex-direction:column;justify-content:center}
 .wr{display:flex;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--ln)}
-.au .in{background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);border-radius:14px;padding:12px 16px;font-size:15px;transition:all .18s;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
-html[data-theme=light] .au .in{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.1)}
-.au .in:focus{border-color:var(--ink);background:rgba(255,255,255,0.14);box-shadow:0 0 0 3px rgba(255,255,255,0.1)}
+.au .in{background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);border-radius:14px;padding:13px 16px;font-size:15px;transition:all .18s;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.06)}
+html[data-theme=light] .au .in{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.12);box-shadow:inset 0 1px 0 rgba(0,0,0,0.02)}
+.au .in:focus{border-color:var(--ink);background:rgba(255,255,255,0.14);box-shadow:0 0 0 3px rgba(255,255,255,0.12)}
 html[data-theme=light] .au .in:focus{background:rgba(0,0,0,0.06);box-shadow:0 0 0 3px rgba(0,0,0,0.08)}
-.au .fl{margin-top:12px}.au .fl label{margin-bottom:6px;font-weight:500}
-.au .btn.full{padding:13px;font-size:15px;border-radius:14px;margin-top:18px;font-weight:600}
-.au .gbtn{padding:12px 16px;font-size:14px;border-radius:14px;font-weight:600}
-.au .or{margin-top:16px}
+.au .fl{margin-top:14px}.au .fl label{margin-bottom:6px;font-weight:600;font-size:12px;letter-spacing:0.02em}
+.au .btn.full{padding:14px 20px;font-size:16px;border-radius:14px;margin-top:20px;font-weight:700;box-shadow:0 4px 16px -2px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.25)}
+.au .gbtn{padding:13px 18px;font-size:14px;border-radius:14px;font-weight:600;transition:all .15s ease}
+.au .gbtn:hover{background:rgba(255,255,255,0.12)}
+html[data-theme=light] .au .gbtn:hover{background:rgba(0,0,0,0.06)}
+.au .or{margin:18px 0 6px}
 
 /* collapsible "I owe" */
 details.cd>summary{padding:14px 16px;display:block;position:relative}

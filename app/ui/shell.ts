@@ -59,10 +59,10 @@ const sidebar = (a: DesktopTab) =>
 
 export function page(o: PageOptions): string {
 	const user = o.user !== false;
-	const { timeStr, dateStr } = liveClockNow();
+	const { timeStr, dateStr, subDateStr } = liveClockNow();
 	const period = getTimePeriod();
 	const isUrl = o.bgMode === "url" && !!o.bgUrl;
-	const clock = clockWidget(timeStr, dateStr);
+	const clock = clockWidget(timeStr, dateStr, subDateStr);
 	const topBar = `<div class="top-status-bar">${clock}</div>`;
 
 	return (
@@ -76,12 +76,9 @@ export function page(o: PageOptions): string {
 		(user
 			? sidebar(o.desktopTab ?? "")
 			: `<div class="tf-clock">${clock}<button type="button" class="ib" data-theme-toggle aria-label="Theme">${themeIcons}</button></div>`) +
-		`<main>` +
-		(user ? `<div class="m">${topBar}</div>` : "") +
-		`<div class="m mm">${o.mobile}</div>` +
-		(user ? `<div class="d">${topBar}</div>` : "") +
-		`<div class="d pg${o.full ? " full" : ""}">${o.desktop}</div>` +
-		`</main>` +
+		(user
+			? `<main><div class="m">${topBar}</div><div class="m mm">${o.mobile}</div><div class="d">${topBar}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>`
+			: `<main class="auth-viewport">${o.desktop}</main>`) +
 		(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +
 		`</div><script>${script}</script></body></html>`
 	);

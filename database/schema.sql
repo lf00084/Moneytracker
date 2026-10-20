@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
   bio           TEXT NOT NULL DEFAULT '',
   run_at        TEXT NOT NULL DEFAULT '06:00',
   week_start    TEXT NOT NULL DEFAULT 'Monday',
+  bg_mode       TEXT NOT NULL DEFAULT 'auto',
+  bg_url        TEXT NOT NULL DEFAULT '',
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
 );
@@ -83,7 +85,12 @@ CREATE TABLE IF NOT EXISTS income_sources (
   mode          TEXT NOT NULL DEFAULT 'manual',   -- auto | manual
   amount_minor  INTEGER NOT NULL DEFAULT 0,       -- for auto sources
   every         TEXT,                             -- day | week | month (auto)
-  created_at    INTEGER NOT NULL
+  created_at    INTEGER NOT NULL,
+  type          TEXT NOT NULL DEFAULT 'manual',
+  config        TEXT NOT NULL DEFAULT '{}',
+  currency      TEXT NOT NULL DEFAULT 'MAD',
+  active        INTEGER NOT NULL DEFAULT 1,
+  sort          INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS income_sources_user_idx ON income_sources(user_id);
 
@@ -93,7 +100,9 @@ CREATE TABLE IF NOT EXISTS incomes (
   source_id     TEXT REFERENCES income_sources(id) ON DELETE SET NULL,
   amount_minor  INTEGER NOT NULL,
   day           TEXT NOT NULL,                    -- YYYY-MM-DD
-  created_at    INTEGER NOT NULL
+  created_at    INTEGER NOT NULL,
+  meta          TEXT NOT NULL DEFAULT '{}',
+  ext_key       TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS incomes_day_idx ON incomes(user_id, day);
 

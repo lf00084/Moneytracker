@@ -11,6 +11,7 @@ export const P: Record<string, string> = {
 	gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 	out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
 	plus: '<path d="M12 5v14M5 12h14"/>',
+	trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
 	undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
 	send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
 	Smoke: '<rect x="2" y="15" width="14" height="4" rx="1"/><path d="M19 15v4M22 15v4M17 11c0-2 2-2 2-4"/>',

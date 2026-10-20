@@ -32,6 +32,7 @@ export const routes = route({
 	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
 	buyWish: post("/goals/buy"),
+	deleteWish: post("/goals/delete"),
 	addSource: post("/income"),
 	addIncome: post("/income/add"),
 	deleteIncome: post("/income/delete"),

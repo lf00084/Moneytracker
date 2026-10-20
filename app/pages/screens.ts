@@ -120,25 +120,22 @@ const addWishPanel = (s: State) =>
 const boughtBtn = (s: State, g: Goal) =>
 	`<form method="post" action="/goals/buy" style="display:contents" data-confirm="Mark ${esc(g.title)} as bought? It will be added as a spend.">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="btn xs${canBuy(s, g) ? "" : " off"}"${canBuy(s, g) ? "" : " disabled"}>Bought</button></form>`;
 
-const wishesM = (s: State) =>
-	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><div class="tg">Wish list</div><div class="cb">${
-		s.goals
-			.map(
-				(g) =>
-					`<div class="wi"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div><div class="wa">${boughtBtn(s, g)}</div></div>`,
-			)
-			.join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>'
-	}</div>${addWishPanel(s)}</div></div>`;
+const delWish = (s: State, g: Goal) =>
+	`<form method="post" action="/goals/delete" style="display:contents" data-confirm="Delete ${esc(g.title)} from your wish list?">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="ub" aria-label="Delete ${esc(g.title)}">${ic("trash")}</button></form>`;
+
+const wishRow = (s: State, g: Goal) =>
+	`<div class="db"><div class="dn"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt s"><i style="width:${pctOf(s, g)}%"></i></div></div><span class="wb">${boughtBtn(s, g)}${delWish(s, g)}</span></div>`;
+
+const wishList = (s: State) => s.goals.map((g) => wishRow(s, g)).join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>';
+
+const wishTotal = (s: State) => `${fmt(s.goals.reduce((a, g) => a + g.target, 0))} ${cur(s)}`;
+
+/** Wish list: add with the big +, expand to buy or delete each wish. Same idea as "I owe". */
+const wishesM = (s: State, open: boolean, key: string) =>
+	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><details class="dd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">Wish list</div><div class="ow"><b class="big2">${s.goals.length}</b><span class="lb">${wishTotal(s)}</span></div>${chev}</summary><div class="cb">${wishList(s)}</div></details>${addWishPanel(s)}</div></div>`;
 
 const wishD = (s: State) =>
-	`<div class="sc bgc">${bigAdd("Add wish")}<div class="ct"><div class="sh"><span>Wish list</span><span class="lb">${s.goals.filter((g) => !g.done).length} active</span></div>${
-		s.goals
-			.map(
-				(g) =>
-					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div></div>${boughtBtn(s, g)}</div>`,
-			)
-			.join("") || '<div class="lb" style="padding:14px 0">Nothing on the list.</div>'
-	}${addWishPanel(s)}</div></div>`;
+	`<div class="sc bgc">${bigAdd("Add wish")}<div class="ct"><details data-keep-open="wish-page" open><summary class="sh"><span>Wish list</span><span class="rr"><span class="lb">${s.goals.length} · ${wishTotal(s)}</span>${chev}</span></summary>${wishList(s)}</details>${addWishPanel(s)}</div></div>`;
 
 const debtsM = (s: State) =>
 	`<div class="cd bgc">${bigAdd("Add debt")}<div class="ct"><div class="tg">Debts</div><div class="cb">${owePair(s)}${debtList(s)}</div>${addDebtPanel(s)}</div></div>`;
@@ -154,14 +151,13 @@ const srcRows = (s: State) =>
 			const sum = got.reduce((a, i) => a + i.amount, 0);
 			const auto = x.mode === "auto";
 			const tag = auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
-			const sub = got.length ? `<span class="ok">got +${fmt(sum)} today</span>` : auto ? (x.every === "month" ? "monthly" : "every day") : "nothing today yet";
 			let right: string;
 			if (auto) right = `<b class="ea">+${fmt(x.amount)}</b>`;
 			else if (got.length) {
 				right = `<span class="rt"><button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${back(s)}<input type="hidden" name="id" value="${got[0]!.id}"><button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form></span>`;
 			} else
 				right = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(srcAmount(x))}</button></form>`;
-			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div><div class="lb">${sub}</div></div>${right}</div>`;
+			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div>${right}</div>`;
 		})
 		.join("") || '<div class="lb" style="padding:8px 0">No sources yet. Add one below.</div>';
 
@@ -191,15 +187,12 @@ const buyRows = (s: State) =>
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
-const spendForm = (s: State) =>
-	`<form method="post" action="/buy" class="sf" data-sp>${back(s)}${nameChips(s.names)}<input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
+const spendForm = (s: State, wide = false) =>
+	`<form method="post" action="/buy" class="${wide ? "sc" : "cd"} spf" data-sp>${back(s)}${nameChips(s.names)}<div class="ln"><input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in pr" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required></div><button class="btn full">Add a spend</button></form>`;
 
-/** "Today's buys" with a plus that opens the add form on top of the list. */
-const buysCard = (s: State) =>
-	`<div class="cd"><div class="tg th2"><span>Today's buys · ${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></div><div class="cb"><div class="pnl top" data-pnl hidden>${spendForm(s)}</div>${buyRows(s)}</div></div>`;
+const buysCard = (s: State) => `<div class="cd"><div class="tg">Today's buys · ${s.buys.length}</div><div class="cb">${buyRows(s)}</div></div>`;
 
-const buysD = (s: State) =>
-	`<div class="sc"><div class="sh"><span>Today's buys</span><span class="rr"><span class="lb">${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></span></div><div class="pnl top" data-pnl hidden style="margin-top:14px">${spendForm(s)}</div>${buyRows(s)}</div>`;
+const buysD = (s: State) => sec("Today's buys", `${s.buys.length}`, buyRows(s));
 
 const hero = (s: State) => {
 	const c = calc(s);
@@ -318,7 +311,7 @@ const settingsD = (s: State) =>
 
 const dashboardD = (s: State) =>
 	hero(s) +
-	`<div class="g2"><div>${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
+	`<div class="g2"><div>${spendForm(s, true)}${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
 
 const debtsD = (s: State) => {
 	const c = calc(s);
@@ -351,7 +344,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + buysCard(s) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 
@@ -369,7 +362,7 @@ export const notesPage = (s: State) =>
 	page({ ...base(s), title: "Notes", mobileTab: "notes", desktopTab: "notes", mobile: chatHead + noteList(s, "m"), dock: composer(s, "m"), desktop: notesD(s) });
 
 export const goalsPage = (s: State) =>
-	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s) + debtsM(s), desktop: err(s) + planD(s) });
+	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s, true, "wish-page") + debtsM(s), desktop: err(s) + planD(s) });
 
 export const incomePage = (s: State) =>
 	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: err(s) + hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: err(s) + planD(s) });

@@ -175,6 +175,7 @@ export default createController(routes, {
 		deleteNote: mutate("/notes", (u, f) => act.deleteNote(u.id, f)),
 		addWish: attempt("/goals", (u, f) => act.addGoal(u.id, f)),
 		buyWish: attempt("/goals", (u, f) => act.buyWish(u.id, f)),
+		deleteWish: attempt("/goals", (u, f) => act.deleteWish(u.id, f)),
 		addSource: attempt("/income", (u, f) => act.addSource(u.id, f)),
 		addIncome: attempt("/income", (u, f) => act.addIncome(u.id, f)),
 		deleteIncome: attempt("/income", (u, f) => act.deleteIncome(u.id, f)),

@@ -152,6 +152,10 @@ created_at: Date.now(),
 });
 }
 
+export async function deleteWish(uid: string, f: FormData) {
+await db.exec(sql`delete from goals where id = ${text(f.get("id"), 36)} and user_id = ${uid}`);
+}
+
 export async function buyWish(uid: string, f: FormData): Promise<string | void> {
 const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
 if (!g) return;

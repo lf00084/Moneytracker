@@ -157,6 +157,10 @@ created_at: Date.now(),
 });
 }
 
+export async function deleteWish(uid: string, f: FormData) {
+await db.exec(sql`delete from goals where id = ${text(f.get("id"), 36)} and user_id = ${uid}`);
+}
+
 export async function buyWish(uid: string, f: FormData): Promise<string | void> {
 const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
 if (!g) return;
@@ -679,6 +683,7 @@ export const routes = route({
 	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
 	buyWish: post("/goals/buy"),
+	deleteWish: post("/goals/delete"),
 	addSource: post("/income"),
 	addIncome: post("/income/add"),
 	deleteIncome: post("/income/delete"),
@@ -875,6 +880,7 @@ export default createController(routes, {
 		deleteNote: mutate("/notes", (u, f) => act.deleteNote(u.id, f)),
 		addWish: attempt("/goals", (u, f) => act.addGoal(u.id, f)),
 		buyWish: attempt("/goals", (u, f) => act.buyWish(u.id, f)),
+		deleteWish: attempt("/goals", (u, f) => act.deleteWish(u.id, f)),
 		addSource: attempt("/income", (u, f) => act.addSource(u.id, f)),
 		addIncome: attempt("/income", (u, f) => act.addIncome(u.id, f)),
 		deleteIncome: attempt("/income", (u, f) => act.deleteIncome(u.id, f)),
@@ -1069,25 +1075,22 @@ const addWishPanel = (s: State) =>
 const boughtBtn = (s: State, g: Goal) =>
 	`<form method="post" action="/goals/buy" style="display:contents" data-confirm="Mark ${esc(g.title)} as bought? It will be added as a spend.">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="btn xs${canBuy(s, g) ? "" : " off"}"${canBuy(s, g) ? "" : " disabled"}>Bought</button></form>`;
 
-const wishesM = (s: State) =>
-	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><div class="tg">Wish list</div><div class="cb">${
-		s.goals
-			.map(
-				(g) =>
-					`<div class="wi"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div><div class="wa">${boughtBtn(s, g)}</div></div>`,
-			)
-			.join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>'
-	}</div>${addWishPanel(s)}</div></div>`;
+const delWish = (s: State, g: Goal) =>
+	`<form method="post" action="/goals/delete" style="display:contents" data-confirm="Delete ${esc(g.title)} from your wish list?">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="ub" aria-label="Delete ${esc(g.title)}">${ic("trash")}</button></form>`;
+
+const wishRow = (s: State, g: Goal) =>
+	`<div class="db"><div class="dn"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt s"><i style="width:${pctOf(s, g)}%"></i></div></div><span class="wb">${boughtBtn(s, g)}${delWish(s, g)}</span></div>`;
+
+const wishList = (s: State) => s.goals.map((g) => wishRow(s, g)).join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>';
+
+const wishTotal = (s: State) => `${fmt(s.goals.reduce((a, g) => a + g.target, 0))} ${cur(s)}`;
+
+/** Wish list: add with the big +, expand to buy or delete each wish. Same idea as "I owe". */
+const wishesM = (s: State, open: boolean, key: string) =>
+	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><details class="dd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">Wish list</div><div class="ow"><b class="big2">${s.goals.length}</b><span class="lb">${wishTotal(s)}</span></div>${chev}</summary><div class="cb">${wishList(s)}</div></details>${addWishPanel(s)}</div></div>`;
 
 const wishD = (s: State) =>
-	`<div class="sc bgc">${bigAdd("Add wish")}<div class="ct"><div class="sh"><span>Wish list</span><span class="lb">${s.goals.filter((g) => !g.done).length} active</span></div>${
-		s.goals
-			.map(
-				(g) =>
-					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div></div>${boughtBtn(s, g)}</div>`,
-			)
-			.join("") || '<div class="lb" style="padding:14px 0">Nothing on the list.</div>'
-	}${addWishPanel(s)}</div></div>`;
+	`<div class="sc bgc">${bigAdd("Add wish")}<div class="ct"><details data-keep-open="wish-page" open><summary class="sh"><span>Wish list</span><span class="rr"><span class="lb">${s.goals.length} · ${wishTotal(s)}</span>${chev}</span></summary>${wishList(s)}</details>${addWishPanel(s)}</div></div>`;
 
 const debtsM = (s: State) =>
 	`<div class="cd bgc">${bigAdd("Add debt")}<div class="ct"><div class="tg">Debts</div><div class="cb">${owePair(s)}${debtList(s)}</div>${addDebtPanel(s)}</div></div>`;
@@ -1103,14 +1106,13 @@ const srcRows = (s: State) =>
 			const sum = got.reduce((a, i) => a + i.amount, 0);
 			const auto = x.mode === "auto";
 			const tag = auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
-			const sub = got.length ? `<span class="ok">got +${fmt(sum)} today</span>` : auto ? (x.every === "month" ? "monthly" : "every day") : "nothing today yet";
 			let right: string;
 			if (auto) right = `<b class="ea">+${fmt(x.amount)}</b>`;
 			else if (got.length) {
 				right = `<span class="rt"><button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${back(s)}<input type="hidden" name="id" value="${got[0]!.id}"><button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form></span>`;
 			} else
 				right = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(srcAmount(x))}</button></form>`;
-			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div><div class="lb">${sub}</div></div>${right}</div>`;
+			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div>${right}</div>`;
 		})
 		.join("") || '<div class="lb" style="padding:8px 0">No sources yet. Add one below.</div>';
 
@@ -1140,15 +1142,12 @@ const buyRows = (s: State) =>
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
-const spendForm = (s: State) =>
-	`<form method="post" action="/buy" class="sf" data-sp>${back(s)}${nameChips(s.names)}<input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
+const spendForm = (s: State, wide = false) =>
+	`<form method="post" action="/buy" class="${wide ? "sc" : "cd"} spf" data-sp>${back(s)}${nameChips(s.names)}<div class="ln"><input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in pr" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required></div><button class="btn full">Add a spend</button></form>`;
 
-/** "Today's buys" with a plus that opens the add form on top of the list. */
-const buysCard = (s: State) =>
-	`<div class="cd"><div class="tg th2"><span>Today's buys · ${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></div><div class="cb"><div class="pnl top" data-pnl hidden>${spendForm(s)}</div>${buyRows(s)}</div></div>`;
+const buysCard = (s: State) => `<div class="cd"><div class="tg">Today's buys · ${s.buys.length}</div><div class="cb">${buyRows(s)}</div></div>`;
 
-const buysD = (s: State) =>
-	`<div class="sc"><div class="sh"><span>Today's buys</span><span class="rr"><span class="lb">${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></span></div><div class="pnl top" data-pnl hidden style="margin-top:14px">${spendForm(s)}</div>${buyRows(s)}</div>`;
+const buysD = (s: State) => sec("Today's buys", `${s.buys.length}`, buyRows(s));
 
 const hero = (s: State) => {
 	const c = calc(s);
@@ -1267,7 +1266,7 @@ const settingsD = (s: State) =>
 
 const dashboardD = (s: State) =>
 	hero(s) +
-	`<div class="g2"><div>${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
+	`<div class="g2"><div>${spendForm(s, true)}${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
 
 const debtsD = (s: State) => {
 	const c = calc(s);
@@ -1300,7 +1299,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + buysCard(s) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 
@@ -1318,7 +1317,7 @@ export const notesPage = (s: State) =>
 	page({ ...base(s), title: "Notes", mobileTab: "notes", desktopTab: "notes", mobile: chatHead + noteList(s, "m"), dock: composer(s, "m"), desktop: notesD(s) });
 
 export const goalsPage = (s: State) =>
-	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s) + debtsM(s), desktop: err(s) + planD(s) });
+	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s, true, "wish-page") + debtsM(s), desktop: err(s) + planD(s) });
 
 export const incomePage = (s: State) =>
 	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: err(s) + hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: err(s) + planD(s) });
@@ -1400,7 +1399,7 @@ main{flex:1;min-width:0;position:relative}
 .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:20px;letter-spacing:-.04em}
 .logo svg,.bt .lg svg{width:28px;height:28px;border-radius:8px}
 .ib{width:36px;height:36px;border-radius:50%;border:1px solid var(--ln);background:var(--s1);box-shadow:var(--sh1);display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
-.ib.sm{width:28px;height:28px}.ib.hi{background:var(--acs);color:var(--ac);border-color:var(--acl)}
+.ib{flex:none;aspect-ratio:1}.ib.sm{width:28px;height:28px;min-width:28px}.ib svg.ic{width:16px;height:16px}.ib.hi{background:var(--acs);color:var(--ac);border-color:var(--acl)}
 
 .bt{display:flex;align-items:center;height:55px;border-top:1px solid var(--ln);background:var(--s1);box-shadow:var(--sh1);border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:content-box}
 .bt a,.bt button{position:relative;flex:1;height:53px;display:flex;align-items:center;justify-content:center;color:var(--mu);background:none;border:0;padding:0}
@@ -1588,6 +1587,16 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .sh .pl{margin-left:10px}
 .ok{color:var(--earn)}
 
+
+.mm,.pg{overflow-x:hidden;min-width:0}
+.cd,.sc{overflow:hidden;min-width:0}
+.dn{min-width:0}.dbw,.db{min-width:0;max-width:100%}
+.ow{gap:10px;flex-wrap:wrap}
+.spf{padding:14px}.sc.spf{padding:18px 22px}
+.spf .ln{gap:10px;margin:0}.spf .ln .in{flex:1 1 0}.spf .ln .in.pr{flex:0 0 96px;width:96px}
+.spf .btn.full{margin-top:10px}
+.spf .chips.nm{margin-bottom:10px}
+.wb{display:flex;align-items:center;gap:8px;flex:none}
 `;
 __EOF_MT__
 echo updated app/ui/css.ts
@@ -1795,6 +1804,7 @@ export const P: Record<string, string> = {
 	gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 	out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
 	plus: '<path d="M12 5v14M5 12h14"/>',
+	trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
 	undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
 	send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
 	Smoke: '<rect x="2" y="15" width="14" height="4" rx="1"/><path d="M19 15v4M22 15v4M17 11c0-2 2-2 2-4"/>',
@@ -1937,3 +1947,84 @@ export const auth = (up: boolean, wide: boolean) =>
 	}">${up ? "I have an account" : "Create account"}</a>${up ? "" : '<a class="lnk" href="/login">Forgot password?</a>'}</div></form>`;
 __EOF_MT__
 echo updated app/ui/parts.ts
+mkdir -p app/ui
+cat > app/ui/shell.ts <<'__EOF_MT__'
+import { css } from "./css.ts";
+import { clockWidget, ic, logo, themeIcons } from "./parts.ts";
+import { script, themeBoot } from "./script.ts";
+import { liveClockNow } from "../lib/time.ts";
+
+export type MobileTab = "home" | "notes" | "goals" | "history" | "profile" | "";
+export type DesktopTab = "home" | "notes" | "plan" | "history" | "settings" | "";
+
+const splitCss = ".top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .live-clock .clock-date,.top-status-bar.tsplit .live-clock .clock-subdate{display:none}";
+
+export type PageOptions = {
+title: string;
+user?: boolean;
+mobile: string;
+desktop: string;
+mobileTab?: MobileTab;
+desktopTab?: DesktopTab;
+dock?: string;
+full?: boolean;
+theme?: string;
+mobileBar?: boolean;
+};
+
+const bottomBar = (a: MobileTab) =>
+'<nav class="bt" aria-label="Main">' +
+(
+[
+["home", "Home", "home", "/home"],
+["notes", "Notes", "notes", "/notes"],
+["profile", "Profile", "user", "/profile"],
+] as const
+)
+.map(([key, label, icon, href]) => `<a href="${href}" class="${a === key ? "on" : ""}" aria-label="${label}">${ic(icon)}</a>`)
+.join("") +
+"</nav>";
+
+const sidebar = (a: DesktopTab) =>
+`<aside class="sb d">${logo("/home")}` +
+(
+[
+["home", "Home", "home", "/home"],
+["notes", "Notes", "notes", "/notes"],
+["plan", "Plan", "goal", "/plan"],
+["history", "History", "hist", "/history"],
+["settings", "Settings", "gear", "/settings"],
+] as const
+)
+.map(([key, label, icon, href]) => `<a class="sbl${a === key ? " on" : ""}" href="${href}">${ic(icon)}${label}</a>`)
+.join("") +
+`<div class="sp"></div><button type="button" class="sbl" data-theme-toggle>${themeIcons}<span>Theme</span></button>` +
+`<form method="post" action="/logout"><button class="sbl">${ic("out")}<span class="neg">Log out</span></button></form></aside>`;
+
+export function page(o: PageOptions): string {
+const user = o.user !== false;
+const { timeStr, dateStr, subDateStr } = liveClockNow();
+const clock = clockWidget(timeStr, dateStr, subDateStr);
+const topBar = `<div class="top-status-bar">${clock}</div>`;
+const mobileTop = `<div class="top-status-bar tsplit">${clock}<div class="clock-subdate" dir="ltr">${subDateStr}</div></div>`;
+
+return (
+`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +
+`<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
+`<meta name="theme-color" content="#121212"><title>${o.title} · moneytracker</title>` +
+`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
+`<style>${css}${splitCss}</style><script>${o.theme ? "" : themeBoot}</script></head>` +
+`<body>` +
+`<div class="app">` +
+(user
+? sidebar(o.desktopTab ?? "")
+: `<div class="tf-clock">${clock}<button type="button" class="ib" data-theme-toggle aria-label="Theme">${themeIcons}</button></div>`) +
+(user
+? `<main><div class="m">${mobileTop}</div><div class="m mm">${o.mobile}</div><div class="d">${topBar}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>`
+: `<main class="auth-viewport">${o.desktop}</main>`) +
+(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +
+`</div><script>${script}</script></body></html>`
+);
+}
+__EOF_MT__
+echo updated app/ui/shell.ts

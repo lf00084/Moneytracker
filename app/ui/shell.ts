@@ -27,8 +27,6 @@ const bottomBar = (a: MobileTab) =>
 [
 ["home", "Home", "home", "/home"],
 ["notes", "Notes", "notes", "/notes"],
-["goals", "Goals", "goal", "/goals"],
-["history", "History", "hist", "/history"],
 ["profile", "Profile", "user", "/profile"],
 ] as const
 )

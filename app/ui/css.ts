@@ -60,7 +60,7 @@ main{flex:1;min-width:0;position:relative}
 .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:20px;letter-spacing:-.04em}
 .logo svg,.bt .lg svg{width:28px;height:28px;border-radius:8px}
 .ib{width:36px;height:36px;border-radius:50%;border:1px solid var(--ln);background:var(--s1);box-shadow:var(--sh1);display:flex;align-items:center;justify-content:center;color:var(--ink);padding:0}
-.ib.sm{width:28px;height:28px}.ib.hi{background:var(--acs);color:var(--ac);border-color:var(--acl)}
+.ib{flex:none;aspect-ratio:1}.ib.sm{width:28px;height:28px;min-width:28px}.ib svg.ic{width:16px;height:16px}.ib.hi{background:var(--acs);color:var(--ac);border-color:var(--acl)}
 
 .bt{display:flex;align-items:center;height:55px;border-top:1px solid var(--ln);background:var(--s1);box-shadow:var(--sh1);border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:content-box}
 .bt a,.bt button{position:relative;flex:1;height:53px;display:flex;align-items:center;justify-content:center;color:var(--mu);background:none;border:0;padding:0}
@@ -248,4 +248,14 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .sh .pl{margin-left:10px}
 .ok{color:var(--earn)}
 
+
+.mm,.pg{overflow-x:hidden;min-width:0}
+.cd,.sc{overflow:hidden;min-width:0}
+.dn{min-width:0}.dbw,.db{min-width:0;max-width:100%}
+.ow{gap:10px;flex-wrap:wrap}
+.spf{padding:14px}.sc.spf{padding:18px 22px}
+.spf .ln{gap:10px;margin:0}.spf .ln .in{flex:1 1 0}.spf .ln .in.pr{flex:0 0 96px;width:96px}
+.spf .btn.full{margin-top:10px}
+.spf .chips.nm{margin-bottom:10px}
+.wb{display:flex;align-items:center;gap:8px;flex:none}
 `;

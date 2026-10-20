@@ -184,9 +184,9 @@ const quickBtns = (s: State, desk: boolean) => {
 };
 
 const quickM = (s: State) =>
-	`<div data-qb><div class="qk" data-qgrid>${quickBtns(s, false)}</div><form method="post" action="/buy" data-qp hidden>${back(s)}${tg(
-		"<span data-qt>Smoke</span>",
-		'<input type="hidden" name="category" data-cat value="Smoke"><div class="fl" data-labelwrap hidden style="margin:0 0 12px"><label>What</label><input class="in" name="label" data-label autocomplete="off"></div><div class="pn2"><div class="pf"><label class="lb">Price each</label><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="pq"><label class="lb">Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div></div><button class="btn full">Add <span data-tot data-pre="· ">0</span></button>',
+	`<div data-qb><form method="post" action="/buy" data-qp>${back(s)}${tg(
+		"Quick buy",
+		'<input type="hidden" name="category" value="Other"><div class="pn2"><div class="pf"><label class="lb">Price each</label><input class="in" name="price" data-price value="" inputmode="decimal" autocomplete="off"></div><div class="pq"><label class="lb">Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div></div><button class="btn full">Add <span data-tot data-pre="· ">0</span></button>',
 	)}</form></div>`;
 
 const quickD = (s: State) =>

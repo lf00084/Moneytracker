@@ -85,12 +85,10 @@ d.addEventListener('click',function(e){
       q.classList.toggle('on',!pn.hidden);
       if(!pn.hidden){var fi=pn.querySelector('input[name=name]');if(fi)fi.focus()}
     }else{
-      var ob=d.querySelector('.mm [data-q][data-o]');
-      if(ob){
-        pick(ob,false);
-        var qf=ob.closest('[data-qb]').querySelector('[data-qp]');
+      var qf=d.querySelector('.mm [data-qp]');
+      if(qf){
         qf.scrollIntoView({behavior:'smooth',block:'center'});
-        var li=qf.querySelector('[data-label]');if(li)li.focus();
+        var pi=qf.querySelector('[data-price]');if(pi)pi.focus();
       }
     }
     return

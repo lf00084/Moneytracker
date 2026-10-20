@@ -57,7 +57,7 @@ const user = o.user !== false;
 const { timeStr, dateStr, subDateStr } = liveClockNow();
 const clock = clockWidget(timeStr, dateStr, subDateStr);
 const topBar = `<div class="top-status-bar">${clock}</div>`;
-const mobileTop = o.mobileBar ? `<div class="top-status-bar tsplit">${clock}<div class="clock-subdate" dir="ltr">${subDateStr}</div></div>` : topBar;
+const mobileTop = `<div class="top-status-bar tsplit">${clock}<div class="clock-subdate" dir="ltr">${subDateStr}</div></div>`;
 
 return (
 `<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +

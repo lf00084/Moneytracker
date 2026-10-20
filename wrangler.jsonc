@@ -1,21 +1,13 @@
-
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "moneytracker",
-	  "main": "./bootstrap/worker.ts",
-	    "compatibility_date": "2026-09-02",
-		  "compatibility_flags": ["nodejs_compat"],
-		    "workers_dev": true,
-			  "observability": {
-			      "enabled": true
-				    },
-					  "vars": {
-					      "APP_ORIGIN": "https://moneytracker.martamartachil.workers.dev",
-						      "TURSO_DATABASE_URL": "libsql://lf-lf00084.aws-eu-west-1.turso.io",
-							      "TURSO_AUTH_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTI1MDEwMzYsImlkIjoiMDFhMTI2ZTEtY2IwMS03OTQ3LTg1NWEtMGQ1OThjOTJkOGMzIiwia2lkIjoicWlPMFQySDZObTNoR0k2ZVM2MW42YzdHSFBnZ2ZTbWpkdkNGeDBOWENhayIsInJpZCI6IjZhZmMyZDAzLTdjNDEtNDA4Yi04ZmM2LWIzYWIzNDk1MGFjZiJ9.Nt7gjH2EZ4iPsKefNpNTJ3bUsElcOBgiWMouOT7DrFUitbO5yQOf2TfLSUrMzyNPBoyuR9veae_Ct1lFZD28AA",
-								      "SESSION_SECRET": "change-me-to-a-long-random-string",
-									      "GOOGLE_CLIENT_ID": "1",
-										      "GOOGLE_CLIENT_SECRET": "2"
-											    }
-												}
-												
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "moneytracker",
+	"main": "./bootstrap/worker.ts",
+	"compatibility_date": "2026-09-02",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"observability": { "enabled": true },
+	"vars": {
+		"APP_ORIGIN": "https://moneytracker.YOUR-SUBDOMAIN.workers.dev",
+		"TURSO_DATABASE_URL": "https://lf-lf00084.aws-eu-west-1.turso.io"
+	}
+}

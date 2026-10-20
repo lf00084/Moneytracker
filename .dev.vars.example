@@ -1,7 +1,0 @@
-# Copy to .dev.vars (git-ignored). Same Turso database is used locally and on Cloudflare.
-TURSO_DATABASE_URL=libsql://your-db-your-org.turso.io
-TURSO_AUTH_TOKEN=
-SESSION_SECRET=change-me-to-a-long-random-string
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-APP_ORIGIN=http://localhost:3000

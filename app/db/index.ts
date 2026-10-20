@@ -1,5 +1,5 @@
 import { createClient } from "@libsql/client/web";
-import { createTursoDatabase } from "@kuboon/remix-data-table-sqlite-turso";
+import { createTursoDatabase } from "@remix-kbn/data-table-sqlite-turso";
 
 import { env } from "../env.ts";
 

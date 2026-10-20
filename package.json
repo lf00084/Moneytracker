@@ -16,8 +16,9 @@
 		"db:migrate": "bun --env-file=.dev.vars scripts/migrate.ts"
 	},
 	"dependencies": {
-		"remix": "3.0.0",
-		"@libsql/client": "^0.15.0"
+		"@libsql/client": "^0.15.0",
+		"@remix-kbn/data-table-sqlite-turso": "npm:@jsr/remix-kbn__data-table-sqlite-turso@^0.6.0",
+		"remix": "3.0.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.63.1",

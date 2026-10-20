@@ -47,7 +47,7 @@ const debtRow = (s: State, d: DebtView) => {
 	const pct = d.kind === "money" && d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0;
 	const hidden = `<input type="hidden" name="debt_id" value="${d.id}">${back(s)}`;
 	const panel = (flag: string, action: string, title: string, btn: string) =>
-		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
+		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button>${flag === "data-addp" ? `<button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn="Remove this debt from ${esc(d.person)}? Use it for a mistake." aria-label="Remove debt">${ic("trash")}</button>` : ""}</div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
 		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
@@ -150,29 +150,35 @@ const srcRows = (s: State) =>
 			const got = gotToday(s, x);
 			const sum = got.reduce((a, i) => a + i.amount, 0);
 			const auto = x.mode === "auto";
-			const tag = auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
-			let right: string;
-			if (auto) right = `<b class="ea">+${fmt(x.amount)}</b>`;
-			else if (got.length) {
-				right = `<span class="rt"><button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${back(s)}<input type="hidden" name="id" value="${got[0]!.id}"><button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form></span>`;
-			} else
-				right = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(srcAmount(x))}</button></form>`;
-			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div>${right}</div>`;
+			const tag = !x.active ? "paused" : auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
+			const fixed = srcAmount(x);
+			const hid = (v: string) => `${back(s)}<input type="hidden" name="id" value="${v}">`;
+			const del = `<form method="post" action="/income/source/delete" style="display:contents" data-confirm="Delete ${esc(x.name)}? What it already paid stays in your balance.">${hid(x.id)}<button class="ub" aria-label="Delete ${esc(x.name)}">${ic("trash")}</button></form>`;
+			let main: string;
+			if (!x.active) main = `<form method="post" action="/income/toggle" style="display:contents">${hid(x.id)}<button class="btn xs o">Resume</button></form>`;
+			else if (auto)
+				main = `<b class="ea">+${fmt(x.amount)}</b><form method="post" action="/income/toggle" style="display:contents">${hid(x.id)}<button class="btn xs o">Pause</button></form>`;
+			else if (got.length)
+				main = `<button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${hid(got[0]!.id)}<button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form>`;
+			else if (fixed)
+				main = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(fixed)}</button></form>`;
+			else
+				main = `<form method="post" action="/income/add" class="ln" style="gap:6px">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><input class="in pr2" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" required><button class="btn xs o">Add</button></form>`;
+			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div><span class="rt">${main}${del}</span></div>`;
 		})
 		.join("") || '<div class="lb" style="padding:8px 0">No sources yet. Add one below.</div>';
 
-const modeChips = `<input type="hidden" name="mode" value="manual" data-mode-input><div class="chips"><span class="chip on" data-mode="manual" style="cursor:pointer">Manual</span><span class="chip" data-mode="daily" style="cursor:pointer">Auto daily</span><span class="chip" data-mode="monthly" style="cursor:pointer">Monthly</span></div>`;
+const modeChips = `<input type="hidden" name="mode" value="manual" data-mode-input><div class="chips" style="margin:10px 0 4px"><span class="chip on" data-mode="manual" style="cursor:pointer">Manual</span><span class="chip" data-mode="daily" style="cursor:pointer">Auto daily</span><span class="chip" data-mode="monthly" style="cursor:pointer">Monthly</span></div><div class="lb" style="margin-bottom:2px">Manual: you tap it, once a day. Auto: added for you.</div>`;
 
-const addSourceForm = (s: State, wide: boolean) =>
-	wide
-		? `<form method="post" action="/income" class="ln" style="margin-top:18px">${back(s)}<input class="in" name="name" placeholder="New source" autocomplete="off"><input class="in" name="amount" style="width:100px" placeholder="Amount" inputmode="decimal"><button class="btn xs">Add</button>${modeChips}</form>`
-		: `<form method="post" action="/income">${back(s)}${fld("Name", "", { name: "name" })}${fld("Amount", "", { t: "number", name: "amount" })}${modeChips}<button class="btn full" style="margin-top:14px">Add source</button></form>`;
+/** Always visible under the sources: name and amount on one line, then the button. */
+const addSourceForm = (s: State) =>
+	`<form method="post" action="/income" class="srcf">${back(s)}<div class="ln"><input class="in" name="name" placeholder="New source" autocomplete="off" required><input class="in pr" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off"></div>${modeChips}<button class="btn full">Add source</button></form>`;
 
 const todayLine = (s: State) => `<span class="tl">${calc(s).earned ? `+${fmt(calc(s).earned)} today · ${calc(s).earnedLine}` : "nothing earned today yet"}</span>`;
 
-const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s)) + tg("Add a source", addSourceForm(s, false));
+const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s) + addSourceForm(s));
 
-const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
+const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s));
 
 const cardsM = (s: State) => {
 	const c = calc(s);
@@ -253,7 +259,7 @@ const histD = (s: State) => {
 	const e = s.days.reduce((a, d) => a + d.earned, 0);
 	const b = s.days.reduce((a, d) => a + d.bought, 0);
 	return sec(
-		"Last 7 days",
+		"Last 30 days",
 		`+${fmt(e)} earned · −${fmt(b)} bought`,
 		'<div class="th"><span>Day</span><span>Earned</span><span>Bought</span><span>Net</span><span>What</span></div>' +
 			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="ea">+${fmt(d.earned)}</b><b class="sp">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
@@ -294,7 +300,7 @@ const editM = (s: State) => `<div style="display:flex;justify-content:center;mar
 const settingsM = (s: State) =>
 	err(s) +
 	tg("Money & income", prefsForm(s)) +
-	tg("Data", dataButtons);
+	tg("Data", dataButtons) + '<div class="lb" style="text-align:center;margin:18px 0">Moneytracker v1.0 · stable</div>';
 
 const settingsD = (s: State) =>
 	'<div class="hd"><h1 class="t">Settings</h1><span></span></div>' +
@@ -329,7 +335,7 @@ const notesD = (s: State) => `<div class="chat" data-x>${chatHead}${noteList(s, 
 
 const planD = (s: State) => `<div class="hd"><h1 class="t">Plan</h1><span class="lb">goals + income</span></div><div class="g3"><div>${wishD(s)}</div><div>${incD(s)}</div></div>`;
 
-const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span class="lb">last 7 days</span></div>${histD(s)}`;
+const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span class="lb">last 30 days</span></div>${histD(s)}`;
 
 const base = (s: State) => ({
 	theme: s.user.theme,
@@ -344,7 +350,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
+		mobile: err(s) + balanceCard(s) + cardsM(s) + tg(`Income sources${todayLine(s)}`, srcRows(s) + addSourceForm(s)) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 
@@ -368,7 +374,7 @@ export const incomePage = (s: State) =>
 	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: err(s) + hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: err(s) + planD(s) });
 
 export const historyPage = (s: State) =>
-	page({ ...base(s), title: "History", mobileTab: "history", desktopTab: "history", mobile: hd("History", "last 7 days") + histM(s), desktop: historyD(s) });
+	page({ ...base(s), title: "History", mobileTab: "history", desktopTab: "history", mobile: hd("History", "last 30 days") + histM(s), desktop: historyD(s) });
 
 export const profilePage = (s: State) =>
 	page({ ...base(s), title: "Profile", mobileTab: "profile", desktopTab: "settings", mobile: profileM(s), desktop: settingsD(s) });

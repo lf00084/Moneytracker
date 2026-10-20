@@ -99,6 +99,13 @@ created_at: Date.now(),
 });
 }
 
+/** Wipes a debt entered by mistake. History is kept, and typing the name again brings the person back. */
+export async function clearDebt(uid: string, f: FormData) {
+const d = await db.findOne(debts, { where: { id: text(f.get("debt_id"), 36), user_id: uid } });
+if (!d) return;
+await db.update(debts, d.id, d.kind === "item" ? { item_qty: 0 } : { amount_minor: 0 });
+}
+
 /** Money paid also becomes a buy today ("Paid Youssef"). Items just count down. */
 export async function payDebt(uid: string, f: FormData): Promise<string | void> {
 const d = await db.findOne(debts, { where: { id: text(f.get("debt_id"), 36), user_id: uid } });
@@ -179,13 +186,17 @@ const kind = typeOf(text(f.get("type"), 16));
 const config = kind.parseConfig(f);
 if (typeof config === "string") return config;
 const mode = text(f.get("mode"), 10);
+const amount = toMinor(f.get("amount"));
+if ((mode === "daily" || mode === "monthly") && !amount) return "Enter how much it pays";
+const taken = await db.findMany(incomeSources, { where: { user_id: uid } });
+if (taken.some((x) => x.name.toLowerCase() === name.toLowerCase())) return `You already have a source called ${name}`;
 const last = await db.findOne(incomeSources, { where: { user_id: uid }, orderBy: ["sort", "desc"] });
 await db.create(incomeSources, {
 id: id(),
 user_id: uid,
 name,
 mode: mode === "daily" || mode === "monthly" ? "auto" : "manual",
-amount_minor: toMinor(f.get("amount")),
+amount_minor: amount,
 every: mode === "daily" ? "day" : mode === "monthly" ? "month" : "",
 created_at: Date.now(),
 type: kind.key,
@@ -248,10 +259,31 @@ f.set("day", day);
 return saveDay(uid, f);
 }
 
+/** Pause or resume a source. A paused auto source stops paying until resumed. */
+export async function toggleSource(uid: string, f: FormData) {
+const s = await db.findOne(incomeSources, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (s) await db.update(incomeSources, s.id, { active: s.active === 0 ? 1 : 0 });
+}
+
+/** Deletes a source. What it already paid stays in your balance and history. */
+export async function deleteSource(uid: string, f: FormData) {
+const sid = text(f.get("id"), 36);
+const s = await db.findOne(incomeSources, { where: { id: sid, user_id: uid } });
+if (!s) return;
+await db.transaction(async (tx) => {
+await tx.exec(sql`update incomes set source_id = null where source_id = ${s.id} and user_id = ${uid}`);
+await tx.exec(sql`delete from income_sources where id = ${s.id} and user_id = ${uid}`);
+});
+}
+
 /** Undo an income row. Blocked if the money is already spent and the balance would go below zero. */
 export async function deleteIncome(uid: string, f: FormData): Promise<string | void> {
 const row = await db.findOne(incomes, { where: { id: text(f.get("id"), 80), user_id: uid } });
 if (!row) return;
+if (row.ext_key) {
+const src = row.source_id ? await db.findOne(incomeSources, { where: { id: row.source_id, user_id: uid } }) : null;
+if (src?.mode === "auto") return "Auto income can't be undone. Pause the source instead";
+}
 const bal = await balanceOf(uid);
 if (bal - row.amount_minor < 0) return `Can't undo: you already spent it. Balance is ${fmt(Math.max(0, bal))}`;
 await db.deleteMany(incomes, { where: { id: row.id, user_id: uid } });

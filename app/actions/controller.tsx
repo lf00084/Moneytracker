@@ -171,6 +171,7 @@ export default createController(routes, {
 		deleteBuy: attempt("/home", (u, f) => act.deleteBuy(u.id, f)),
 		addDebt: attempt("/debts", (u, f) => act.addDebt(u.id, f)),
 		payDebt: attempt("/debts", (u, f) => act.payDebt(u.id, f)),
+		clearDebt: attempt("/debts", (u, f) => act.clearDebt(u.id, f)),
 		addNote: mutate("/notes", (u, f) => act.saveNote(u.id, f)),
 		deleteNote: mutate("/notes", (u, f) => act.deleteNote(u.id, f)),
 		addWish: attempt("/goals", (u, f) => act.addGoal(u.id, f)),
@@ -179,6 +180,8 @@ export default createController(routes, {
 		addSource: attempt("/income", (u, f) => act.addSource(u.id, f)),
 		addIncome: attempt("/income", (u, f) => act.addIncome(u.id, f)),
 		deleteIncome: attempt("/income", (u, f) => act.deleteIncome(u.id, f)),
+		toggleSource: attempt("/income", (u, f) => act.toggleSource(u.id, f)),
+		deleteSource: attempt("/income", (u, f) => act.deleteSource(u.id, f)),
 		addPlan: mutate("/plan", async () => {}),
 		quickBuy: mutate("/settings", (u, f) => act.quickOp(u.id, f)),
 

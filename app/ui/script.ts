@@ -133,10 +133,17 @@ d.addEventListener('input',function(e){
   if(f)calc(f);
 });
 
+d.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-confirm-btn]');
+  if(b&&!confirm(b.getAttribute('data-confirm-btn')))e.preventDefault();
+},true);
+
 d.addEventListener('submit',function(e){
   var f=e.target,msg=f.getAttribute&&f.getAttribute('data-confirm');
-  if(msg&&!confirm(msg))e.preventDefault();
+  if(msg&&!confirm(msg)){e.preventDefault();return}
+  setTimeout(function(){if(e.defaultPrevented)return;all('button',f).forEach(function(b){if(!b.disabled){b.disabled=true;b.setAttribute('data-busy','1')}})},0);
 });
+window.addEventListener('pageshow',function(e){if(e.persisted)all('button[data-busy]').forEach(function(b){b.disabled=false;b.removeAttribute('data-busy')})});
 
 d.addEventListener('keydown',function(e){
   if(e.key!=='Enter'||e.shiftKey)return;

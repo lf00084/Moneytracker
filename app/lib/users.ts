@@ -175,7 +175,7 @@ export async function updateProfile(userId: string, input: { name: string; email
 export async function updatePrefs(userId: string, input: { currency: string; run_at: string; week_start: string }) {
 	await db.update(users, userId, {
 		currency: input.currency.trim().toUpperCase().slice(0, 8) || "MAD",
-		run_at: /^\d{1,2}:\d{2}$/.test(input.run_at.trim()) ? input.run_at.trim() : "06:00",
+		run_at: /^([01]?\d|2[0-3]):[0-5]\d$/.test(input.run_at.trim()) ? input.run_at.trim().padStart(5, "0") : "06:00",
 		week_start: input.week_start.trim().slice(0, 16) || "Monday",
 		updated_at: Date.now(),
 	});

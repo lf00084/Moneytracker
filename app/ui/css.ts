@@ -258,4 +258,7 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .spf .btn.full{margin-top:10px}
 .spf .chips.nm{margin-bottom:10px}
 .wb{display:flex;align-items:center;gap:8px;flex:none}
+.srcf{margin-top:14px}.srcf .ln{gap:10px}.srcf .in.pr{flex:0 0 96px;width:96px}.srcf .btn.full{margin-top:10px}
+.in.pr2{width:84px;flex:none;padding:6px 10px;font-size:13px;border-radius:10px}
+.rw>.rt{max-width:62%;justify-content:flex-end}
 `;

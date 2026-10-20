@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS incomes (
   ext_key       TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS incomes_day_idx ON incomes(user_id, day);
+-- one payout per source per day (auto income and once-a-day manual sources)
+CREATE UNIQUE INDEX IF NOT EXISTS incomes_ext_uq ON incomes(user_id, ext_key) WHERE ext_key <> '';
 
 CREATE TABLE IF NOT EXISTS purchases (
   id            TEXT PRIMARY KEY,

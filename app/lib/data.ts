@@ -2,6 +2,7 @@ import { sql } from "remix/data-table";
 
 import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
 import { fmt } from "./money.ts";
+import { settleAuto } from "./auto.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
 import { getActiveAvatar, type User } from "./users.ts";
@@ -41,6 +42,7 @@ return Number(row?.s ?? row?.[0] ?? 0) || 0;
 };
 
 export async function balanceOf(uid: string): Promise<number> {
+await settleAuto(uid);
 const [i, p] = await Promise.all([
 db.exec(sql`select coalesce(sum(amount_minor), 0) as s from incomes where user_id = ${uid}`),
 db.exec(sql`select coalesce(sum(total_minor), 0) as s from purchases where user_id = ${uid}`),
@@ -69,6 +71,8 @@ notes: [],
 days: [],
 balance: 0,
 };
+
+if (need.has("today") || need.has("sources") || need.has("history") || need.has("balance")) await settleAuto(uid);
 
 const jobs: Promise<void>[] = [];
 
@@ -139,13 +143,13 @@ s.notes = rows.reverse().map((n) => ({ id: n.id, body: n.body, at: n.created_at,
 );
 
 if (need.has("history")) {
-const from = addDays(t, -6);
+const from = addDays(t, -29);
 jobs.push(
 Promise.all([
-db.findMany(purchases, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 400 }),
-db.findMany(incomes, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 400 }),
+db.findMany(purchases, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 2000 }),
+db.findMany(incomes, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 2000 }),
 ]).then(([bs, is]) => {
-s.days = Array.from({ length: 7 }, (_, i) => {
+s.days = Array.from({ length: 30 }, (_, i) => {
 const day = addDays(t, -i);
 const b = bs.filter((x) => x.day === day && day >= from);
 const inc = is.filter((x) => x.day === day);
@@ -155,7 +159,7 @@ earned: inc.reduce((a, x) => a + x.amount_minor, 0),
 bought: b.reduce((a, x) => a + x.total_minor, 0),
 items: b.map((x) => `${x.name}${x.qty > 1 ? ` ×${x.qty}` : ""} ${fmt(x.total_minor)}`),
 };
-});
+}).filter((d, i) => i === 0 || d.earned || d.bought);
 }),
 );
 }

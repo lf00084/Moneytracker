@@ -104,6 +104,13 @@ created_at: Date.now(),
 });
 }
 
+/** Wipes a debt entered by mistake. History is kept, and typing the name again brings the person back. */
+export async function clearDebt(uid: string, f: FormData) {
+const d = await db.findOne(debts, { where: { id: text(f.get("debt_id"), 36), user_id: uid } });
+if (!d) return;
+await db.update(debts, d.id, d.kind === "item" ? { item_qty: 0 } : { amount_minor: 0 });
+}
+
 /** Money paid also becomes a buy today ("Paid Youssef"). Items just count down. */
 export async function payDebt(uid: string, f: FormData): Promise<string | void> {
 const d = await db.findOne(debts, { where: { id: text(f.get("debt_id"), 36), user_id: uid } });
@@ -184,13 +191,17 @@ const kind = typeOf(text(f.get("type"), 16));
 const config = kind.parseConfig(f);
 if (typeof config === "string") return config;
 const mode = text(f.get("mode"), 10);
+const amount = toMinor(f.get("amount"));
+if ((mode === "daily" || mode === "monthly") && !amount) return "Enter how much it pays";
+const taken = await db.findMany(incomeSources, { where: { user_id: uid } });
+if (taken.some((x) => x.name.toLowerCase() === name.toLowerCase())) return `You already have a source called ${name}`;
 const last = await db.findOne(incomeSources, { where: { user_id: uid }, orderBy: ["sort", "desc"] });
 await db.create(incomeSources, {
 id: id(),
 user_id: uid,
 name,
 mode: mode === "daily" || mode === "monthly" ? "auto" : "manual",
-amount_minor: toMinor(f.get("amount")),
+amount_minor: amount,
 every: mode === "daily" ? "day" : mode === "monthly" ? "month" : "",
 created_at: Date.now(),
 type: kind.key,
@@ -253,10 +264,31 @@ f.set("day", day);
 return saveDay(uid, f);
 }
 
+/** Pause or resume a source. A paused auto source stops paying until resumed. */
+export async function toggleSource(uid: string, f: FormData) {
+const s = await db.findOne(incomeSources, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (s) await db.update(incomeSources, s.id, { active: s.active === 0 ? 1 : 0 });
+}
+
+/** Deletes a source. What it already paid stays in your balance and history. */
+export async function deleteSource(uid: string, f: FormData) {
+const sid = text(f.get("id"), 36);
+const s = await db.findOne(incomeSources, { where: { id: sid, user_id: uid } });
+if (!s) return;
+await db.transaction(async (tx) => {
+await tx.exec(sql`update incomes set source_id = null where source_id = ${s.id} and user_id = ${uid}`);
+await tx.exec(sql`delete from income_sources where id = ${s.id} and user_id = ${uid}`);
+});
+}
+
 /** Undo an income row. Blocked if the money is already spent and the balance would go below zero. */
 export async function deleteIncome(uid: string, f: FormData): Promise<string | void> {
 const row = await db.findOne(incomes, { where: { id: text(f.get("id"), 80), user_id: uid } });
 if (!row) return;
+if (row.ext_key) {
+const src = row.source_id ? await db.findOne(incomeSources, { where: { id: row.source_id, user_id: uid } }) : null;
+if (src?.mode === "auto") return "Auto income can't be undone. Pause the source instead";
+}
 const bal = await balanceOf(uid);
 if (bal - row.amount_minor < 0) return `Can't undo: you already spent it. Balance is ${fmt(Math.max(0, bal))}`;
 await db.deleteMany(incomes, { where: { id: row.id, user_id: uid } });
@@ -435,11 +467,86 @@ export async function resetUserBackground(uid: string) {
 __EOF_MT__
 echo updated app/lib/actions.ts
 mkdir -p app/lib
+cat > app/lib/auto.ts <<'__EOF_MT__'
+import { sql } from "remix/data-table";
+
+import { db, incomes, incomeSources, users } from "../db/index.ts";
+import { extKey } from "./sources/index.ts";
+import { addDays, dayOf, hhmm, today } from "./time.ts";
+
+const hm = (v: string | null | undefined) => {
+	const m = /^(\d{1,2}):(\d{2})$/.exec(v ?? "");
+	return m ? `${m[1]!.padStart(2, "0")}:${m[2]}` : "06:00";
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const lastDayOf = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+/**
+ * Auto income (daily / monthly) has no background job, so it is settled whenever the user opens the app
+ * or the balance is needed. It is safe to run many times: every payout has a key (source + day) and is
+ * only created once. Catches up on days the app was not opened (up to 62 days).
+ */
+export async function settleAuto(uid: string): Promise<void> {
+	const all = await db.findMany(incomeSources, { where: { user_id: uid, mode: "auto" } });
+	const srcs = all.filter((s) => s.active !== 0 && s.amount_minor > 0);
+	if (!srcs.length) return;
+
+	const u = await db.find(users, uid);
+	const runAt = hm(u?.run_at);
+	const now = Date.now();
+	const t = today();
+	const nowHm = hhmm(now);
+
+	const res: any = await db.exec(sql`select ext_key as k from incomes where user_id = ${uid} and ext_key <> ''`);
+	const rows: any[] = Array.isArray(res) ? res : (res?.rows ?? []);
+	const have = new Set(rows.map((r) => String(r.k ?? r[0] ?? "")));
+
+	const due = (d: string) => d < t || (d === t && nowHm >= runAt);
+
+	for (const s of srcs) {
+		const created = dayOf(s.created_at);
+		const createdHm = hhmm(s.created_at);
+		const started = (d: string) => d > created || (d === created && createdHm < runAt);
+		const days: string[] = [];
+
+		if (s.every === "month") {
+			const dom = Number(created.slice(8, 10));
+			let y = Number(created.slice(0, 4));
+			let m = Number(created.slice(5, 7));
+			const endY = Number(t.slice(0, 4));
+			const endM = Number(t.slice(5, 7));
+			for (let i = 0; i < 36 && (y < endY || (y === endY && m <= endM)); i++) {
+				days.push(`${y}-${pad(m)}-${pad(Math.min(dom, lastDayOf(y, m)))}`);
+				if (++m > 12) (m = 1), y++;
+			}
+		} else {
+			const from = created > addDays(t, -62) ? created : addDays(t, -62);
+			for (let d = from; d <= t; d = addDays(d, 1)) days.push(d);
+		}
+
+		for (const d of days) {
+			if (!due(d) || !started(d)) continue;
+			const key = extKey(s.id, d);
+			if (have.has(key)) continue;
+			have.add(key);
+			try {
+				await db.create(incomes, { id: crypto.randomUUID(), user_id: uid, source_id: s.id, amount_minor: s.amount_minor, day: d, created_at: now, meta: '{"auto":1}', ext_key: key });
+			} catch {
+				// another request already paid this day (unique index) - fine
+			}
+		}
+	}
+}
+__EOF_MT__
+echo updated app/lib/auto.ts
+mkdir -p app/lib
 cat > app/lib/data.ts <<'__EOF_MT__'
 import { sql } from "remix/data-table";
 
 import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
 import { fmt } from "./money.ts";
+import { settleAuto } from "./auto.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
 import { getActiveAvatar, type User } from "./users.ts";
@@ -479,6 +586,7 @@ return Number(row?.s ?? row?.[0] ?? 0) || 0;
 };
 
 export async function balanceOf(uid: string): Promise<number> {
+await settleAuto(uid);
 const [i, p] = await Promise.all([
 db.exec(sql`select coalesce(sum(amount_minor), 0) as s from incomes where user_id = ${uid}`),
 db.exec(sql`select coalesce(sum(total_minor), 0) as s from purchases where user_id = ${uid}`),
@@ -507,6 +615,8 @@ notes: [],
 days: [],
 balance: 0,
 };
+
+if (need.has("today") || need.has("sources") || need.has("history") || need.has("balance")) await settleAuto(uid);
 
 const jobs: Promise<void>[] = [];
 
@@ -577,13 +687,13 @@ s.notes = rows.reverse().map((n) => ({ id: n.id, body: n.body, at: n.created_at,
 );
 
 if (need.has("history")) {
-const from = addDays(t, -6);
+const from = addDays(t, -29);
 jobs.push(
 Promise.all([
-db.findMany(purchases, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 400 }),
-db.findMany(incomes, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 400 }),
+db.findMany(purchases, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 2000 }),
+db.findMany(incomes, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 2000 }),
 ]).then(([bs, is]) => {
-s.days = Array.from({ length: 7 }, (_, i) => {
+s.days = Array.from({ length: 30 }, (_, i) => {
 const day = addDays(t, -i);
 const b = bs.filter((x) => x.day === day && day >= from);
 const inc = is.filter((x) => x.day === day);
@@ -593,7 +703,7 @@ earned: inc.reduce((a, x) => a + x.amount_minor, 0),
 bought: b.reduce((a, x) => a + x.total_minor, 0),
 items: b.map((x) => `${x.name}${x.qty > 1 ? ` ×${x.qty}` : ""} ${fmt(x.total_minor)}`),
 };
-});
+}).filter((d, i) => i === 0 || d.earned || d.bought);
 }),
 );
 }
@@ -647,6 +757,219 @@ paid: paid.get(d.id) ?? 0,
 }
 __EOF_MT__
 echo updated app/lib/data.ts
+mkdir -p app/lib
+cat > app/lib/money.ts <<'__EOF_MT__'
+/** Money is stored as integer minor units (MAD * 100). */
+export const toMinor = (s: unknown) => {
+	const n = parseFloat(String(s ?? "").replace(",", "."));
+	return Number.isFinite(n) && n > 0 && n <= 1e9 ? Math.round(n * 100) : 0;
+};
+
+export const fmt = (minor: number) => {
+	const v = minor / 100;
+	return v.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: Number.isInteger(v) ? 0 : 2 });
+};
+__EOF_MT__
+echo updated app/lib/money.ts
+mkdir -p app/lib
+cat > app/lib/users.ts <<'__EOF_MT__'
+import { db, oauthAccounts, passwords, quickBuys, userImages, users } from "../db/index.ts";
+import { fakeVerify, hashPassword, verifyPassword } from "./password.ts";
+
+export type User = {
+	id: string;
+	email: string;
+	name: string;
+	currency: string;
+	theme: string;
+	phone: string;
+	bio: string;
+	run_at: string;
+	week_start: string;
+	bg_mode: string;
+	bg_url: string;
+};
+
+const normEmail = (e: string) => e.trim().toLowerCase();
+const toUser = (r: any): User => ({
+	id: r.id,
+	email: r.email,
+	name: r.name,
+	currency: r.currency || "MAD",
+	theme: r.theme || "dark",
+	phone: r.phone ?? "",
+	bio: r.bio ?? "",
+	run_at: r.run_at || "06:00",
+	week_start: r.week_start || "Monday",
+	bg_mode: r.bg_mode || "auto",
+	bg_url: r.bg_url ?? "",
+});
+
+export async function getUserById(id: string): Promise<User | null> {
+	const row = await db.find(users, id);
+	return row ? toUser(row) : null;
+}
+
+const newUserRow = (id: string, email: string, name: string, verified: number, now: number) => ({
+	id,
+	email,
+	name: name || email.split("@")[0]!,
+	email_verified: verified,
+	currency: "MAD",
+	theme: "dark",
+	phone: "",
+	bio: "",
+	run_at: "06:00",
+	week_start: "Monday",
+	bg_mode: "auto",
+	bg_url: "",
+	created_at: now,
+	updated_at: now,
+});
+
+const DEFAULT_QUICK = [
+	{ name: "Smoke", icon: "Smoke", price_minor: 200 },
+	{ name: "Coffee", icon: "Coffee", price_minor: 1200 },
+	{ name: "Bread", icon: "Bread", price_minor: 400 },
+];
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+const seedQuick = (tx: Tx, userId: string) =>
+	tx.createMany(
+		quickBuys,
+		DEFAULT_QUICK.map((q, i) => ({ id: crypto.randomUUID(), user_id: userId, ...q, sort: i })),
+	);
+
+export type SignUpResult = { ok: true; user: User } | { ok: false; error: string };
+
+export async function signUpWithPassword(input: { name: string; email: string; password: string }): Promise<SignUpResult> {
+	const email = normEmail(input.email);
+	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "Enter a valid email." };
+	if (input.password.length < 8) return { ok: false, error: "Password needs at least 8 characters." };
+	if (input.password.length > 200) return { ok: false, error: "Password is too long." };
+	if (await db.findOne(users, { where: { email } })) return { ok: false, error: "That email already has an account." };
+
+	const hash = await hashPassword(input.password);
+	const now = Date.now();
+	const id = crypto.randomUUID();
+	const row = newUserRow(id, email, input.name.trim().slice(0, 80), 0, now);
+
+	try {
+		await db.transaction(async (tx) => {
+			await tx.create(users, row);
+			await tx.create(passwords, { user_id: id, hash, updated_at: now });
+			await seedQuick(tx, id);
+		});
+	} catch {
+		// Two signups with the same email at the same moment hit the UNIQUE index.
+		return { ok: false, error: "That email already has an account." };
+	}
+	return { ok: true, user: toUser(row as User) };
+}
+
+export async function signInWithPassword(emailRaw: string, password: string): Promise<User | null> {
+	const user = await db.findOne(users, { where: { email: normEmail(emailRaw) } });
+	const pw = user ? await db.findOne(passwords, { where: { user_id: user.id } }) : null;
+	if (!user || !pw) {
+		await fakeVerify(password);
+		return null;
+	}
+	return (await verifyPassword(password, pw.hash)) ? toUser(user as User) : null;
+}
+
+type GoogleProfile = { id?: string; email?: string | null; name?: string | null; picture?: string | null };
+
+/** Finds the user for this Google account, links it to an existing email, or creates a new user. */
+export async function upsertFromGoogle(account: { providerAccountId: string }, profile: GoogleProfile): Promise<User> {
+	const link = await db.findOne(oauthAccounts, { where: { provider: "google", provider_account_id: account.providerAccountId } });
+	if (link) {
+		const existing = await db.find(users, link.user_id);
+		if (existing) return toUser(existing as User);
+	}
+
+	const email = normEmail(profile.email ?? "");
+	if (!email) throw new Error("Google did not return an email.");
+	const now = Date.now();
+
+	return db.transaction(async (tx) => {
+		let user = await tx.findOne(users, { where: { email } });
+		if (!user) {
+			user = await tx.create(users, newUserRow(crypto.randomUUID(), email, profile.name?.trim() ?? "", 1, now), { returnRow: true });
+			await seedQuick(tx, user.id);
+		}
+		await tx.create(oauthAccounts, {
+			id: crypto.randomUUID(),
+			user_id: user.id,
+			provider: "google",
+			provider_account_id: account.providerAccountId,
+			created_at: now,
+		});
+		if (profile.picture) {
+			const hasAvatar = await tx.findOne(userImages, { where: { user_id: user.id, kind: "avatar", is_active: 1 } });
+			if (!hasAvatar) {
+				await tx.create(userImages, {
+					id: crypto.randomUUID(),
+					user_id: user.id,
+					kind: "avatar",
+					source: "google",
+					url: profile.picture,
+					mime: "",
+					size_bytes: 0,
+					is_active: 1,
+					created_at: now,
+				});
+			}
+		}
+		return toUser(user as User);
+	});
+}
+
+export async function getActiveAvatar(userId: string): Promise<string | null> {
+	const img = await db.findOne(userImages, {
+		where: { user_id: userId, kind: "avatar", is_active: 1 },
+		orderBy: ["created_at", "desc"],
+	});
+	return img?.url ?? null;
+}
+
+export async function updateProfile(userId: string, input: { name: string; email: string; phone: string; bio: string }) {
+	const email = normEmail(input.email);
+	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Enter a valid email.";
+	const clash = await db.findOne(users, { where: { email } });
+	if (clash && clash.id !== userId) return "That email belongs to another account.";
+	await db.update(users, userId, {
+		name: input.name.trim().slice(0, 80) || email.split("@")[0]!,
+		email,
+		phone: input.phone.trim().slice(0, 64),
+		bio: input.bio.trim().slice(0, 500),
+		updated_at: Date.now(),
+	});
+	return null;
+}
+
+export async function updatePrefs(userId: string, input: { currency: string; run_at: string; week_start: string }) {
+	await db.update(users, userId, {
+		currency: input.currency.trim().toUpperCase().slice(0, 8) || "MAD",
+		run_at: /^([01]?\d|2[0-3]):[0-5]\d$/.test(input.run_at.trim()) ? input.run_at.trim().padStart(5, "0") : "06:00",
+		week_start: input.week_start.trim().slice(0, 16) || "Monday",
+		updated_at: Date.now(),
+	});
+}
+
+export async function setTheme(userId: string, theme: string) {
+	if (theme !== "dark" && theme !== "light") return;
+	await db.update(users, userId, { theme, updated_at: Date.now() });
+}
+
+export async function updateBg(userId: string, input: { mode: "auto" | "url"; url?: string }) {
+	await db.update(users, userId, {
+		bg_mode: input.mode,
+		bg_url: input.mode === "url" ? (input.url ?? "").trim() : "",
+		updated_at: Date.now(),
+	});
+}
+__EOF_MT__
+echo updated app/lib/users.ts
 mkdir -p app
 cat > app/routes.ts <<'__EOF_MT__'
 import { get, post, route } from "remix/routes";
@@ -679,6 +1002,7 @@ export const routes = route({
 	deleteBuy: post("/buy/delete"),
 	addDebt: post("/debts"),
 	payDebt: post("/debts/pay"),
+	clearDebt: post("/debts/clear"),
 	addNote: post("/notes"),
 	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
@@ -687,6 +1011,8 @@ export const routes = route({
 	addSource: post("/income"),
 	addIncome: post("/income/add"),
 	deleteIncome: post("/income/delete"),
+	toggleSource: post("/income/toggle"),
+	deleteSource: post("/income/source/delete"),
 	addPlan: post("/plan"),
 	saveProfile: post("/profile/edit"),
 	saveSettings: post("/settings"),
@@ -876,6 +1202,7 @@ export default createController(routes, {
 		deleteBuy: attempt("/home", (u, f) => act.deleteBuy(u.id, f)),
 		addDebt: attempt("/debts", (u, f) => act.addDebt(u.id, f)),
 		payDebt: attempt("/debts", (u, f) => act.payDebt(u.id, f)),
+		clearDebt: attempt("/debts", (u, f) => act.clearDebt(u.id, f)),
 		addNote: mutate("/notes", (u, f) => act.saveNote(u.id, f)),
 		deleteNote: mutate("/notes", (u, f) => act.deleteNote(u.id, f)),
 		addWish: attempt("/goals", (u, f) => act.addGoal(u.id, f)),
@@ -884,6 +1211,8 @@ export default createController(routes, {
 		addSource: attempt("/income", (u, f) => act.addSource(u.id, f)),
 		addIncome: attempt("/income", (u, f) => act.addIncome(u.id, f)),
 		deleteIncome: attempt("/income", (u, f) => act.deleteIncome(u.id, f)),
+		toggleSource: attempt("/income", (u, f) => act.toggleSource(u.id, f)),
+		deleteSource: attempt("/income", (u, f) => act.deleteSource(u.id, f)),
 		addPlan: mutate("/plan", async () => {}),
 		quickBuy: mutate("/settings", (u, f) => act.quickOp(u.id, f)),
 
@@ -1002,7 +1331,7 @@ const debtRow = (s: State, d: DebtView) => {
 	const pct = d.kind === "money" && d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0;
 	const hidden = `<input type="hidden" name="debt_id" value="${d.id}">${back(s)}`;
 	const panel = (flag: string, action: string, title: string, btn: string) =>
-		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
+		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button>${flag === "data-addp" ? `<button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn="Remove this debt from ${esc(d.person)}? Use it for a mistake." aria-label="Remove debt">${ic("trash")}</button>` : ""}</div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
 		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
@@ -1105,29 +1434,35 @@ const srcRows = (s: State) =>
 			const got = gotToday(s, x);
 			const sum = got.reduce((a, i) => a + i.amount, 0);
 			const auto = x.mode === "auto";
-			const tag = auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
-			let right: string;
-			if (auto) right = `<b class="ea">+${fmt(x.amount)}</b>`;
-			else if (got.length) {
-				right = `<span class="rt"><button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${back(s)}<input type="hidden" name="id" value="${got[0]!.id}"><button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form></span>`;
-			} else
-				right = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(srcAmount(x))}</button></form>`;
-			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div>${right}</div>`;
+			const tag = !x.active ? "paused" : auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
+			const fixed = srcAmount(x);
+			const hid = (v: string) => `${back(s)}<input type="hidden" name="id" value="${v}">`;
+			const del = `<form method="post" action="/income/source/delete" style="display:contents" data-confirm="Delete ${esc(x.name)}? What it already paid stays in your balance.">${hid(x.id)}<button class="ub" aria-label="Delete ${esc(x.name)}">${ic("trash")}</button></form>`;
+			let main: string;
+			if (!x.active) main = `<form method="post" action="/income/toggle" style="display:contents">${hid(x.id)}<button class="btn xs o">Resume</button></form>`;
+			else if (auto)
+				main = `<b class="ea">+${fmt(x.amount)}</b><form method="post" action="/income/toggle" style="display:contents">${hid(x.id)}<button class="btn xs o">Pause</button></form>`;
+			else if (got.length)
+				main = `<button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${hid(got[0]!.id)}<button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form>`;
+			else if (fixed)
+				main = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(fixed)}</button></form>`;
+			else
+				main = `<form method="post" action="/income/add" class="ln" style="gap:6px">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><input class="in pr2" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" required><button class="btn xs o">Add</button></form>`;
+			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div></div><span class="rt">${main}${del}</span></div>`;
 		})
 		.join("") || '<div class="lb" style="padding:8px 0">No sources yet. Add one below.</div>';
 
-const modeChips = `<input type="hidden" name="mode" value="manual" data-mode-input><div class="chips"><span class="chip on" data-mode="manual" style="cursor:pointer">Manual</span><span class="chip" data-mode="daily" style="cursor:pointer">Auto daily</span><span class="chip" data-mode="monthly" style="cursor:pointer">Monthly</span></div>`;
+const modeChips = `<input type="hidden" name="mode" value="manual" data-mode-input><div class="chips" style="margin:10px 0 4px"><span class="chip on" data-mode="manual" style="cursor:pointer">Manual</span><span class="chip" data-mode="daily" style="cursor:pointer">Auto daily</span><span class="chip" data-mode="monthly" style="cursor:pointer">Monthly</span></div><div class="lb" style="margin-bottom:2px">Manual: you tap it, once a day. Auto: added for you.</div>`;
 
-const addSourceForm = (s: State, wide: boolean) =>
-	wide
-		? `<form method="post" action="/income" class="ln" style="margin-top:18px">${back(s)}<input class="in" name="name" placeholder="New source" autocomplete="off"><input class="in" name="amount" style="width:100px" placeholder="Amount" inputmode="decimal"><button class="btn xs">Add</button>${modeChips}</form>`
-		: `<form method="post" action="/income">${back(s)}${fld("Name", "", { name: "name" })}${fld("Amount", "", { t: "number", name: "amount" })}${modeChips}<button class="btn full" style="margin-top:14px">Add source</button></form>`;
+/** Always visible under the sources: name and amount on one line, then the button. */
+const addSourceForm = (s: State) =>
+	`<form method="post" action="/income" class="srcf">${back(s)}<div class="ln"><input class="in" name="name" placeholder="New source" autocomplete="off" required><input class="in pr" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off"></div>${modeChips}<button class="btn full">Add source</button></form>`;
 
 const todayLine = (s: State) => `<span class="tl">${calc(s).earned ? `+${fmt(calc(s).earned)} today · ${calc(s).earnedLine}` : "nothing earned today yet"}</span>`;
 
-const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s)) + tg("Add a source", addSourceForm(s, false));
+const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s) + addSourceForm(s));
 
-const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
+const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s));
 
 const cardsM = (s: State) => {
 	const c = calc(s);
@@ -1208,7 +1543,7 @@ const histD = (s: State) => {
 	const e = s.days.reduce((a, d) => a + d.earned, 0);
 	const b = s.days.reduce((a, d) => a + d.bought, 0);
 	return sec(
-		"Last 7 days",
+		"Last 30 days",
 		`+${fmt(e)} earned · −${fmt(b)} bought`,
 		'<div class="th"><span>Day</span><span>Earned</span><span>Bought</span><span>Net</span><span>What</span></div>' +
 			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="ea">+${fmt(d.earned)}</b><b class="sp">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
@@ -1249,7 +1584,7 @@ const editM = (s: State) => `<div style="display:flex;justify-content:center;mar
 const settingsM = (s: State) =>
 	err(s) +
 	tg("Money & income", prefsForm(s)) +
-	tg("Data", dataButtons);
+	tg("Data", dataButtons) + '<div class="lb" style="text-align:center;margin:18px 0">Moneytracker v1.0 · stable</div>';
 
 const settingsD = (s: State) =>
 	'<div class="hd"><h1 class="t">Settings</h1><span></span></div>' +
@@ -1284,7 +1619,7 @@ const notesD = (s: State) => `<div class="chat" data-x>${chatHead}${noteList(s, 
 
 const planD = (s: State) => `<div class="hd"><h1 class="t">Plan</h1><span class="lb">goals + income</span></div><div class="g3"><div>${wishD(s)}</div><div>${incD(s)}</div></div>`;
 
-const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span class="lb">last 7 days</span></div>${histD(s)}`;
+const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span class="lb">last 30 days</span></div>${histD(s)}`;
 
 const base = (s: State) => ({
 	theme: s.user.theme,
@@ -1299,7 +1634,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
+		mobile: err(s) + balanceCard(s) + cardsM(s) + tg(`Income sources${todayLine(s)}`, srcRows(s) + addSourceForm(s)) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 
@@ -1323,7 +1658,7 @@ export const incomePage = (s: State) =>
 	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: err(s) + hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: err(s) + planD(s) });
 
 export const historyPage = (s: State) =>
-	page({ ...base(s), title: "History", mobileTab: "history", desktopTab: "history", mobile: hd("History", "last 7 days") + histM(s), desktop: historyD(s) });
+	page({ ...base(s), title: "History", mobileTab: "history", desktopTab: "history", mobile: hd("History", "last 30 days") + histM(s), desktop: historyD(s) });
 
 export const profilePage = (s: State) =>
 	page({ ...base(s), title: "Profile", mobileTab: "profile", desktopTab: "settings", mobile: profileM(s), desktop: settingsD(s) });
@@ -1597,6 +1932,9 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .spf .btn.full{margin-top:10px}
 .spf .chips.nm{margin-bottom:10px}
 .wb{display:flex;align-items:center;gap:8px;flex:none}
+.srcf{margin-top:14px}.srcf .ln{gap:10px}.srcf .in.pr{flex:0 0 96px;width:96px}.srcf .btn.full{margin-top:10px}
+.in.pr2{width:84px;flex:none;padding:6px 10px;font-size:13px;border-radius:10px}
+.rw>.rt{max-width:62%;justify-content:flex-end}
 `;
 __EOF_MT__
 echo updated app/ui/css.ts
@@ -1737,10 +2075,17 @@ d.addEventListener('input',function(e){
   if(f)calc(f);
 });
 
+d.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-confirm-btn]');
+  if(b&&!confirm(b.getAttribute('data-confirm-btn')))e.preventDefault();
+},true);
+
 d.addEventListener('submit',function(e){
   var f=e.target,msg=f.getAttribute&&f.getAttribute('data-confirm');
-  if(msg&&!confirm(msg))e.preventDefault();
+  if(msg&&!confirm(msg)){e.preventDefault();return}
+  setTimeout(function(){if(e.defaultPrevented)return;all('button',f).forEach(function(b){if(!b.disabled){b.disabled=true;b.setAttribute('data-busy','1')}})},0);
 });
+window.addEventListener('pageshow',function(e){if(e.persisted)all('button[data-busy]').forEach(function(b){b.disabled=false;b.removeAttribute('data-busy')})});
 
 d.addEventListener('keydown',function(e){
   if(e.key!=='Enter'||e.shiftKey)return;
@@ -2028,3 +2373,217 @@ return (
 }
 __EOF_MT__
 echo updated app/ui/shell.ts
+mkdir -p database
+cat > database/schema.sql <<'__EOF_MT__'
+-- moneytracker schema (SQLite / Turso). Safe to run many times.
+-- Run with: npm run db:migrate
+-- Money is stored as integer minor units (MAD * 100). Times are unix ms.
+
+PRAGMA foreign_keys = ON;
+
+-- ---------- auth ----------
+
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,          -- always lowercase
+  name          TEXT NOT NULL DEFAULT '',
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  currency      TEXT NOT NULL DEFAULT 'MAD',
+  theme         TEXT NOT NULL DEFAULT 'dark',  -- dark | light
+  phone         TEXT NOT NULL DEFAULT '',
+  bio           TEXT NOT NULL DEFAULT '',
+  run_at        TEXT NOT NULL DEFAULT '06:00',
+  week_start    TEXT NOT NULL DEFAULT 'Monday',
+  bg_mode       TEXT NOT NULL DEFAULT 'auto',
+  bg_url        TEXT NOT NULL DEFAULT '',
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+-- Password hashes live apart from users. Google-only users have no row here.
+CREATE TABLE IF NOT EXISTS passwords (
+  user_id       TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  hash          TEXT NOT NULL,                 -- pbkdf2$iterations$salt$hash
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,  -- null until signed in
+  data          TEXT NOT NULL,                 -- JSON from remix session
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user_idx    ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at);
+
+-- Linked login providers (Google today).
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider      TEXT NOT NULL,
+  provider_account_id TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  UNIQUE (provider, provider_account_id)
+);
+CREATE INDEX IF NOT EXISTS oauth_user_idx ON oauth_accounts(user_id);
+
+-- ---------- images ----------
+
+CREATE TABLE IF NOT EXISTS user_images (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL DEFAULT 'avatar',   -- avatar | cover | other
+  source        TEXT NOT NULL DEFAULT 'upload',   -- upload | google
+  url           TEXT NOT NULL,                    -- remote url or your storage key
+  mime          TEXT,
+  size_bytes    INTEGER,
+  is_active     INTEGER NOT NULL DEFAULT 1,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS user_images_user_idx ON user_images(user_id, kind, is_active);
+
+-- ---------- app data ----------
+
+CREATE TABLE IF NOT EXISTS quick_buys (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  icon          TEXT NOT NULL DEFAULT 'Tag',
+  price_minor   INTEGER NOT NULL DEFAULT 0,
+  sort          INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS quick_buys_user_idx ON quick_buys(user_id, sort);
+
+CREATE TABLE IF NOT EXISTS income_sources (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  mode          TEXT NOT NULL DEFAULT 'manual',   -- auto | manual
+  amount_minor  INTEGER NOT NULL DEFAULT 0,       -- for auto sources
+  every         TEXT,                             -- day | week | month (auto)
+  created_at    INTEGER NOT NULL,
+  type          TEXT NOT NULL DEFAULT 'manual',
+  config        TEXT NOT NULL DEFAULT '{}',
+  currency      TEXT NOT NULL DEFAULT 'MAD',
+  active        INTEGER NOT NULL DEFAULT 1,
+  sort          INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS income_sources_user_idx ON income_sources(user_id);
+
+CREATE TABLE IF NOT EXISTS incomes (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_id     TEXT REFERENCES income_sources(id) ON DELETE SET NULL,
+  amount_minor  INTEGER NOT NULL,
+  day           TEXT NOT NULL,                    -- YYYY-MM-DD
+  created_at    INTEGER NOT NULL,
+  meta          TEXT NOT NULL DEFAULT '{}',
+  ext_key       TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS incomes_day_idx ON incomes(user_id, day);
+-- one payout per source per day (auto income and once-a-day manual sources)
+CREATE UNIQUE INDEX IF NOT EXISTS incomes_ext_uq ON incomes(user_id, ext_key) WHERE ext_key <> '';
+
+CREATE TABLE IF NOT EXISTS purchases (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  qty           INTEGER NOT NULL DEFAULT 1,
+  unit_minor    INTEGER NOT NULL,                 -- price each
+  total_minor   INTEGER NOT NULL,
+  day           TEXT NOT NULL,                    -- YYYY-MM-DD
+  debt_id       TEXT,                             -- set when it is a debt payment
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS purchases_day_idx ON purchases(user_id, day);
+
+-- People are never deleted; paid ones are just hidden from the picker.
+CREATE TABLE IF NOT EXISTS people (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  UNIQUE (user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS debts (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  person_id     TEXT NOT NULL REFERENCES people(id),
+  kind          TEXT NOT NULL DEFAULT 'money',    -- money | item
+  item_name     TEXT,                             -- e.g. cigarette
+  item_qty      INTEGER,
+  amount_minor  INTEGER NOT NULL DEFAULT 0,       -- owed now
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS debts_user_idx ON debts(user_id, person_id);
+
+CREATE TABLE IF NOT EXISTS debt_payments (
+  id            TEXT PRIMARY KEY,
+  debt_id       TEXT NOT NULL REFERENCES debts(id) ON DELETE CASCADE,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount_minor  INTEGER NOT NULL,
+  purchase_id   TEXT REFERENCES purchases(id) ON DELETE SET NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS goals (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  target_minor  INTEGER NOT NULL DEFAULT 0,
+  saved_minor   INTEGER NOT NULL DEFAULT 0,
+  is_wish       INTEGER NOT NULL DEFAULT 0,
+  done_at       INTEGER,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS goals_user_idx ON goals(user_id);
+
+CREATE TABLE IF NOT EXISTS notes (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body          TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS notes_user_idx ON notes(user_id, created_at);
+__EOF_MT__
+echo updated database/schema.sql
+mkdir -p .
+cat > package.json <<'__EOF_MT__'
+{
+	"name": "moneytracker",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"deploy": "vite build && wrangler deploy",
+		"cf:typegen": "wrangler types",
+		"format": "oxfmt --check .",
+		"format:fix": "oxfmt .",
+		"lint": "oxlint",
+		"lint:fix": "oxlint --fix",
+		"db:migrate": "bun --env-file=.dev.vars scripts/migrate.ts"
+	},
+	"dependencies": {
+		"@libsql/client": "^0.15.0",
+		"@remix-kbn/data-table-sqlite-turso": "npm:@jsr/remix-kbn__data-table-sqlite-turso@^0.6.0",
+		"remix": "3.0.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "^1.63.1",
+		"@types/node": "^26.4.0",
+		"oxfmt": "latest",
+		"oxlint": "latest",
+		"typescript": "^6.0.3",
+		"vite": "^8.3.4",
+		"wrangler": "^4.149.0"
+	}
+}
+__EOF_MT__
+echo updated package.json
+echo; echo "Now run once:  npm run db:migrate   (adds the unique payout index)"

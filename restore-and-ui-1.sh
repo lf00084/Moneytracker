@@ -1,7 +1,29 @@
+#!/usr/bin/env bash
+set -e
+[ -d app/ui ] && [ -d app/pages ] || { echo "Run this inside the Moneytracker-main folder"; exit 1; }
+
+cat > wrangler.jsonc << 'MT_EOF'
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "moneytracker",
+	"main": "./bootstrap/worker.ts",
+	"compatibility_date": "2026-09-02",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"observability": { "enabled": true },
+	"vars": {
+		"APP_ORIGIN": "https://moneytracker.YOUR-SUBDOMAIN.workers.dev",
+		"TURSO_DATABASE_URL": "https://lf-lf00084.aws-eu-west-1.turso.io"
+	}
+}
+MT_EOF
+
+sed -i '/^wrangler/d' .gitignore
+
 cat > app/ui/css.ts << 'MT_EOF'
 export const css = String.raw`
-html{--bg:#13181b;--s1:#1b2125;--s2:#242b30;--ln:rgba(255,255,255,0.09);--ink:#e8edf0;--mu:#8b979e;--ac:#6fb7c4;--acs:rgba(111,183,196,0.16);--acl:rgba(111,183,196,0.5);--on:#0f1417;--pos:#4cc38a;--neg:#ff6b5e;--bub:rgba(111,183,196,0.14);--sh1:none;--mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;--font-sys:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,sans-serif;color-scheme:dark}
-html[data-theme=light]{color-scheme:light;--bg:#f4f4f5;--s1:#fff;--s2:#eef0f1;--ln:rgba(60,70,90,0.12);--ink:#3f4655;--mu:#8a909c;--ac:#4d8490;--acs:#d5f2f5;--acl:#8fd3db;--on:#fff;--pos:#12a150;--neg:#e0382b;--bub:#d5f2f5;--sh1:0 1px 3px rgba(20,30,40,0.08)}
+html{--bg:#13181b;--s1:#1b2125;--s2:#242b30;--ln:rgba(255,255,255,0.09);--ink:#e8edf0;--mu:#8b979e;--ac:#6fb7c4;--acs:rgba(111,183,196,0.16);--acl:rgba(111,183,196,0.5);--on:#0f1417;--pos:#4cc38a;--neg:#ff6b5e;--earn:#f2b84b;--spend:#a894ff;--sps:rgba(168,148,255,0.16);--spl:rgba(168,148,255,0.5);--bub:rgba(111,183,196,0.14);--sh1:none;--mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;--font-sys:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,sans-serif;color-scheme:dark}
+html[data-theme=light]{color-scheme:light;--bg:#f4f4f5;--s1:#fff;--s2:#eef0f1;--ln:rgba(60,70,90,0.12);--ink:#3f4655;--mu:#8a909c;--ac:#4d8490;--acs:#d5f2f5;--acl:#8fd3db;--on:#fff;--pos:#12a150;--neg:#e0382b;--earn:#a66a00;--spend:#6d4fd6;--sps:#ece8ff;--spl:#bfb2f5;--bub:#d5f2f5;--sh1:0 1px 3px rgba(20,30,40,0.08)}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
 a,button,summary,select,label,.bub{-webkit-touch-callout:none;touch-action:manipulation}
 button,summary,.bt,.sb,.qk,.qk4,.tg,.sh,.chip,.tag{-webkit-user-select:none;user-select:none}
@@ -14,13 +36,13 @@ body{color:var(--ink);font:14px/1.45 var(--font-sys);font-variant-numeric:tabula
 
 a{color:inherit;text-decoration:none}
 button,input,textarea{font:inherit;color:inherit}button{cursor:pointer}
-.mu,.lb{color:var(--mu)}.lb{font-size:11px;font-family:var(--mono)}.pos{color:var(--pos)!important}.neg{color:var(--neg)!important}.sm{font-size:12px}
+.mu,.lb{color:var(--mu)}.lb{font-size:11px;font-family:var(--mono)}.pos{color:var(--pos)!important}.neg{color:var(--neg)!important}.ea{color:var(--earn)!important}.sp{color:var(--spend)!important}.sm{font-size:12px}
 svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 html[data-theme=dark] .t-moon,html[data-theme=light] .t-sun{display:none}
 summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}
 
-button,input[type=button],input[type=submit],.btn,.sbl,.qk button,.qk4 button,.chip,.ib{transition:transform .12s ease,opacity .12s ease}
-button:active,.btn:active,.sbl:active,.qk button:active,.qk4 button:active,.chip:active,.ib:active{transform:scale(.97);opacity:.88}
+button,input[type=button],input[type=submit],.btn,.sbl,.qk button,.qk4 button,.chip,.ib,.pl{transition:transform .12s ease,opacity .12s ease}
+button:active,.btn:active,.sbl:active,.qk button:active,.qk4 button:active,.chip:active,.ib:active,.pl:active{transform:scale(.97);opacity:.88}
 
 .top-status-bar{display:flex;justify-content:flex-end;align-items:center;padding:12px 16px 2px}
 .live-clock{display:flex;flex-direction:column;align-items:flex-end;text-align:right;user-select:none}
@@ -92,12 +114,12 @@ h1.t{font-size:28px;font-weight:700;letter-spacing:-.05em;line-height:1}
 .gl{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
 .mt{height:4px;background:var(--s2);border-radius:4px;overflow:hidden}
 .mt i{display:block;height:100%;background:var(--ac);border-radius:4px}
-.mt.n i{background:var(--neg)}.mt.s{height:3px}
+.mt.n i{background:var(--spend)}.mt.s{height:3px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .chip{border:1px solid var(--ln);border-radius:20px;padding:6px 14px;font-size:12px;background:var(--s2);color:var(--mu);font-family:var(--font-sys);font-weight:500;letter-spacing:-.01em;cursor:pointer}
 .chip:hover{color:var(--ink)}
 .chip.on{background:var(--acs);color:var(--ac);border-color:var(--acl)}
-.chip.n{color:var(--neg);border-color:rgba(255,90,77,0.3)}
+.chip.n{color:var(--spend);border-color:var(--spl)}
 
 .btn{font-weight:600;font-size:14px;background:var(--ac);color:var(--on);border:1px solid var(--ac);border-radius:12px;padding:11px 20px;flex:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
 .btn:hover{filter:brightness(1.06)}
@@ -124,10 +146,20 @@ html[data-theme=dark] .sg [data-set-theme=dark],html[data-theme=light] .sg [data
 
 .qk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
 .qk button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px 12px;border:1px solid var(--ln);background:var(--s1);border-radius:16px;box-shadow:var(--sh1);color:var(--ink)}
-.qk button svg.ic{color:var(--ac)}
-.qk button.on{background:var(--acs);color:var(--ac);border-color:var(--acl)}.qk button.on small{color:var(--ac);opacity:.8}
+.qk button svg.ic{color:var(--spend)}
+.qk button.on{background:var(--sps);color:var(--spend);border-color:var(--spl)}.qk button.on small{color:var(--spend);opacity:.8}
 .qk span{font-weight:600;font-size:13px}.qk small{font-size:11px;color:var(--mu);font-family:var(--mono)}
 .pn{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+.pn2{display:flex;gap:12px;align-items:flex-end}
+.pn2 .pf{flex:1;min-width:0}
+.pn2 .pq{flex:none}
+.pn2 label{display:block;margin-bottom:6px}
+.pn2 .stp{gap:6px}.pn2 .stp .in{width:46px;padding:10px 4px}
+.th2{display:flex;justify-content:space-between;align-items:center;padding:10px 10px 0 14px!important}
+.pl{width:32px;height:32px;border-radius:10px;border:1px solid var(--ln);background:var(--s2);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;flex:none;box-shadow:var(--sh1)}
+.pl svg.ic{width:18px;height:18px;transition:transform .18s ease}
+.pl.on{background:var(--acs);color:var(--ac);border-color:var(--acl)}.pl.on svg.ic{transform:rotate(45deg)}
+.pnl{margin-top:12px;padding-top:4px;border-top:1px solid var(--ln)}
 .tt{display:flex;align-items:center;gap:12px;margin-top:16px}.tt b{flex:1;font-size:26px;letter-spacing:-.04em}
 
 .rw,.by{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--ln)}
@@ -168,8 +200,8 @@ html[data-theme=dark] .sg [data-set-theme=dark],html[data-theme=light] .sg [data
 .sc .rw,.sc .by,.sc .db{padding:14px 0}
 .qk4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
 .qk4 button{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--ln);background:var(--s1);border-radius:16px;color:var(--ink);text-align:left;box-shadow:var(--sh1)}
-.qk4 button svg.ic{color:var(--ac)}
-.qk4 button.on{background:var(--acs);color:var(--ac);border-color:var(--acl)}
+.qk4 button svg.ic{color:var(--spend)}
+.qk4 button.on{background:var(--sps);color:var(--spend);border-color:var(--spl)}
 .qk4 b{display:block;font-size:14px}.qk4 small{font-size:12px;opacity:.65;font-family:var(--mono)}
 .qrow{display:flex;align-items:center;gap:16px;margin-top:16px;padding:16px 18px;border:1px solid var(--ln);background:var(--s1);border-radius:16px;box-shadow:var(--sh1);flex-wrap:wrap}
 .qrow .eq{font-size:22px;font-weight:600;letter-spacing:-.04em}
@@ -207,6 +239,187 @@ details.sc>summary.sh{cursor:pointer}
 `;
 MT_EOF
 
+cat > app/ui/script.ts << 'MT_EOF'
+/**
+ * Tiny inline script, plain JavaScript. All data now lives in the database and every change is a
+ * normal form post. This script only handles what a form cannot: picking a quick buy, the
+ * quantity stepper, open/close panels, selecting a note, choosing an income mode, and the theme.
+ * The browser still remembers two small UI things: the theme and whether "I owe" is open.
+ */
+export const themeBoot = `try{var t=localStorage.getItem('mtheme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`;
+
+export const script = String.raw`
+(function(){
+var d=document,r=d.documentElement;
+function all(sel,root){return [].slice.call((root||d).querySelectorAll(sel))}
+function money(n){return (Math.round(n*100)/100).toLocaleString('en-US')}
+
+function setTheme(t){
+  r.setAttribute('data-theme',t);
+  try{localStorage.setItem('mtheme',t)}catch(e){}
+  try{fetch('/settings/theme',{method:'POST',body:new URLSearchParams({theme:t}),credentials:'same-origin',redirect:'manual'})}catch(e){}
+}
+
+/* ---------- quick buy ---------- */
+function calc(f){
+  var q=parseFloat(f.querySelector('[data-qty]').value)||0,p=parseFloat(String(f.querySelector('[data-price]').value).replace(',','.'))||0;
+  var t=Math.round(q*p*100)/100,o=f.querySelector('[data-tot]');
+  o.textContent=(o.getAttribute('data-pre')||'')+(t?'−':'')+money(t);
+}
+function pick(q,keep){
+  var w=q.closest('[data-qb]'),f=w.querySelector('[data-qp]'),n=q.getAttribute('data-q');
+  all('[data-q]',w).forEach(function(b){b.classList.toggle('on',b===q)});
+  f.hidden=false;
+  f.querySelector('[data-cat]').value=n;
+  var ti=f.querySelector('[data-qt]');if(ti)ti.textContent=n;
+  var lw=f.querySelector('[data-labelwrap]');if(lw)lw.hidden=!q.hasAttribute('data-o');
+  if(!keep)f.querySelector('[data-qty]').value=1;
+  f.querySelector('[data-price]').value=q.getAttribute('data-p')||'';
+  calc(f);
+}
+all('.qk4').forEach(function(g){var first=g.querySelector('[data-q]');if(first)pick(first,false)});
+
+/* ---------- notes ---------- */
+function endEdit(c){
+  var id=c.querySelector('[data-eid]');if(id)id.value='';
+  var eb=c.querySelector('.eb');if(eb)eb.hidden=true;
+  c.querySelector('textarea').value='';
+}
+all('[data-list]').forEach(function(L){
+  var last=L.lastElementChild;
+  if(L.getAttribute('data-list')!=='dash'&&last&&last.scrollIntoView)last.scrollIntoView({block:'end'});
+});
+
+/* ---------- "I owe" open or closed, kept in the browser ---------- */
+var open={};try{open=JSON.parse(localStorage.getItem('mt:open')||'{}')}catch(e){}
+all('details[data-keep-open]').forEach(function(x){var k=x.getAttribute('data-keep-open');if(k in open)x.open=!!open[k]});
+d.addEventListener('toggle',function(e){
+  var x=e.target;
+  if(x.matches&&x.matches('details[data-keep-open]')){
+    open[x.getAttribute('data-keep-open')]=x.open;
+    try{localStorage.setItem('mt:open',JSON.stringify(open))}catch(err){}
+  }
+},true);
+
+/* ---------- clicks ---------- */
+d.addEventListener('click',function(e){
+  var t=e.target,q;
+  if(t.closest('[data-theme-toggle]')){setTheme(r.getAttribute('data-theme')==='dark'?'light':'dark');return}
+  if((q=t.closest('[data-set-theme]'))){setTheme(q.getAttribute('data-set-theme'));return}
+  if((q=t.closest('[data-eye]'))){
+    var v=q.parentNode.firstChild,hide=q.getAttribute('data-s')!=='1';
+    q.setAttribute('data-s',hide?'1':'0');
+    v.innerHTML=hide?(v.getAttribute('data-bal')+' <small>'+v.getAttribute('data-cur')+'</small>'):'••••••';
+    return
+  }
+  if((q=t.closest('[data-tg],[data-pay]'))){
+    var w=q.closest('.dbw'),which=q.hasAttribute('data-tg')?'[data-addp]':'[data-payp]',other=q.hasAttribute('data-tg')?'[data-payp]':'[data-addp]';
+    var p=w.querySelector(which),o=w.querySelector(other);
+    if(o)o.hidden=true;
+    p.hidden=!p.hidden;
+    if(!p.hidden){var i=p.querySelector('input[name=amount]');if(i)i.focus()}
+    return
+  }
+  if((q=t.closest('[data-plus]'))){
+    if(q.getAttribute('data-plus')==='src'){
+      var pn=q.closest('.cd').querySelector('[data-pnl]');
+      pn.hidden=!pn.hidden;
+      q.classList.toggle('on',!pn.hidden);
+      if(!pn.hidden){var fi=pn.querySelector('input[name=name]');if(fi)fi.focus()}
+    }else{
+      var qf=d.querySelector('.mm [data-qp]');
+      if(qf){
+        qf.scrollIntoView({behavior:'smooth',block:'center'});
+        var pi=qf.querySelector('[data-price]');if(pi)pi.focus();
+      }
+    }
+    return
+  }
+  if((q=t.closest('[data-q]'))){pick(q,false);return}
+  if((q=t.closest('[data-step]'))){
+    var f2=q.closest('[data-qp]'),i2=f2.querySelector('[data-qty]');
+    i2.value=Math.max(1,(parseFloat(i2.value)||0)+parseInt(q.getAttribute('data-step'),10));calc(f2);return
+  }
+  if((q=t.closest('[data-mode]'))){
+    var form=q.closest('form');
+    all('[data-mode]',form).forEach(function(c){c.classList.toggle('on',c===q)});
+    form.querySelector('[data-mode-input]').value=q.getAttribute('data-mode');
+    return
+  }
+  if((q=t.closest('.bub'))){
+    q.classList.toggle('sel');var a=q.parentNode.querySelector('.acts');a.hidden=!a.hidden;return
+  }
+  if((q=t.closest('[data-act]'))){
+    var m=q.closest('.msg'),act=q.getAttribute('data-act'),body=m.querySelector('.bub').textContent;
+    if(act==='copy'){try{navigator.clipboard.writeText(body)}catch(x){}return}
+    if(act==='edit'){
+      var key=m.parentNode.getAttribute('data-list'),c=d.querySelector('[data-comp="'+key+'"]');
+      c.querySelector('[data-eid]').value=m.getAttribute('data-id');
+      c.querySelector('.eb').hidden=false;
+      var ta=c.querySelector('textarea');ta.value=body;ta.focus();
+    }
+    return
+  }
+  if((q=t.closest('[data-cancel]'))){endEdit(q.closest('[data-comp]'));return}
+});
+
+d.addEventListener('input',function(e){
+  var f=e.target.closest&&e.target.closest('[data-qp]');
+  if(f)calc(f);
+});
+
+d.addEventListener('submit',function(e){
+  var f=e.target,msg=f.getAttribute&&f.getAttribute('data-confirm');
+  if(msg&&!confirm(msg))e.preventDefault();
+});
+
+d.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||e.shiftKey)return;
+  var t=e.target;
+  if(t.matches&&t.matches('[data-comp] textarea')){
+    e.preventDefault();
+    if(t.value.trim()){var f=t.closest('form');if(f.requestSubmit)f.requestSubmit();else f.submit()}
+  }
+});
+
+/* ---------- live clock (Africa/Casablanca) ---------- */
+function updateLiveClock(){
+  var tEls = all('[data-clock-time]');
+  var dEls = all('[data-clock-date]');
+  var sEls = all('[data-clock-subdate]');
+  if(!tEls.length) return;
+  var now = new Date();
+  try{
+    var tf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', hour: '2-digit', minute: '2-digit', hour12: false });
+    var df = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', weekday: 'long', day: 'numeric', month: 'long' });
+    var nf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Casablanca', day: '2-digit', month: '2-digit', year: 'numeric' });
+    var af = new Intl.DateTimeFormat('ar-MA', { timeZone: 'Africa/Casablanca', weekday: 'long' });
+    var tStr = tf.format(now);
+    var dStr = df.format(now);
+    var sStr = '<span class="clock-num">' + nf.format(now) + '</span> <span class="clock-dot">·</span> <span class="clock-ar">' + af.format(now) + '</span>';
+    tEls.forEach(function(el){ el.textContent = tStr; });
+    dEls.forEach(function(el){ el.textContent = dStr; });
+    sEls.forEach(function(el){ el.innerHTML = sStr; });
+  }catch(err){}
+}
+setInterval(updateLiveClock, 1000);
+
+/* ---------- background fallback ---------- */
+var bgCustomEl = d.querySelector('[data-bg-custom]');
+if(bgCustomEl){
+  var bgUrl = bgCustomEl.getAttribute('data-bg-custom');
+  if(bgUrl){
+    var testImg = new Image();
+    testImg.onerror = function(){
+      bgCustomEl.classList.add('bg-fallback-auto');
+    };
+    testImg.src = bgUrl;
+  }
+}
+})();
+`;
+MT_EOF
+
 cat > app/ui/shell.ts << 'MT_EOF'
 import { css } from "./css.ts";
 import { clockWidget, ic, logo, themeIcons } from "./parts.ts";
@@ -216,76 +429,76 @@ import { liveClockNow } from "../lib/time.ts";
 export type MobileTab = "home" | "notes" | "goals" | "history" | "profile" | "";
 export type DesktopTab = "home" | "notes" | "plan" | "history" | "settings" | "";
 
-const splitCss = ".top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .clock-subdate{justify-content:flex-start}";
+const splitCss = ".top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .live-clock .clock-date,.top-status-bar.tsplit .live-clock .clock-subdate{display:none}";
 
 export type PageOptions = {
-	title: string;
-	user?: boolean;
-	mobile: string;
-	desktop: string;
-	mobileTab?: MobileTab;
-	desktopTab?: DesktopTab;
-	dock?: string;
-	full?: boolean;
-	theme?: string;
-	mobileBar?: string;
+title: string;
+user?: boolean;
+mobile: string;
+desktop: string;
+mobileTab?: MobileTab;
+desktopTab?: DesktopTab;
+dock?: string;
+full?: boolean;
+theme?: string;
+mobileBar?: boolean;
 };
 
 const bottomBar = (a: MobileTab) =>
-	'<nav class="bt" aria-label="Main">' +
-	(
-		[
-			["home", "Home", "home", "/home"],
-			["notes", "Notes", "notes", "/notes"],
-			["goals", "Goals", "goal", "/goals"],
-			["history", "History", "hist", "/history"],
-			["profile", "Profile", "user", "/profile"],
-		] as const
-	)
-		.map(([key, label, icon, href]) => `<a href="${href}" class="${a === key ? "on" : ""}" aria-label="${label}">${ic(icon)}</a>`)
-	.join("") +
-	"</nav>";
+'<nav class="bt" aria-label="Main">' +
+(
+[
+["home", "Home", "home", "/home"],
+["notes", "Notes", "notes", "/notes"],
+["goals", "Goals", "goal", "/goals"],
+["history", "History", "hist", "/history"],
+["profile", "Profile", "user", "/profile"],
+] as const
+)
+.map(([key, label, icon, href]) => `<a href="${href}" class="${a === key ? "on" : ""}" aria-label="${label}">${ic(icon)}</a>`)
+.join("") +
+"</nav>";
 
 const sidebar = (a: DesktopTab) =>
-	`<aside class="sb d">${logo("/home")}` +
-	(
-		[
-			["home", "Home", "home", "/home"],
-			["notes", "Notes", "notes", "/notes"],
-			["plan", "Plan", "goal", "/plan"],
-			["history", "History", "hist", "/history"],
-			["settings", "Settings", "gear", "/settings"],
-		] as const
-	)
-		.map(([key, label, icon, href]) => `<a class="sbl${a === key ? " on" : ""}" href="${href}">${ic(icon)}${label}</a>`)
-		.join("") +
-	`<div class="sp"></div><button type="button" class="sbl" data-theme-toggle>${themeIcons}<span>Theme</span></button>` +
-	`<form method="post" action="/logout"><button class="sbl">${ic("out")}<span class="neg">Log out</span></button></form></aside>`;
+`<aside class="sb d">${logo("/home")}` +
+(
+[
+["home", "Home", "home", "/home"],
+["notes", "Notes", "notes", "/notes"],
+["plan", "Plan", "goal", "/plan"],
+["history", "History", "hist", "/history"],
+["settings", "Settings", "gear", "/settings"],
+] as const
+)
+.map(([key, label, icon, href]) => `<a class="sbl${a === key ? " on" : ""}" href="${href}">${ic(icon)}${label}</a>`)
+.join("") +
+`<div class="sp"></div><button type="button" class="sbl" data-theme-toggle>${themeIcons}<span>Theme</span></button>` +
+`<form method="post" action="/logout"><button class="sbl">${ic("out")}<span class="neg">Log out</span></button></form></aside>`;
 
 export function page(o: PageOptions): string {
-	const user = o.user !== false;
-	const { timeStr, dateStr, subDateStr } = liveClockNow();
-	const clock = clockWidget(timeStr, dateStr, subDateStr);
-	const topBar = `<div class="top-status-bar">${clock}</div>`;
-	const mobileTop = o.mobileBar ? `<div class="top-status-bar tsplit">${clock}${o.mobileBar}</div>` : topBar;
+const user = o.user !== false;
+const { timeStr, dateStr, subDateStr } = liveClockNow();
+const clock = clockWidget(timeStr, dateStr, subDateStr);
+const topBar = `<div class="top-status-bar">${clock}</div>`;
+const mobileTop = `<div class="top-status-bar tsplit">${clock}<div class="clock-subdate" dir="ltr">${subDateStr}</div></div>`;
 
-	return (
-		`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +
-		`<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
-		`<meta name="theme-color" content="#121212"><title>${o.title} · moneytracker</title>` +
-		`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
-		`<style>${css}${splitCss}</style><script>${o.theme ? "" : themeBoot}</script></head>` +
-		`<body>` +
-		`<div class="app">` +
-		(user
-			? sidebar(o.desktopTab ?? "")
-			: `<div class="tf-clock">${clock}<button type="button" class="ib" data-theme-toggle aria-label="Theme">${themeIcons}</button></div>`) +
-		(user
-			? `<main><div class="m">${mobileTop}</div><div class="m mm">${o.mobile}</div><div class="d">${topBar}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>`
-			: `<main class="auth-viewport">${o.desktop}</main>`) +
-		(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +
-		`</div><script>${script}</script></body></html>`
-	);
+return (
+`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +
+`<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
+`<meta name="theme-color" content="#121212"><title>${o.title} · moneytracker</title>` +
+`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
+`<style>${css}${splitCss}</style><script>${o.theme ? "" : themeBoot}</script></head>` +
+`<body>` +
+`<div class="app">` +
+(user
+? sidebar(o.desktopTab ?? "")
+: `<div class="tf-clock">${clock}<button type="button" class="ib" data-theme-toggle aria-label="Theme">${themeIcons}</button></div>`) +
+(user
+? `<main><div class="m">${mobileTop}</div><div class="m mm">${o.mobile}</div><div class="d">${topBar}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>`
+: `<main class="auth-viewport">${o.desktop}</main>`) +
+(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +
+`</div><script>${script}</script></body></html>`
+);
 }
 MT_EOF
 
@@ -294,7 +507,7 @@ import { esc } from "../lib/html.ts";
 import type { DebtView, Goal, Source, State } from "../lib/data.ts";
 import { fmt } from "../lib/money.ts";
 import { dayLabel, dayOf, hhmm, longDay, today } from "../lib/time.ts";
-import { by, chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
+import { chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
 import { page } from "../ui/shell.ts";
 
 function calc(s: State) {
@@ -339,7 +552,7 @@ const debtRow = (s: State, d: DebtView) => {
 		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
-		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="neg">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
+		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
 		`<button type="button" class="btn xs o" data-pay>Pay</button></div>` +
 		panel("data-addp", "/debts", "Add to", "Add") +
 		panel("data-payp", "/debts/pay", "Pay", "Pay") +
@@ -354,14 +567,20 @@ const newPerson = (s: State) =>
 
 const owePair = (s: State) => {
 	const c = calc(s);
-	return `<div class="ow"><b class="neg big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="neg sm">${c.oweExtra}</span></div>`;
+	return `<div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>`;
 };
 
 const chev = `<span class="chev">${ic("chev")}</span>`;
 
+const tgp = (t: string, key: string, b: string) =>
+	`<div class="cd"><div class="tg th2"><span>${t}</span><button type="button" class="pl" data-plus="${key}" aria-label="Add">${ic("plus")}</button></div><div class="cb">${b}</div></div>`;
+
+const spendRow = (n: string, sub: string, a: string) =>
+	`<div class="by"><div><div>${n}</div><div class="lb">${sub}</div></div><b class="sp">${a}</b></div>`;
+
 const oweM = (s: State, open: boolean, key: string) => {
 	const c = calc(s);
-	return `<details class="cd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="neg big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="neg sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}${open ? newPerson(s) : ""}</div></details>`;
+	return `<details class="cd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}${open ? newPerson(s) : ""}</div></details>`;
 };
 
 const oweD = (s: State, open: boolean, key: string) => {
@@ -427,7 +646,7 @@ const srcRows = (s: State) =>
 		.map((x) => {
 			const right =
 				x.mode === "auto"
-					? `<b class="pos">+${fmt(x.amount)}</b>`
+					? `<b class="ea">+${fmt(x.amount)}</b>`
 					: `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(x.amount)}</button></form>`;
 			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto") : "manual"}</span></div><div class="lb">${srcLabel(x)}</div></div>${right}</div>`;
 		})
@@ -444,18 +663,16 @@ const incomeM = (s: State) => tg("Sources", srcRows(s)) + tg("Add a source", add
 
 const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
 
-const side = (t: string) => `<span class="lb" style="text-align:right;line-height:1.25;font-size:11px;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${t}</span>`;
-
 const cardsM = (s: State) => {
 	const c = calc(s);
-	const row = (big: string, right: string) => `<div class="ow" style="margin:0;align-items:center;gap:8px"><div class="big2 ${big.startsWith("+") ? "pos" : "neg"}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>${side(right)}</div>`;
-	return `<div class="two">${tg("Earned today", row(`+${fmt(c.earned)}`, c.earnedLine))}${tg("Bought today", row(`−${fmt(c.bought)}`, `${s.buys.length} buys`))}</div>`;
+	const row = (cls: string, big: string) => `<div class="big2 ${cls}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>`;
+	return `<div class="two">${tg("Earned today", row("ea", `+${fmt(c.earned)}`))}${tg("Bought today", row("sp", `−${fmt(c.bought)}`))}</div>`;
 };
 
 const buyRows = (s: State) =>
 	`<div>${
 		s.buys
-			.map((b) => by(esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
+			.map((b) => spendRow(esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
@@ -472,17 +689,17 @@ const quickBtns = (s: State, desk: boolean) => {
 };
 
 const quickM = (s: State) =>
-	`<div data-qb><div class="qk" data-qgrid>${quickBtns(s, false)}</div><form method="post" action="/buy" data-qp hidden>${back(s)}${tg(
-		"<span data-qt>Smoke</span> · quantity × price",
-		'<input type="hidden" name="category" data-cat value="Smoke"><div class="fl" data-labelwrap hidden style="margin:0 0 12px"><label>What</label><input class="in" name="label" data-label autocomplete="off"></div><div class="pn"><div class="fl" style="margin:0"><label>Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div class="fl" style="margin:0;flex:1;min-width:90px"><label>Price each</label><input class="in" name="price" data-price value="" inputmode="decimal"></div></div><div class="tt"><span class="lb">Total</span><b class="neg" data-tot>0</b><button class="btn">Add</button></div>',
+	`<div data-qb><form method="post" action="/buy" data-qp>${back(s)}${tg(
+		"Quick buy",
+		'<input type="hidden" name="category" value="Other"><div class="pn2"><div class="pf"><label class="lb">Price each</label><input class="in" name="price" data-price value="" inputmode="decimal" autocomplete="off"></div><div class="pq"><label class="lb">Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div></div><button class="btn full">Add <span data-tot data-pre="· ">0</span></button>',
 	)}</form></div>`;
 
 const quickD = (s: State) =>
-	`<div data-qb><div class="qk4" data-qgrid>${quickBtns(s, true)}</div><form method="post" action="/buy" class="qrow" data-qp>${back(s)}<input type="hidden" name="category" data-cat value="Smoke"><div data-labelwrap hidden style="width:140px"><div class="lb">What</div><input class="in" name="label" data-label autocomplete="off"></div><div><div class="lb">Quantity</div><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div style="width:110px"><div class="lb">Price each</div><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="eq neg" data-tot data-pre="= ">= 0</div><button class="btn" style="margin-left:auto">Add</button></form></div>`;
+	`<div data-qb><div class="qk4" data-qgrid>${quickBtns(s, true)}</div><form method="post" action="/buy" class="qrow" data-qp>${back(s)}<input type="hidden" name="category" data-cat value="Smoke"><div data-labelwrap hidden style="width:140px"><div class="lb">What</div><input class="in" name="label" data-label autocomplete="off"></div><div><div class="lb">Quantity</div><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div style="width:110px"><div class="lb">Price each</div><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="eq sp" data-tot data-pre="= ">= 0</div><button class="btn" style="margin-left:auto">Add</button></form></div>`;
 
 const hero = (s: State) => {
 	const c = calc(s);
-	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v pos">+${fmt(c.earned)}</div><div class="lb">${c.earnedLine}</div></div><div><div class="lb">Bought today</div><div class="v neg">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v neg">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
+	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v ea">+${fmt(c.earned)}</div><div class="lb">${c.earnedLine}</div></div><div><div class="lb">Bought today</div><div class="v sp">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v sp">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
 };
 
 const noteList = (s: State, key: string) => {
@@ -530,7 +747,7 @@ const histM = (s: State) =>
 		.map((d) =>
 			tg(
 				esc(d.label),
-				`<div class="l1"><span><span class="lb">Earned</span> <b class="pos">+${fmt(d.earned)}</b></span><span><span class="lb">Bought</span> <b class="neg">−${fmt(d.bought)}</b></span><b>${dayNet(d.earned, d.bought)}</b></div>${chips(d.items.map(esc))}`,
+				`<div class="l1"><span><span class="lb">Earned</span> <b class="ea">+${fmt(d.earned)}</b></span><span><span class="lb">Bought</span> <b class="sp">−${fmt(d.bought)}</b></span><b>${dayNet(d.earned, d.bought)}</b></div>${chips(d.items.map(esc))}`,
 			),
 		)
 		.join("");
@@ -542,7 +759,7 @@ const histD = (s: State) => {
 		"Last 7 days",
 		`+${fmt(e)} earned · −${fmt(b)} bought`,
 		'<div class="th"><span>Day</span><span>Earned</span><span>Bought</span><span>Net</span><span>What</span></div>' +
-			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="pos">+${fmt(d.earned)}</b><b class="neg">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
+			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="ea">+${fmt(d.earned)}</b><b class="sp">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
 	);
 };
 
@@ -643,7 +860,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: cardsM(s) + tg("Income sources", srcRows(s)) + quickM(s) + tg(`Today's buys · ${s.buys.length}`, buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		mobile: cardsM(s) + tgp("Income sources", "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + quickM(s) + tgp(`Today's buys · ${s.buys.length}`, "buy", buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
 		desktop: dashboardD(s),
 	});
 
@@ -679,3 +896,4 @@ export const settingsPage = (s: State) =>
 	page({ ...base(s), title: "Settings", mobileTab: "profile", desktopTab: "settings", mobile: hd("Settings", "", "/profile") + settingsM(s), desktop: settingsD(s) });
 MT_EOF
 
+echo "Done: wrangler.jsonc restored, .gitignore fixed, UI updated"

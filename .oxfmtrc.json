@@ -1,4 +1,0 @@
-{
-	"useTabs": true,
-	"ignorePatterns": ["build/**", "worker-configuration.d.ts"]
-}

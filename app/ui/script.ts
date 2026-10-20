@@ -79,17 +79,11 @@ d.addEventListener('click',function(e){
     return
   }
   if((q=t.closest('[data-plus]'))){
-    if(q.getAttribute('data-plus')==='src'){
-      var pn=q.closest('.cd').querySelector('[data-pnl]');
+    var pn=q.closest('.cd,.sc').querySelector('[data-pnl]');
+    if(pn){
       pn.hidden=!pn.hidden;
       q.classList.toggle('on',!pn.hidden);
-      if(!pn.hidden){var fi=pn.querySelector('input[name=name]');if(fi)fi.focus()}
-    }else{
-      var qf=d.querySelector('.mm [data-sp]');
-      if(qf){
-        qf.scrollIntoView({behavior:'smooth',block:'center'});
-        var pi=qf.querySelector('[data-name]');if(pi)pi.focus();
-      }
+      if(!pn.hidden){var fi=pn.querySelector('input:not([type=hidden])');if(fi)fi.focus()}
     }
     return
   }

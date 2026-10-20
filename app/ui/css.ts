@@ -74,7 +74,7 @@ main{flex:1;min-width:0;position:relative}
 .sbl{display:flex;align-items:center;gap:16px;padding:12px 14px;border-radius:14px;font-size:16px;font-weight:500;color:var(--ink);background:none;border:0;width:100%;text-align:left}
 .sbl:hover{background:var(--s2)}.sbl.on{font-weight:700;background:var(--acs);color:var(--ac)}.sbl.on svg.ic{stroke-width:2}
 .sbl svg.ic{width:24px;height:24px}
-.sp{flex:1}
+.sb .sp{flex:1}
 
 h1.t{font-size:28px;font-weight:700;letter-spacing:-.05em;line-height:1}
 .hd{display:flex;justify-content:space-between;align-items:center;margin:16px 0 2px;min-height:34px}
@@ -235,4 +235,17 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .wi{padding:12px 0;border-top:1px solid var(--ln)}
 .wi:first-child{border-top:0;padding-top:0}
 .wa{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px}
+.l1{gap:12px}.l1>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l1>span,.l1>.sp,.ow>*,.by>b,.rw>b,.by .rt b,.rw .rt b,.big2,.v{white-space:nowrap;flex:none}
+.by>div:first-child,.rw>div:first-child{min-width:0}
+.rt{display:flex;align-items:center;gap:10px;flex:none}
+.ub{width:30px;height:30px;border-radius:9px;border:1px solid var(--ln);background:var(--s2);color:var(--mu);display:flex;align-items:center;justify-content:center;padding:0;flex:none}
+.ub:hover{color:var(--ink)}.ub svg.ic{width:16px;height:16px}
+.btn:disabled,.btn.off{background:var(--s2);color:var(--mu);border-color:var(--ln);box-shadow:none;opacity:.7;cursor:not-allowed;pointer-events:none}
+.tl{display:block;font-weight:400;margin-top:3px;font-size:11px;color:var(--mu);font-family:var(--mono)}
+.th2>span{min-width:0}
+.pnl.top{margin:0 0 12px;padding:0 0 12px;border-top:0;border-bottom:1px solid var(--ln)}
+.sh .pl{margin-left:10px}
+.ok{color:var(--earn)}
+
 `;

@@ -25,15 +25,16 @@ export const routes = route({
 
 	// Forms
 	buy: post("/buy"),
+	deleteBuy: post("/buy/delete"),
 	addDebt: post("/debts"),
 	payDebt: post("/debts/pay"),
 	addNote: post("/notes"),
 	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
-	saveGoal: post("/goals/save"),
 	buyWish: post("/goals/buy"),
 	addSource: post("/income"),
 	addIncome: post("/income/add"),
+	deleteIncome: post("/income/delete"),
 	addPlan: post("/plan"),
 	saveProfile: post("/profile/edit"),
 	saveSettings: post("/settings"),

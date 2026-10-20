@@ -18,30 +18,48 @@ return Number.isFinite(n) && n > 0 ? Math.min(n, 100000) : 0;
 // ---------- buys ----------
 
 export async function addBuy(uid: string, f: FormData): Promise<string | void> {
-const name = text(f.get("label"), 120) || text(f.get("category"), 60) || "Other";
+const name = text(f.get("label"), 120) || "Item";
 const qty = count(f.get("qty")) || 1;
 const unit = toMinor(f.get("price"));
-if (!unit) return;
+if (!unit) return "Enter a price";
 const total = unit * qty;
 const bal = await balanceOf(uid);
 if (total > bal) return `Not enough balance. You have ${fmt(bal)}`;
 await db.create(purchases, { id: id(), user_id: uid, name, qty, unit_minor: unit, total_minor: total, day: today(), created_at: Date.now() });
 }
 
+/** Undo a buy. If it was a debt payment, the debt comes back too. */
+export async function deleteBuy(uid: string, f: FormData): Promise<string | void> {
+const p = await db.findOne(purchases, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (!p) return;
+await db.transaction(async (tx) => {
+if (p.debt_id) {
+const pays = await tx.findMany(debtPayments, { where: { purchase_id: p.id, user_id: uid } });
+const back = pays.reduce((a, x) => a + x.amount_minor, 0) || p.total_minor;
+const d = await tx.findOne(debts, { where: { id: p.debt_id, user_id: uid } });
+if (d) await tx.update(debts, d.id, { amount_minor: d.amount_minor + back });
+await tx.exec(sql`delete from debt_payments where purchase_id = ${p.id} and user_id = ${uid}`);
+}
+await tx.exec(sql`delete from purchases where id = ${p.id} and user_id = ${uid}`);
+});
+}
+
 // ---------- debts ----------
 
 /** Adds to a person already on the list (debt_id), or creates / revives a person by name. */
-export async function addDebt(uid: string, f: FormData) {
+export async function addDebt(uid: string, f: FormData): Promise<string | void> {
 const debtId = text(f.get("debt_id"), 36);
 if (debtId) {
 const d = await db.findOne(debts, { where: { id: debtId, user_id: uid } });
 if (!d) return;
 if (d.kind === "item") {
 const n = count(f.get("amount"));
-if (n) await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) + n });
+if (!n) return "Enter an amount";
+await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) + n });
 } else {
 const m = toMinor(f.get("amount"));
-if (m) await db.update(debts, d.id, { amount_minor: d.amount_minor + m });
+if (!m) return "Enter an amount";
+await db.update(debts, d.id, { amount_minor: d.amount_minor + m });
 }
 return;
 }
@@ -49,7 +67,8 @@ return;
 const name = text(f.get("name"), 80);
 const cig = count(f.get("cig"));
 const money = toMinor(f.get("amount"));
-if (!name || (!cig && !money)) return;
+if (!name) return "Enter a name";
+if (!cig && !money) return "Enter an amount";
 
 await db.transaction(async (tx) => {
 const all = await tx.findMany(people, { where: { user_id: uid } });
@@ -81,18 +100,21 @@ created_at: Date.now(),
 }
 
 /** Money paid also becomes a buy today ("Paid Youssef"). Items just count down. */
-export async function payDebt(uid: string, f: FormData) {
+export async function payDebt(uid: string, f: FormData): Promise<string | void> {
 const d = await db.findOne(debts, { where: { id: text(f.get("debt_id"), 36), user_id: uid } });
 if (!d) return;
 
 if (d.kind === "item") {
 const n = Math.min(count(f.get("amount")), d.item_qty ?? 0);
-if (n) await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) - n });
+if (!n) return "Enter an amount";
+await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) - n });
 return;
 }
 
 const pay = Math.min(toMinor(f.get("amount")), d.amount_minor);
-if (!pay) return;
+if (!pay) return "Enter an amount";
+const bal = await balanceOf(uid);
+if (pay > bal) return `Not enough balance to pay ${fmt(pay)}. You have ${fmt(Math.max(0, bal))}`;
 const person = await db.find(people, d.person_id);
 const purchaseId = id();
 const now = Date.now();
@@ -116,9 +138,9 @@ await tx.update(debts, d.id, { amount_minor: d.amount_minor - pay });
 
 // ---------- goals ----------
 
-export async function addGoal(uid: string, f: FormData) {
+export async function addGoal(uid: string, f: FormData): Promise<string | void> {
 const title = text(f.get("name"), 120);
-if (!title) return;
+if (!title) return "Enter what you want";
 await db.create(goals, {
 id: id(),
 user_id: uid,
@@ -130,21 +152,13 @@ created_at: Date.now(),
 });
 }
 
-export async function saveToGoal(uid: string, f: FormData) {
-const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
-const add = toMinor(f.get("amount")) || 10000;
-if (!g) return;
-const saved = g.target_minor > 0 ? Math.min(g.saved_minor + add, g.target_minor) : g.saved_minor + add;
-await db.update(goals, g.id, g.target_minor > 0 && saved >= g.target_minor ? { saved_minor: saved, done_at: Date.now() } : { saved_minor: saved });
-}
-
 export async function buyWish(uid: string, f: FormData): Promise<string | void> {
 const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
 if (!g) return;
-const price = g.target_minor || g.saved_minor;
+const price = g.target_minor;
 if (price > 0) {
 const bal = await balanceOf(uid);
-if (price > bal) return `Not enough balance for ${g.title}. You have ${fmt(bal)}`;
+if (price > bal) return `Not enough balance for ${g.title}. You have ${fmt(Math.max(0, bal))}`;
 }
 await db.transaction(async (tx) => {
 if (price > 0) await tx.create(purchases, { id: id(), user_id: uid, name: g.title, qty: 1, unit_minor: price, total_minor: price, day: today(), created_at: Date.now() });
@@ -217,8 +231,27 @@ return;
 await db.create(incomes, { id: id(), user_id: uid, source_id: s.id, day, created_at: Date.now(), ext_key: kind.keyed ? key : "", ...values });
 }
 
-/** The "Add 120" button on a source. */
-export const addIncome = saveDay;
+/** The "Add 120" button on a source. A manual or job source can be added once per day. */
+export async function addIncome(uid: string, f: FormData): Promise<string | void> {
+const s = await db.findOne(incomeSources, { where: { id: text(f.get("source_id"), 36), user_id: uid } });
+if (!s) return "Unknown source";
+const day = today();
+if (typeOf(s.type).keyed) {
+const done = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, day) } });
+if (done) return `${s.name} is already added today`;
+}
+f.set("day", day);
+return saveDay(uid, f);
+}
+
+/** Undo an income row. Blocked if the money is already spent and the balance would go below zero. */
+export async function deleteIncome(uid: string, f: FormData): Promise<string | void> {
+const row = await db.findOne(incomes, { where: { id: text(f.get("id"), 80), user_id: uid } });
+if (!row) return;
+const bal = await balanceOf(uid);
+if (bal - row.amount_minor < 0) return `Can't undo: you already spent it. Balance is ${fmt(Math.max(0, bal))}`;
+await db.deleteMany(incomes, { where: { id: row.id, user_id: uid } });
+}
 
 // ---------- quick buys ----------
 

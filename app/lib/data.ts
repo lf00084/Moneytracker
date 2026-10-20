@@ -8,7 +8,7 @@ import { getActiveAvatar, type User } from "./users.ts";
 
 export type Quick = { id: string; name: string; icon: string; price: number };
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number };
-export type Income = { id: string; source: string; amount: number; day: string };
+export type Income = { id: string; sourceId: string; source: string; amount: number; day: string };
 export type Source = { id: string; name: string; mode: string; every: string; amount: number; created: number; type: string; config: Json; currency: string; active: boolean; sort: number };
 export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number };
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean };
@@ -110,7 +110,7 @@ db.findMany(purchases, { where: { user_id: uid, day: t }, orderBy: ["created_at"
 s.buys = rows.map(toBuy);
 }),
 db.findMany(incomes, { where: { user_id: uid, day: t } }).then((rows) => {
-s.incomesToday = rows.map((r) => ({ id: r.id, source: byId.get(r.source_id ?? "") ?? "Other", amount: r.amount_minor, day: r.day }));
+s.incomesToday = rows.map((r) => ({ id: r.id, sourceId: r.source_id ?? "", source: byId.get(r.source_id ?? "") ?? "Other", amount: r.amount_minor, day: r.day }));
 }),
 );
 }

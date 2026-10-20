@@ -19,7 +19,7 @@ function calc(s: State) {
 	const oweExtra = oweItems ? `+ ${oweItems} cig` : "";
 
 	const wishTarget = s.goals.reduce((a, g) => a + g.target, 0);
-	const wishSaved = s.goals.reduce((a, g) => a + Math.min(g.saved, g.target || g.saved), 0);
+	const wishSaved = Math.min(Math.max(0, s.balance), wishTarget);
 	const debtPaid = money.reduce((a, d) => a + d.paid, 0);
 	const total = wishTarget + oweMoney + debtPaid;
 	const done = wishSaved + debtPaid;
@@ -31,7 +31,10 @@ function calc(s: State) {
 const cur = (s: State) => esc(s.user.currency);
 const back = (s: State) => `<input type="hidden" name="back" value="${esc(s.back)}">`;
 const err = (s: State) => (s.error ? `<div class="neg" role="alert" style="margin:10px 0;font-size:13px">${esc(s.error)}</div>` : "");
-const pctOf = (g: Goal) => (g.target ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0);
+/** How much of the balance covers each wish (each wish is compared with the whole balance). */
+const covered = (s: State) => new Map(s.goals.map((g) => [g.id, Math.min(Math.max(0, s.balance), g.target)] as const));
+const pctOf = (s: State, g: Goal) => (g.target ? Math.min(100, Math.round(((covered(s).get(g.id) ?? 0) / g.target) * 100)) : 0);
+const canBuy = (s: State, g: Goal) => g.target > 0 && s.balance >= g.target;
 
 const avatar = (s: State) => {
 	const url = s.avatar ? encodeURI(s.avatar).replace(/'/g, "%27") : "";
@@ -44,7 +47,7 @@ const debtRow = (s: State, d: DebtView) => {
 	const pct = d.kind === "money" && d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0;
 	const hidden = `<input type="hidden" name="debt_id" value="${d.id}">${back(s)}`;
 	const panel = (flag: string, action: string, title: string, btn: string) =>
-		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
+		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off"><span class="mu">${unit}</span><button class="btn xs">${btn}</button></div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
 		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
@@ -75,8 +78,8 @@ const chev = `<span class="chev">${ic("chev")}</span>`;
 const tgp = (t: string, key: string, b: string) =>
 	`<div class="cd"><div class="tg th2"><span>${t}</span><button type="button" class="pl" data-plus="${key}" aria-label="Add">${ic("plus")}</button></div><div class="cb">${b}</div></div>`;
 
-const spendRow = (n: string, sub: string, a: string) =>
-	`<div class="by"><div><div>${n}</div><div class="lb">${sub}</div></div><b class="sp">${a}</b></div>`;
+const spendRow = (s: State, id: string, n: string, sub: string, a: string) =>
+	`<div class="by"><div><div>${n}</div><div class="lb">${sub}</div></div><span class="rt"><b class="sp">${a}</b><form method="post" action="/buy/delete" style="display:contents" data-confirm="Undo this buy? The money comes back.">${back(s)}<input type="hidden" name="id" value="${id}"><button class="ub" aria-label="Undo buy">${ic("undo")}</button></form></span></div>`;
 
 const oweM = (s: State, open: boolean, key: string) => {
 	const c = calc(s);
@@ -91,7 +94,7 @@ const oweD = (s: State, open: boolean, key: string) => {
 const goalM = (s: State) => {
 	const c = calc(s);
 	const chipHtml = [
-		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(g)}%</span>`),
+		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(s, g)}%</span>`),
 		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
 	].join("");
 	return tg(
@@ -103,32 +106,26 @@ const goalM = (s: State) => {
 const goalFold = (s: State, key: string) => {
 	const c = calc(s);
 	const chipHtml = [
-		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(g)}%</span>`),
+		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(s, g)}%</span>`),
 		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
 	].join("");
 	return `<details class="cd" data-keep-open="${key}"><summary class="osum"><div class="tg0">Road to goals</div><div class="ow"><b class="big2">${c.pct}<small>%</small></b><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div>${chev}</summary><div class="cb"><div class="mt"><i style="width:${c.pct}%"></i></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}</div></details>`;
 };
 
-const saveBtn = (s: State, g: Goal) =>
-	g.done
-		? '<span class="chip">done</span>'
-		: `<form method="post" action="/goals/save" style="display:contents">${back(s)}<input type="hidden" name="id" value="${g.id}"><input type="hidden" name="amount" value="100"><button class="btn xs">Save 100</button></form>`;
-
-const goalLeft = (s: State, g: Goal) =>
-	g.target ? `${fmt(Math.max(0, g.target - g.saved))} left of ${fmt(g.target)}` : `${fmt(g.saved)} ${cur(s)} saved`;
+const goalLeft = (s: State, g: Goal) => (g.target ? (canBuy(s, g) ? `${fmt(g.target)} ${cur(s)} · ready` : `${fmt(g.target - (covered(s).get(g.id) ?? 0))} to go`) : "no price");
 
 const addWishPanel = (s: State) =>
 	`<form method="post" action="/goals" class="sf adp" data-adp hidden>${back(s)}<input class="in" name="name" data-name placeholder="What do you want?" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
 
 const boughtBtn = (s: State, g: Goal) =>
-	`<form method="post" action="/goals/buy" style="display:contents" data-confirm="Mark ${esc(g.title)} as bought? It will be added as a spend.">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="btn xs o">Bought</button></form>`;
+	`<form method="post" action="/goals/buy" style="display:contents" data-confirm="Mark ${esc(g.title)} as bought? It will be added as a spend.">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="btn xs${canBuy(s, g) ? "" : " off"}"${canBuy(s, g) ? "" : " disabled"}>Bought</button></form>`;
 
 const wishesM = (s: State) =>
 	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><div class="tg">Wish list</div><div class="cb">${
 		s.goals
 			.map(
 				(g) =>
-					`<div class="wi"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(g)}%"></i></div><div class="wa">${saveBtn(s, g)}${boughtBtn(s, g)}</div></div>`,
+					`<div class="wi"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div><div class="wa">${boughtBtn(s, g)}</div></div>`,
 			)
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>'
 	}</div>${addWishPanel(s)}</div></div>`;
@@ -138,23 +135,33 @@ const wishD = (s: State) =>
 		s.goals
 			.map(
 				(g) =>
-					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(g)}%"></i></div></div>${saveBtn(s, g)}${boughtBtn(s, g)}</div>`,
+					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(s, g)}%"></i></div></div>${boughtBtn(s, g)}</div>`,
 			)
 			.join("") || '<div class="lb" style="padding:14px 0">Nothing on the list.</div>'
 	}${addWishPanel(s)}</div></div>`;
 
-const debtsM = (s: State) => tg("Debts", owePair(s) + debtList(s));
+const debtsM = (s: State) =>
+	`<div class="cd bgc">${bigAdd("Add debt")}<div class="ct"><div class="tg">Debts</div><div class="cb">${owePair(s)}${debtList(s)}</div>${addDebtPanel(s)}</div></div>`;
 
-const srcLabel = (x: Source) => (x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto · every day") : "manual");
+const srcAmount = (x: Source) => (x.type === "job" ? Number(x.config.fixed_minor) || 0 : x.amount);
+
+const gotToday = (s: State, x: Source) => s.incomesToday.filter((i) => i.sourceId === x.id);
 
 const srcRows = (s: State) =>
 	s.sources
 		.map((x) => {
-			const right =
-				x.mode === "auto"
-					? `<b class="ea">+${fmt(x.amount)}</b>`
-					: `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(x.amount)}</button></form>`;
-			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto") : "manual"}</span></div><div class="lb">${srcLabel(x)}</div></div>${right}</div>`;
+			const got = gotToday(s, x);
+			const sum = got.reduce((a, i) => a + i.amount, 0);
+			const auto = x.mode === "auto";
+			const tag = auto ? (x.every === "month" ? "monthly" : "auto") : "manual";
+			const sub = got.length ? `<span class="ok">got +${fmt(sum)} today</span>` : auto ? (x.every === "month" ? "monthly" : "every day") : "nothing today yet";
+			let right: string;
+			if (auto) right = `<b class="ea">+${fmt(x.amount)}</b>`;
+			else if (got.length) {
+				right = `<span class="rt"><button class="btn xs" disabled>Added</button><form method="post" action="/income/delete" style="display:contents" data-confirm="Undo +${fmt(sum)} from ${esc(x.name)}?">${back(s)}<input type="hidden" name="id" value="${got[0]!.id}"><button class="ub" aria-label="Undo ${esc(x.name)}">${ic("undo")}</button></form></span>`;
+			} else
+				right = `<form method="post" action="/income/add" style="display:contents">${back(s)}<input type="hidden" name="source_id" value="${x.id}"><button class="btn xs o">Add ${fmt(srcAmount(x))}</button></form>`;
+			return `<div class="rw"><div><div>${esc(x.name)}<span class="tag">${tag}</span></div><div class="lb">${sub}</div></div>${right}</div>`;
 		})
 		.join("") || '<div class="lb" style="padding:8px 0">No sources yet. Add one below.</div>';
 
@@ -165,7 +172,9 @@ const addSourceForm = (s: State, wide: boolean) =>
 		? `<form method="post" action="/income" class="ln" style="margin-top:18px">${back(s)}<input class="in" name="name" placeholder="New source" autocomplete="off"><input class="in" name="amount" style="width:100px" placeholder="Amount" inputmode="decimal"><button class="btn xs">Add</button>${modeChips}</form>`
 		: `<form method="post" action="/income">${back(s)}${fld("Name", "", { name: "name" })}${fld("Amount", "", { t: "number", name: "amount" })}${modeChips}<button class="btn full" style="margin-top:14px">Add source</button></form>`;
 
-const incomeM = (s: State) => tg("Sources", srcRows(s)) + tg("Add a source", addSourceForm(s, false));
+const todayLine = (s: State) => `<span class="tl">${calc(s).earned ? `+${fmt(calc(s).earned)} today · ${calc(s).earnedLine}` : "nothing earned today yet"}</span>`;
+
+const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s)) + tg("Add a source", addSourceForm(s, false));
 
 const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
 
@@ -178,14 +187,19 @@ const cardsM = (s: State) => {
 const buyRows = (s: State) =>
 	`<div>${
 		s.buys
-			.map((b) => spendRow(esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
+			.map((b) => spendRow(s, b.id, esc(b.qty > 1 ? `${b.name} ×${b.qty}` : b.name), `${hhmm(b.at)}${b.qty > 1 ? ` · ${b.qty} × ${fmt(b.unit)}` : ""}`, `−${fmt(b.total)}`))
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
 const spendForm = (s: State) =>
-	`<form method="post" action="/buy" class="sf" data-sp>${back(s)}${nameChips(s.names)}<input class="in" name="label" data-name placeholder="What did you buy?" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
+	`<form method="post" action="/buy" class="sf" data-sp>${back(s)}${nameChips(s.names)}<input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
 
-const quickM = (s: State) => tg("Add a spend", spendForm(s));
+/** "Today's buys" with a plus that opens the add form on top of the list. */
+const buysCard = (s: State) =>
+	`<div class="cd"><div class="tg th2"><span>Today's buys · ${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></div><div class="cb"><div class="pnl top" data-pnl hidden>${spendForm(s)}</div>${buyRows(s)}</div></div>`;
+
+const buysD = (s: State) =>
+	`<div class="sc"><div class="sh"><span>Today's buys</span><span class="rr"><span class="lb">${s.buys.length}</span><button type="button" class="pl" data-plus="buy" aria-label="Add a buy">${ic("plus")}</button></span></div><div class="pnl top" data-pnl hidden style="margin-top:14px">${spendForm(s)}</div>${buyRows(s)}</div>`;
 
 const hero = (s: State) => {
 	const c = calc(s);
@@ -304,7 +318,7 @@ const settingsD = (s: State) =>
 
 const dashboardD = (s: State) =>
 	hero(s) +
-	`<div class="g2"><div>${sec("Add a spend", "", spendForm(s))}${sec("Today's buys", `${s.buys.length}`, buyRows(s))}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
+	`<div class="g2"><div>${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
 
 const debtsD = (s: State) => {
 	const c = calc(s);
@@ -337,7 +351,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + cardsM(s) + tgp("Income sources", "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + quickM(s) + tgp(`Today's buys · ${s.buys.length}`, "buy", buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		mobile: err(s) + cardsM(s) + tgp(`Income sources${todayLine(s)}`, "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + buysCard(s) + goalFold(s, "goal") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 
@@ -358,7 +372,7 @@ export const goalsPage = (s: State) =>
 	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s) + debtsM(s), desktop: err(s) + planD(s) });
 
 export const incomePage = (s: State) =>
-	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: planD(s) });
+	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: err(s) + hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: err(s) + planD(s) });
 
 export const historyPage = (s: State) =>
 	page({ ...base(s), title: "History", mobileTab: "history", desktopTab: "history", mobile: hd("History", "last 7 days") + histM(s), desktop: historyD(s) });

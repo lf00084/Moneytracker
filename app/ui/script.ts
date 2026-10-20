@@ -94,10 +94,10 @@ d.addEventListener('click',function(e){
     return
   }
   if((q=t.closest('[data-bigadd]'))){
-    var ap=q.closest('.bgc').querySelector('[data-adp]');
+    var tf=q.getAttribute('data-for'),ap=tf?d.getElementById(tf):q.closest('.bgc').querySelector('[data-adp]');
     ap.hidden=!ap.hidden;
     q.classList.toggle('on',!ap.hidden);
-    if(!ap.hidden){var ai=ap.querySelector('[data-name]');if(ai)ai.focus()}
+    if(!ap.hidden){var ai=ap.querySelector('input:not([type=hidden])');if(ai)ai.focus()}
     return
   }
   if((q=t.closest('[data-q]'))){pick(q,false);return}

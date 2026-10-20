@@ -257,6 +257,10 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .spf .ln{gap:10px;margin:0}.spf .ln .in{flex:1 1 0}.spf .ln .in.pr{flex:0 0 96px;width:96px}
 .spf .btn.full{margin-top:10px}
 .spf .chips.nm{margin-bottom:10px}
+.addb.r{border-right:0;border-left:1px solid var(--acl)}
+.jarc{position:relative}
+.jar{position:absolute;left:0;top:0;bottom:0;background:var(--ac);opacity:.28;pointer-events:none;transition:width .5s ease}
+.jarc .jin{position:relative;z-index:1}
 .wb{display:flex;align-items:center;gap:8px;flex:none}
 .srcf{margin-top:14px}.srcf .ln{gap:10px}.srcf .in.pr{flex:0 0 96px;width:96px}.srcf .btn.full{margin-top:10px}
 .in.pr2{width:84px;flex:none;padding:6px 10px;font-size:13px;border-radius:10px}

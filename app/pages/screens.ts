@@ -63,7 +63,14 @@ const debtList = (s: State) => s.debts.map((d) => debtRow(s, d)).join("") || '<d
 const nameChips = (names: string[]) =>
 	names.length ? `<div class="chips nm">${names.map((n) => `<span class="chip" data-nm="${esc(n)}">${esc(n)}</span>`).join("")}</div>` : "";
 
-const bigAdd = (label: string) => `<button type="button" class="addb" data-bigadd aria-label="${label}">${ic("plus")}</button>`;
+const bigAdd = (label: string, target = "", right = false) =>
+	`<button type="button" class="addb${right ? " r" : ""}" data-bigadd${target ? ` data-for="${target}"` : ""} aria-label="${label}">${ic("plus")}</button>`;
+
+/** A list card with the big + on its right. The + opens the form card that sits right above it. */
+const listCard = (wide: boolean, title: string, right: string, body: string, target: string, label: string) =>
+	wide
+		? `<div class="sc bgc rgt"><div class="ct"><div class="sh"><span>${title}</span><span class="lb">${right}</span></div>${body}</div>${bigAdd(label, target, true)}</div>`
+		: `<div class="cd bgc rgt"><div class="ct"><div class="tg">${title}</div><div class="cb">${body}</div></div>${bigAdd(label, target, true)}</div>`;
 
 const addDebtPanel = (s: State) =>
 	`<form method="post" action="/debts" class="sf adp" data-adp hidden>${back(s)}${nameChips([...new Set(s.debts.map((d) => d.person))])}<input class="in" name="name" data-name placeholder="Person name" autocomplete="off" required><input class="in" name="amount" data-price placeholder="Debt amount" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
@@ -91,25 +98,23 @@ const oweD = (s: State, open: boolean, key: string) => {
 	return `<div class="sc bgc">${bigAdd("Add debt")}<div class="ct"><details data-keep-open="${key}"${open ? " open" : ""}><summary class="sh"><span>I owe</span><span class="rr"><span class="lb">${fmt(c.oweMoney)} ${cur(s)} ${c.oweExtra}</span>${chev}</span></summary>${debtList(s)}</details>${addDebtPanel(s)}</div></div>`;
 };
 
-const goalM = (s: State) => {
-	const c = calc(s);
-	const chipHtml = [
+const roadChips = (s: State) =>
+	[
 		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(s, g)}%</span>`),
 		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
 	].join("");
-	return tg(
-		"Road to goals",
-		`<div class="gl"><span class="big">${c.pct}<small>%</small></span><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div><div class="mt"><i style="width:${c.pct}%"></i></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}`,
-	);
+
+/** The whole card fills from the left, like a jar, as you get closer to your goals. */
+const goalM = (s: State) => {
+	const c = calc(s);
+	const chipHtml = roadChips(s);
+	return `<div class="cd jarc"><i class="jar" style="width:${c.pct}%"></i><div class="jin"><div class="tg">Road to goals</div><div class="cb"><div class="gl"><span class="big">${c.pct}<small>%</small></span><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}</div></div></div>`;
 };
 
 const goalFold = (s: State, key: string) => {
 	const c = calc(s);
-	const chipHtml = [
-		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(s, g)}%</span>`),
-		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
-	].join("");
-	return `<details class="cd" data-keep-open="${key}"><summary class="osum"><div class="tg0">Road to goals</div><div class="ow"><b class="big2">${c.pct}<small>%</small></b><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div>${chev}</summary><div class="cb"><div class="mt"><i style="width:${c.pct}%"></i></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}</div></details>`;
+	const chipHtml = roadChips(s);
+	return `<div class="cd jarc"><i class="jar" style="width:${c.pct}%"></i><details class="dd jin" data-keep-open="${key}"><summary class="osum"><div class="tg0">Road to goals</div><div class="ow"><b class="big2">${c.pct}<small>%</small></b><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div>${chev}</summary><div class="cb">${chipHtml ? `<div class="chips">${chipHtml}</div>` : '<div class="lb">Add a wish or a debt to start.</div>'}</div></details></div>`;
 };
 
 const goalLeft = (s: State, g: Goal) => (g.target ? (canBuy(s, g) ? `${fmt(g.target)} ${cur(s)} · ready` : `${fmt(g.target - (covered(s).get(g.id) ?? 0))} to go`) : "no price");
@@ -171,14 +176,14 @@ const srcRows = (s: State) =>
 const modeChips = `<input type="hidden" name="mode" value="manual" data-mode-input><div class="chips" style="margin:10px 0 4px"><span class="chip on" data-mode="manual" style="cursor:pointer">Manual</span><span class="chip" data-mode="daily" style="cursor:pointer">Auto daily</span><span class="chip" data-mode="monthly" style="cursor:pointer">Monthly</span></div><div class="lb" style="margin-bottom:2px">Manual: you tap it, once a day. Auto: added for you.</div>`;
 
 /** Always visible under the sources: name and amount on one line, then the button. */
-const addSourceForm = (s: State) =>
-	`<form method="post" action="/income" class="srcf">${back(s)}<div class="ln"><input class="in" name="name" placeholder="New source" autocomplete="off" required><input class="in pr" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off"></div>${modeChips}<button class="btn full">Add source</button></form>`;
+const addSourceForm = (s: State, wide: boolean, id: string) =>
+	`<form method="post" action="/income" id="${id}" class="${wide ? "sc" : "cd"} spf" data-adp hidden>${back(s)}<div class="ln"><input class="in" name="name" placeholder="New source" autocomplete="off" required><input class="in pr" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off"></div>${modeChips}<button class="btn full">Add source</button></form>`;
 
 const todayLine = (s: State) => `<span class="tl">${calc(s).earned ? `+${fmt(calc(s).earned)} today · ${calc(s).earnedLine}` : "nothing earned today yet"}</span>`;
 
-const incomeM = (s: State) => tg(`Sources${todayLine(s)}`, srcRows(s) + addSourceForm(s));
+const incomeM = (s: State) => addSourceForm(s, false, "f-src-p") + listCard(false, `Sources${todayLine(s)}`, "", srcRows(s), "f-src-p", "Add source");
 
-const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s));
+const incD = (s: State, title = "Income sources", id = "f-src-d") => addSourceForm(s, true, id) + listCard(true, title, `+${fmt(calc(s).earned)} today`, srcRows(s), id, "Add source");
 
 const cardsM = (s: State) => {
 	const c = calc(s);
@@ -193,12 +198,12 @@ const buyRows = (s: State) =>
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
-const spendForm = (s: State, wide = false) =>
-	`<form method="post" action="/buy" class="${wide ? "sc" : "cd"} spf" data-sp>${back(s)}${nameChips(s.names)}<div class="ln"><input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in pr" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required></div><button class="btn full">Add a spend</button></form>`;
+const spendForm = (s: State, wide: boolean, id: string) =>
+	`<form method="post" action="/buy" id="${id}" class="${wide ? "sc" : "cd"} spf" data-sp data-adp hidden>${back(s)}${nameChips(s.names)}<div class="ln"><input class="in" name="label" data-name placeholder="Item" autocomplete="off" required><input class="in pr" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required></div><button class="btn full">Add a spend</button></form>`;
 
-const buysCard = (s: State) => `<div class="cd"><div class="tg">Today's buys · ${s.buys.length}</div><div class="cb">${buyRows(s)}</div></div>`;
+const buysCard = (s: State) => spendForm(s, false, "f-buy-m") + listCard(false, `Today's buys · ${s.buys.length}`, "", buyRows(s), "f-buy-m", "Add a spend");
 
-const buysD = (s: State) => sec("Today's buys", `${s.buys.length}`, buyRows(s));
+const buysD = (s: State) => spendForm(s, true, "f-buy-d") + listCard(true, "Today's buys", `${s.buys.length}`, buyRows(s), "f-buy-d", "Add a spend");
 
 const hero = (s: State) => {
 	const c = calc(s);
@@ -317,7 +322,7 @@ const settingsD = (s: State) =>
 
 const dashboardD = (s: State) =>
 	hero(s) +
-	`<div class="g2"><div>${spendForm(s, true)}${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
+	`<div class="g2"><div>${buysD(s)}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
 
 const debtsD = (s: State) => {
 	const c = calc(s);
@@ -350,7 +355,7 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: err(s) + balanceCard(s) + cardsM(s) + tg(`Income sources${todayLine(s)}`, srcRows(s) + addSourceForm(s)) + spendForm(s) + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
+		mobile: err(s) + balanceCard(s) + cardsM(s) + addSourceForm(s, false, "f-src-m") + listCard(false, `Income sources${todayLine(s)}`, "", srcRows(s), "f-src-m", "Add source") + buysCard(s) + goalFold(s, "goal") + wishesM(s, false, "wish") + oweM(s, false, "owe"),
 		desktop: err(s) + dashboardD(s),
 	});
 

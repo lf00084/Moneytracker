@@ -1,11 +1,19 @@
-# moneytracker (UI only)
+# moneytracker
 
-Pages match the `Gaga.html` design, mobile and desktop from one codebase (`min-width: 900px` switches layout).
+Remix v3 on Cloudflare Workers, Turso (libSQL) through `data-table`, email + Google login.
 
-- `/login`, `/signup`: any input works, submitting redirects to `/home`. No session, no cookie.
-- `/home` `/debts` `/notes` `/goals` `/income` `/plan` `/history` `/profile` `/profile/edit` `/settings`
-- `POST /logout` redirects to `/login`.
-- No top bar. Phone: icon-only bottom bar (logo = Home, Notes, Goals, History, Profile, theme). Desktop: left sidebar.
-- Saved in the browser (`localStorage`, keys `mt:*`): theme, quick buys (edit them in Settings), notes, today's buys, profile fields, and whether "I owe" is open.
+## Setup
+1. `bunx jsr add @kuboon/remix-data-table-sqlite-turso` then `bun install`
+2. Copy `.dev.vars.example` to `.dev.vars` and fill it in (same Turso database for local and Cloudflare)
+3. `bun run db:migrate` (safe to run again; adds new columns to an older database)
+4. `bun run cf:typegen`, then `bun run dev`
+5. Production: `bunx wrangler secret put` for each secret in `wrangler.jsonc`, set `APP_ORIGIN`, `bun run deploy`
 
-Layout: `app/ui` (css, shared parts, shell, tiny script), `app/pages/screens.ts` (every screen), `app/actions/controller.tsx` (routes).
+## Layout
+- `database/schema.sql`: every table. Money is integer minor units (MAD x 100).
+- `app/db`: Turso client, typed tables, DB-backed session storage.
+- `app/lib`: `users.ts` (accounts), `data.ts` (page data), `actions.ts` (every write), `auth.ts`, `password.ts`.
+- `app/pages`, `app/ui`: server-rendered screens and the small browser script.
+- `app/actions/controller.tsx`: routes. Every page needs a signed-in user.
+
+Days use the zone in `app/lib/time.ts` (`Africa/Casablanca`).

@@ -1,0 +1,37 @@
+/**
+ * Applies database/schema.sql to the Turso database named in your env.
+ *   npm run db:migrate
+ * Same database for local dev and Cloudflare, so run it once. Safe to run again.
+ */
+import { createClient } from "@libsql/client";
+import { readFileSync } from "node:fs";
+
+const url = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
+if (!url) throw new Error("TURSO_DATABASE_URL is not set (put it in .dev.vars)");
+
+const client = createClient({ url, authToken });
+const schema = readFileSync(new URL("../database/schema.sql", import.meta.url), "utf8");
+
+await client.executeMultiple(schema);
+
+// Columns added after the first version. A database created earlier gets them here.
+const addColumns = [
+	"ALTER TABLE users ADD COLUMN phone TEXT NOT NULL DEFAULT ''",
+	"ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''",
+	"ALTER TABLE users ADD COLUMN run_at TEXT NOT NULL DEFAULT '06:00'",
+	"ALTER TABLE users ADD COLUMN week_start TEXT NOT NULL DEFAULT 'Monday'",
+	"ALTER TABLE quick_buys ADD COLUMN price_minor INTEGER NOT NULL DEFAULT 0",
+];
+for (const statement of addColumns) {
+	try {
+		await client.execute(statement);
+		console.log("added:", statement);
+	} catch (err) {
+		if (!/duplicate column/i.test(String(err))) throw err;
+	}
+}
+
+const { rows } = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
+console.log("tables:", rows.map((r) => r.name).join(", "));
+client.close();

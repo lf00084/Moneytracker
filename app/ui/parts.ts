@@ -118,7 +118,7 @@ export const editFields = () =>
 	fld("Bio", "Saving for the laptop", { name: "bio", keep: "profile.bio" });
 
 export const themeSwitch = () =>
-	`<div class="sg"><button type="button" data-set-theme="dark">${ic("moon")}Dark</button><button type="button" data-set-theme="light">${ic("sun")}White</button></div><div class="lb" style="margin-top:8px">Also the sun/moon button in the bar.</div>`;
+	`<div class="sg"><button type="button" data-set-theme="dark">${ic("moon")}Dark</button><button type="button" data-set-theme="light">${ic("sun")}White</button></div>`;
 
 export type Quick = { n: string; p: string; i: string };
 export const QUICK_DEF: Quick[] = [

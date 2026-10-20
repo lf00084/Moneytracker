@@ -2,7 +2,12 @@
 export const css = String.raw`
 html{--bg:#121212;--s1:#181818;--s2:#202020;--ln:#2c2c2c;--ink:#f5f5f5;--mu:#8c8c8c;--pos:#3ddc84;--neg:#ff5a4d;--sh:#000;--bub:#232323;--mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;color-scheme:dark}
 html[data-theme=light]{color-scheme:light;--bg:#fff;--s1:#fafafa;--s2:#f1f1f1;--ln:#e3e3e3;--ink:#000;--mu:#6e6e6e;--pos:#12a150;--neg:#e0382b;--sh:#cfcfcf;--bub:#efefef}
-*{box-sizing:border-box;margin:0}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+a,button,summary,select,label,.bub{-webkit-touch-callout:none;touch-action:manipulation}
+button,summary,.bt,.sb,.qk,.qk4,.tg,.sh,.chip,.tag{-webkit-user-select:none;user-select:none}
+:focus{outline:none}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+::selection{background:var(--ink);color:var(--bg)}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 Geist,Inter,system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;min-height:100dvh}
 a{color:inherit;text-decoration:none}

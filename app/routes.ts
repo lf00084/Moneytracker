@@ -1,13 +1,15 @@
 import { get, post, route } from "remix/routes";
 
 export const routes = route({
-	// Auth. UI only: signing in just redirects to the dashboard.
+	// Auth
 	root: get("/"),
 	login: get("/login"),
 	signIn: post("/login"),
 	signup: get("/signup"),
 	signUp: post("/signup"),
 	logout: post("/logout"),
+	googleLogin: get("/login/google"),
+	googleCallback: get("/auth/google/callback"),
 
 	// Pages
 	home: get("/home"),
@@ -21,13 +23,23 @@ export const routes = route({
 	profileEdit: get("/profile/edit"),
 	settings: get("/settings"),
 
-	// Forms. Each one is wired to an empty handler that redirects back to its page.
+	// Forms
 	buy: post("/buy"),
 	addDebt: post("/debts"),
+	payDebt: post("/debts/pay"),
 	addNote: post("/notes"),
+	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
+	saveGoal: post("/goals/save"),
 	addSource: post("/income"),
+	addIncome: post("/income/add"),
 	addPlan: post("/plan"),
 	saveProfile: post("/profile/edit"),
 	saveSettings: post("/settings"),
+	quickBuy: post("/settings/quick"),
+	setTheme: post("/settings/theme"),
+
+	// Account
+	exportCsv: get("/export.csv"),
+	deleteAccount: post("/account/delete"),
 });

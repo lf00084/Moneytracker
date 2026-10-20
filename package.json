@@ -12,10 +12,12 @@
 		"format": "oxfmt --check .",
 		"format:fix": "oxfmt .",
 		"lint": "oxlint",
-		"lint:fix": "oxlint --fix"
+		"lint:fix": "oxlint --fix",
+		"db:migrate": "bun --env-file=.dev.vars scripts/migrate.ts"
 	},
 	"dependencies": {
-		"remix": "3.0.0"
+		"remix": "3.0.0",
+		"@libsql/client": "^0.15.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.63.1",

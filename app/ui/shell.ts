@@ -1,5 +1,5 @@
 import { css } from "./css.ts";
-import { GOAT, ic, logo, themeIcons } from "./parts.ts";
+import { ic, logo, themeIcons } from "./parts.ts";
 import { script, themeBoot } from "./script.ts";
 
 export type MobileTab = "home" | "notes" | "goals" | "history" | "profile" | "";
@@ -17,14 +17,16 @@ export type PageOptions = {
 	dock?: string;
 	/** Desktop only: let the content run edge to edge (the sign in split). */
 	full?: boolean;
+	/** The signed-in user's saved theme. When set it wins over the browser's copy. */
+	theme?: string;
 };
 
-/** Phone: icon-only bottom bar, like X. Logo is Home, then Notes, Goals, History, Profile, theme. */
+/** Phone: icon-only bottom bar, like X. Home, Notes, Goals, History, Profile. */
 const bottomBar = (a: MobileTab) =>
 	'<nav class="bt" aria-label="Main">' +
-	`<a class="lg${a === "home" ? " on" : ""}" href="/home" aria-label="Home">${GOAT}</a>` +
 	(
 		[
+			["home", "Home", "home", "/home"],
 			["notes", "Notes", "notes", "/notes"],
 			["goals", "Goals", "goal", "/goals"],
 			["history", "History", "hist", "/history"],
@@ -33,7 +35,7 @@ const bottomBar = (a: MobileTab) =>
 	)
 		.map(([key, label, icon, href]) => `<a href="${href}" class="${a === key ? "on" : ""}" aria-label="${label}">${ic(icon)}</a>`)
 		.join("") +
-	`<button type="button" data-theme-toggle aria-label="Theme">${themeIcons}</button></nav>`;
+	"</nav>";
 
 /** Desktop: left sidebar, like X. */
 const sidebar = (a: DesktopTab) =>
@@ -55,11 +57,11 @@ const sidebar = (a: DesktopTab) =>
 export function page(o: PageOptions): string {
 	let user = o.user !== false;
 	return (
-		`<!DOCTYPE html><html lang="en" data-theme="dark"><head><meta charset="utf-8">` +
+		`<!DOCTYPE html><html lang="en" data-theme="${o.theme === "light" ? "light" : "dark"}"><head><meta charset="utf-8">` +
 		`<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
 		`<meta name="theme-color" content="#121212"><title>${o.title} · moneytracker</title>` +
 		`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
-		`<style>${css}</style><script>${themeBoot}</script></head><body><div class="app">` +
+		`<style>${css}</style><script>${o.theme ? "" : themeBoot}</script></head><body><div class="app">` +
 		(user ? sidebar(o.desktopTab ?? "") : `<button type="button" class="ib tf" data-theme-toggle aria-label="Theme">${themeIcons}</button>`) +
 		`<main><div class="m mm">${o.mobile}</div><div class="d pg${o.full ? " full" : ""}">${o.desktop}</div></main>` +
 		(user ? `<div class="dock m">${o.dock ?? ""}${bottomBar(o.mobileTab ?? "")}</div>` : "") +

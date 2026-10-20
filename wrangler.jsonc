@@ -5,5 +5,11 @@
 	"compatibility_date": "2026-09-02",
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": true,
-	"observability": { "enabled": true }
+	"observability": { "enabled": true },
+
+	// Not secret. Change to your real domain. Locally APP_ORIGIN comes from .dev.vars.
+	"vars": { "APP_ORIGIN": "https://moneytracker.YOUR-SUBDOMAIN.workers.dev" }
+
+	// Secrets, set once with `npx wrangler secret put NAME`:
+	// TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 }

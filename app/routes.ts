@@ -31,6 +31,7 @@ export const routes = route({
 	deleteNote: post("/notes/delete"),
 	addWish: post("/goals"),
 	saveGoal: post("/goals/save"),
+	buyWish: post("/goals/buy"),
 	addSource: post("/income"),
 	addIncome: post("/income/add"),
 	addPlan: post("/plan"),

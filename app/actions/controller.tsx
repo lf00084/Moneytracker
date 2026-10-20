@@ -74,6 +74,17 @@ const mutate =
 		return go(backTo(f, fallback));
 	};
 
+const attempt =
+	(fallback: string, run: (user: User, f: FormData) => Promise<string | void>) =>
+	async (ctx: Ctx) => {
+		const user = userOf(ctx);
+		if (!user) return go("/login");
+		const f = formOf(ctx);
+		const to = backTo(f, fallback);
+		const error = await run(user, f);
+		return error ? fail(ctx, to, error) : go(to);
+	};
+
 function fail(ctx: Ctx, to: string, message: string) {
 	ctx.get(Session).flash("error", message);
 	return go(to);
@@ -144,25 +155,26 @@ export default createController(routes, {
 		},
 
 		// ---------- pages ----------
-		home: view("/home", ["today", "sources", "quick", "debts", "goals", "notes"], homePage),
+		home: view("/home", ["today", "sources", "names", "debts", "goals", "notes"], homePage),
 		debts: view("/debts", ["debts", "goals"], debtsPage),
 		notes: view("/notes", ["notes"], notesPage),
 		goals: view("/goals", ["goals", "debts"], goalsPage),
 		income: view("/income", ["sources", "today"], incomePage),
 		plan: view("/plan", ["goals", "debts", "sources", "today"], goalsPage),
 		history: view("/history", ["history"], historyPage),
-		profile: view("/profile", ["avatar", "balance", "quick"], profilePage),
-		profileEdit: view("/profile/edit", ["avatar", "quick"], profileEditPage),
-		settings: view("/settings", ["quick"], settingsPage),
+		profile: view("/profile", ["avatar", "balance"], profilePage),
+		profileEdit: view("/profile/edit", ["avatar"], profileEditPage),
+		settings: view("/settings", [], settingsPage),
 
 		// ---------- forms ----------
-		buy: mutate("/home", (u, f) => act.addBuy(u.id, f)),
+		buy: attempt("/home", (u, f) => act.addBuy(u.id, f)),
 		addDebt: mutate("/debts", (u, f) => act.addDebt(u.id, f)),
 		payDebt: mutate("/debts", (u, f) => act.payDebt(u.id, f)),
 		addNote: mutate("/notes", (u, f) => act.saveNote(u.id, f)),
 		deleteNote: mutate("/notes", (u, f) => act.deleteNote(u.id, f)),
 		addWish: mutate("/goals", (u, f) => act.addGoal(u.id, f)),
 		saveGoal: mutate("/goals", (u, f) => act.saveToGoal(u.id, f)),
+		buyWish: attempt("/goals", (u, f) => act.buyWish(u.id, f)),
 		addSource: mutate("/income", (u, f) => act.addSource(u.id, f)),
 		addIncome: mutate("/income", (u, f) => act.addIncome(u.id, f)),
 		addPlan: mutate("/plan", async () => {}),

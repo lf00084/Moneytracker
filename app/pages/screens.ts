@@ -2,7 +2,7 @@ import { esc } from "../lib/html.ts";
 import type { DebtView, Goal, Source, State } from "../lib/data.ts";
 import { fmt } from "../lib/money.ts";
 import { dayLabel, dayOf, hhmm, longDay, today } from "../lib/time.ts";
-import { chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
+import { chips, fld, hd, ic, sec, tg, themeSwitch } from "../ui/parts.ts";
 import { page } from "../ui/shell.ts";
 
 function calc(s: State) {
@@ -57,8 +57,13 @@ const debtRow = (s: State, d: DebtView) => {
 
 const debtList = (s: State) => s.debts.map((d) => debtRow(s, d)).join("") || '<div class="lb" style="padding:8px 0">Nobody to pay. All clear.</div>';
 
-const newPerson = (s: State) =>
-	`<div class="sub">New person</div><form method="post" action="/debts" class="ln3">${back(s)}<input class="in" name="name" placeholder="Name" autocomplete="off"><input class="in n3" name="cig" placeholder="cig" inputmode="numeric"><input class="in n3" name="amount" placeholder="${cur(s)}" inputmode="decimal"><button class="btn xs">Add</button></form><div class="lb" style="margin-top:10px">Cleared people are hidden. Type their name again to bring them back.</div>`;
+const nameChips = (names: string[]) =>
+	names.length ? `<div class="chips nm">${names.map((n) => `<span class="chip" data-nm="${esc(n)}">${esc(n)}</span>`).join("")}</div>` : "";
+
+const bigAdd = (label: string) => `<button type="button" class="addb" data-bigadd aria-label="${label}">${ic("plus")}</button>`;
+
+const addDebtPanel = (s: State) =>
+	`<form method="post" action="/debts" class="sf adp" data-adp hidden>${back(s)}${nameChips([...new Set(s.debts.map((d) => d.person))])}<input class="in" name="name" data-name placeholder="Person name" autocomplete="off" required><input class="in" name="amount" data-price placeholder="Debt amount" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
 
 const owePair = (s: State) => {
 	const c = calc(s);
@@ -75,12 +80,12 @@ const spendRow = (n: string, sub: string, a: string) =>
 
 const oweM = (s: State, open: boolean, key: string) => {
 	const c = calc(s);
-	return `<details class="cd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}${open ? newPerson(s) : ""}</div></details>`;
+	return `<div class="cd bgc">${bigAdd("Add debt")}<div class="ct"><details class="dd" data-keep-open="${key}"${open ? " open" : ""}><summary class="osum"><div class="tg0">I owe</div><div class="ow"><b class="sp big2">${fmt(c.oweMoney)} <small>${cur(s)}</small></b><span class="sp sm">${c.oweExtra}</span></div>${chev}</summary><div class="cb">${debtList(s)}</div></details>${addDebtPanel(s)}</div></div>`;
 };
 
 const oweD = (s: State, open: boolean, key: string) => {
 	const c = calc(s);
-	return `<details class="sc" data-keep-open="${key}"${open ? " open" : ""}><summary class="sh"><span>I owe</span><span class="rr"><span class="lb">${fmt(c.oweMoney)} ${cur(s)} ${c.oweExtra}</span>${chev}</span></summary>${debtList(s)}</details>`;
+	return `<div class="sc bgc">${bigAdd("Add debt")}<div class="ct"><details data-keep-open="${key}"${open ? " open" : ""}><summary class="sh"><span>I owe</span><span class="rr"><span class="lb">${fmt(c.oweMoney)} ${cur(s)} ${c.oweExtra}</span>${chev}</span></summary>${debtList(s)}</details>${addDebtPanel(s)}</div></div>`;
 };
 
 const goalM = (s: State) => {
@@ -112,25 +117,31 @@ const saveBtn = (s: State, g: Goal) =>
 const goalLeft = (s: State, g: Goal) =>
 	g.target ? `${fmt(Math.max(0, g.target - g.saved))} left of ${fmt(g.target)}` : `${fmt(g.saved)} ${cur(s)} saved`;
 
-const newWish = (s: State, wide: boolean) =>
-	`<form method="post" action="/goals" class="ln"${wide ? ' style="margin-top:18px"' : ""}>${back(s)}<input class="in" name="name" placeholder="${wide ? "New wish" : "Name"}" autocomplete="off"><input class="in${wide ? "" : " n3"}" name="price"${wide ? ' style="width:120px"' : ""} placeholder="Price" inputmode="decimal"><button class="btn xs">Add</button></form>`;
+const addWishPanel = (s: State) =>
+	`<form method="post" action="/goals" class="sf adp" data-adp hidden>${back(s)}<input class="in" name="name" data-name placeholder="What do you want?" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
+
+const boughtBtn = (s: State, g: Goal) =>
+	`<form method="post" action="/goals/buy" style="display:contents" data-confirm="Mark ${esc(g.title)} as bought? It will be added as a spend.">${back(s)}<input type="hidden" name="id" value="${g.id}"><button class="btn xs o">Bought</button></form>`;
 
 const wishesM = (s: State) =>
-	s.goals
-		.map((g) => tg(esc(g.title), `<div class="l1"><span class="lb">${goalLeft(s, g)}</span>${saveBtn(s, g)}</div><div class="mt"><i style="width:${pctOf(g)}%"></i></div>`))
-		.join("") + tg("New wish", newWish(s, false));
-
-const wishD = (s: State) =>
-	sec(
-		"Wish list",
-		`${s.goals.filter((g) => !g.done).length} active`,
+	`<div class="cd bgc">${bigAdd("Add wish")}<div class="ct"><div class="tg">Wish list</div><div class="cb">${
 		s.goals
 			.map(
 				(g) =>
-					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(g)}%"></i></div></div>${saveBtn(s, g)}</div>`,
+					`<div class="wi"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(g)}%"></i></div><div class="wa">${saveBtn(s, g)}${boughtBtn(s, g)}</div></div>`,
 			)
-			.join("") + newWish(s, true),
-	);
+			.join("") || '<div class="lb" style="padding:8px 0">Nothing on the list.</div>'
+	}</div>${addWishPanel(s)}</div></div>`;
+
+const wishD = (s: State) =>
+	`<div class="sc bgc">${bigAdd("Add wish")}<div class="ct"><div class="sh"><span>Wish list</span><span class="lb">${s.goals.filter((g) => !g.done).length} active</span></div>${
+		s.goals
+			.map(
+				(g) =>
+					`<div class="wr"><div style="flex:1"><div class="l1"><b>${esc(g.title)}</b><span class="lb">${goalLeft(s, g)}</span></div><div class="mt"><i style="width:${pctOf(g)}%"></i></div></div>${saveBtn(s, g)}${boughtBtn(s, g)}</div>`,
+			)
+			.join("") || '<div class="lb" style="padding:14px 0">Nothing on the list.</div>'
+	}${addWishPanel(s)}</div></div>`;
 
 const debtsM = (s: State) => tg("Debts", owePair(s) + debtList(s));
 
@@ -171,26 +182,10 @@ const buyRows = (s: State) =>
 			.join("") || '<div class="lb" style="padding:8px 0">Nothing bought today.</div>'
 	}</div>`;
 
-const quickBtns = (s: State, desk: boolean) => {
-	const items = [...s.quick.map((k) => ({ n: k.name, p: k.price ? fmt(k.price).replace(/,/g, "") : "", i: k.icon, sub: `${fmt(k.price)} each`, o: false })), { n: "Other", p: "", i: "Other", sub: "custom", o: true }];
-	return items
-		.map((k) => {
-			const a = ` data-q="${esc(k.n)}" data-p="${esc(k.p)}"${k.o ? ' data-o="1"' : ""}`;
-			return desk
-				? `<button type="button"${a}>${ic(k.i)}<span><b>${esc(k.n)}</b><small>${k.sub}</small></span></button>`
-				: `<button type="button"${a}>${ic(k.i)}<span>${esc(k.n)}</span><small>${k.sub}</small></button>`;
-		})
-		.join("");
-};
+const spendForm = (s: State) =>
+	`<form method="post" action="/buy" class="sf" data-sp>${back(s)}${nameChips(s.names)}<input class="in" name="label" data-name placeholder="What did you buy?" autocomplete="off" required><input class="in" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required><button class="btn full">Add</button></form>`;
 
-const quickM = (s: State) =>
-	`<div data-qb><form method="post" action="/buy" data-qp>${back(s)}${tg(
-		"Quick buy",
-		'<input type="hidden" name="category" value="Other"><div class="pn2"><div class="pf"><label class="lb">Price each</label><input class="in" name="price" data-price value="" inputmode="decimal" autocomplete="off"></div><div class="pq"><label class="lb">Quantity</label><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div></div><button class="btn full">Add <span data-tot data-pre="· ">0</span></button>',
-	)}</form></div>`;
-
-const quickD = (s: State) =>
-	`<div data-qb><div class="qk4" data-qgrid>${quickBtns(s, true)}</div><form method="post" action="/buy" class="qrow" data-qp>${back(s)}<input type="hidden" name="category" data-cat value="Smoke"><div data-labelwrap hidden style="width:140px"><div class="lb">What</div><input class="in" name="label" data-label autocomplete="off"></div><div><div class="lb">Quantity</div><div class="stp"><button type="button" data-step="-1">−</button><input class="in f" name="qty" data-qty value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div><div style="width:110px"><div class="lb">Price each</div><input class="in" name="price" data-price value="" inputmode="decimal"></div><div class="eq sp" data-tot data-pre="= ">= 0</div><button class="btn" style="margin-left:auto">Add</button></form></div>`;
+const quickM = (s: State) => tg("Add a spend", spendForm(s));
 
 const hero = (s: State) => {
 	const c = calc(s);
@@ -267,18 +262,6 @@ const editFields = (s: State) =>
 const profileForm = (s: State, cancel: string) =>
 	`<form method="post" action="/profile/edit">${err(s)}${editFields(s)}<div style="display:flex;gap:10px;margin-top:18px"><button class="btn" style="flex:1">Save</button><a class="btn o" style="flex:1" href="${cancel}">Cancel</a></div></form>`;
 
-const quickEditor = (s: State) => {
-	const opts = (sel: string) => ICON_KEYS.map((k) => `<option value="${k}"${k === sel ? " selected" : ""}>${k}</option>`).join("");
-	const rows =
-		s.quick
-			.map(
-				(k) =>
-					`<form class="qe" method="post" action="/settings/quick"><input type="hidden" name="op" value="save"><input type="hidden" name="id" value="${k.id}"><select class="in sel" name="icon" aria-label="Icon">${opts(k.icon)}</select><input class="in" name="name" value="${esc(k.name)}" aria-label="Name" autocomplete="off"><input class="in n3" name="price" value="${k.price ? fmt(k.price).replace(/,/g, "") : ""}" inputmode="decimal" aria-label="Price" autocomplete="off"><button class="btn xs">Save</button><button class="ib sm" name="op" value="delete" aria-label="Remove" data-confirm="Remove ${esc(k.name)}?">×</button></form>`,
-			)
-			.join("") || '<div class="lb" style="padding:8px 0">No quick buys yet. Add one below.</div>';
-	return `<div class="lb" style="margin-bottom:6px">These are the buttons under Quick buy.</div>${rows}<form class="qadd" method="post" action="/settings/quick"><input type="hidden" name="op" value="add"><select class="in sel" name="icon" aria-label="Icon">${opts("Tag")}</select><input class="in" name="name" placeholder="Name" autocomplete="off"><input class="in n3" name="price" placeholder="Price" inputmode="decimal" autocomplete="off"><button class="btn xs">Add</button></form>`;
-};
-
 const prefsForm = (s: State) =>
 	`<form method="post" action="/settings">${fld("Currency", esc(s.user.currency), { name: "currency" })}${fld("Auto income runs at", esc(s.user.run_at), { name: "run_at" })}${fld("Week starts", esc(s.user.week_start), { name: "week" })}<button class="btn" style="margin-top:14px">Save</button></form>`;
 
@@ -303,7 +286,6 @@ const editM = (s: State) => `<div style="display:flex;justify-content:center;mar
 
 const settingsM = (s: State) =>
 	err(s) +
-	tg("Quick buys", quickEditor(s)) +
 	tg("Money & income", prefsForm(s)) +
 	tg("Data", dataButtons);
 
@@ -314,7 +296,7 @@ const settingsD = (s: State) =>
 		"Account",
 		"",
 		`<form method="post" action="/logout"><button class="btn o">Log out</button></form>`,
-	)}</div><div>${sec("Appearance", "", themeSwitch())}${sec("Quick buys", "", quickEditor(s))}${sec("Money & income", "", prefsForm(s))}${sec(
+	)}</div><div>${sec("Appearance", "", themeSwitch())}${sec("Money & income", "", prefsForm(s))}${sec(
 		"Data",
 		"",
 		dataButtons,
@@ -322,13 +304,13 @@ const settingsD = (s: State) =>
 
 const dashboardD = (s: State) =>
 	hero(s) +
-	`<div class="g2"><div>${sec("Quick buy", "tap, set quantity and price", quickD(s))}${sec("Today's buys", `${s.buys.length}`, buyRows(s))}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
+	`<div class="g2"><div>${sec("Add a spend", "", spendForm(s))}${sec("Today's buys", `${s.buys.length}`, buyRows(s))}</div><div>${oweD(s, false, "owe")}${incD(s, "Income today")}${noteD(s)}</div></div>`;
 
 const debtsD = (s: State) => {
 	const c = calc(s);
 	return (
 		`<div class="hd"><h1 class="t">Debts</h1><span class="lb">${fmt(c.oweMoney)} ${cur(s)} ${c.oweExtra}</span></div>` +
-		`<div class="g3"><div>${oweD(s, true, "owe-page")}</div><div>${sec("Add", "new person or more to a name", newPerson(s).replace('<div class="sub">New person</div>', ""))}${sec(
+		`<div class="g3"><div>${oweD(s, true, "owe-page")}</div><div>${sec(
 			"How it works",
 			"",
 			'<div class="rw"><span>+ left of a name</span><span class="mu">adds to that person</span></div><div class="rw"><span>Pay</span><span class="mu">counts as a buy today</span></div><div class="rw"><span>Paid to 0</span><span class="mu">hidden, kept in history</span></div><div class="rw"><span>Type old name</span><span class="mu">brings them back</span></div>',
@@ -355,8 +337,8 @@ export const homePage = (s: State) =>
 		mobileTab: "home",
 		desktopTab: "home",
 		mobileBar: homeBar(),
-		mobile: cardsM(s) + tgp("Income sources", "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + quickM(s) + tgp(`Today's buys · ${s.buys.length}`, "buy", buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
-		desktop: dashboardD(s),
+		mobile: err(s) + cardsM(s) + tgp("Income sources", "src", `<div>${srcRows(s)}</div><div class="pnl" data-pnl hidden>${addSourceForm(s, false)}</div>`) + quickM(s) + tgp(`Today's buys · ${s.buys.length}`, "buy", buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
+		desktop: err(s) + dashboardD(s),
 	});
 
 export const debtsPage = (s: State) =>
@@ -365,15 +347,15 @@ export const debtsPage = (s: State) =>
 		title: "Debts",
 		mobileTab: "home",
 		desktopTab: "home",
-		mobile: hd("Debts", s.debts.map((d) => esc(d.person)).slice(0, 2).join(" + ")) + goalM(s) + oweM(s, true, "owe-page"),
-		desktop: debtsD(s),
+		mobile: err(s) + hd("Debts", s.debts.map((d) => esc(d.person)).slice(0, 2).join(" + ")) + goalM(s) + oweM(s, true, "owe-page"),
+		desktop: err(s) + debtsD(s),
 	});
 
 export const notesPage = (s: State) =>
 	page({ ...base(s), title: "Notes", mobileTab: "notes", desktopTab: "notes", mobile: chatHead + noteList(s, "m"), dock: composer(s, "m"), desktop: notesD(s) });
 
 export const goalsPage = (s: State) =>
-	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + goalM(s) + wishesM(s) + debtsM(s), desktop: planD(s) });
+	page({ ...base(s), title: "Goals", mobileTab: "goals", desktopTab: "plan", mobile: hd("Goals", "wishes + debts") + err(s) + goalM(s) + wishesM(s) + debtsM(s), desktop: err(s) + planD(s) });
 
 export const incomePage = (s: State) =>
 	page({ ...base(s), title: "Income", mobileTab: "home", desktopTab: "plan", mobile: hd("Income", `+${fmt(calc(s).earned)} today`) + incomeM(s), desktop: planD(s) });

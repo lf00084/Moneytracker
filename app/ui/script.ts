@@ -85,12 +85,25 @@ d.addEventListener('click',function(e){
       q.classList.toggle('on',!pn.hidden);
       if(!pn.hidden){var fi=pn.querySelector('input[name=name]');if(fi)fi.focus()}
     }else{
-      var qf=d.querySelector('.mm [data-qp]');
+      var qf=d.querySelector('.mm [data-sp]');
       if(qf){
         qf.scrollIntoView({behavior:'smooth',block:'center'});
-        var pi=qf.querySelector('[data-price]');if(pi)pi.focus();
+        var pi=qf.querySelector('[data-name]');if(pi)pi.focus();
       }
     }
+    return
+  }
+  if((q=t.closest('[data-nm]'))){
+    var nf=q.closest('form'),nin=nf.querySelector('[data-name]'),pin=nf.querySelector('[data-price]');
+    nin.value=q.getAttribute('data-nm');
+    if(pin)pin.focus();
+    return
+  }
+  if((q=t.closest('[data-bigadd]'))){
+    var ap=q.closest('.bgc').querySelector('[data-adp]');
+    ap.hidden=!ap.hidden;
+    q.classList.toggle('on',!ap.hidden);
+    if(!ap.hidden){var ai=ap.querySelector('[data-name]');if(ai)ai.focus()}
     return
   }
   if((q=t.closest('[data-q]'))){pick(q,false);return}

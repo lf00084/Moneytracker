@@ -213,4 +213,26 @@ details.sc>summary.sh{cursor:pointer}
 .qe .in{font-size:14px;padding:8px 12px}
 .qadd{display:flex;gap:10px;align-items:center;margin-top:14px}
 .qadd .in{font-size:14px;padding:8px 12px}
+.sf .in{display:block;margin-bottom:10px}
+.sf .btn.full{margin-top:0}
+.chips.nm{flex-wrap:nowrap;overflow-x:auto;margin:0 0 10px;padding-bottom:2px;scrollbar-width:none}
+.chips.nm::-webkit-scrollbar{display:none}
+.chips.nm .chip{flex:none;white-space:nowrap}
+.bgc{display:flex;overflow:hidden;padding:0}
+.bgc>.ct{flex:1;min-width:0}
+.sc.bgc>.ct{padding:18px 22px 20px}
+.addb{flex:none;width:64px;border:0;border-right:1px solid var(--acl);border-radius:0;background:var(--acs);color:var(--ac);display:flex;align-items:center;justify-content:center;padding:0}
+.addb svg.ic{width:30px;height:30px;stroke-width:2;transition:transform .18s ease}
+.addb.on svg.ic{transform:rotate(45deg)}
+.addb:active{transform:none;opacity:.8}
+.bgc .adp{margin:6px 14px 14px}
+.sc.bgc .adp{margin:14px 0 0}
+details.dd>summary{padding:14px 16px;display:block;position:relative}
+details.dd[open]>summary{padding-bottom:4px}
+details.dd>.cb{padding-top:6px}
+details.dd .chev{position:absolute;right:16px;top:14px}
+.sc.bgc summary.sh{cursor:pointer}
+.wi{padding:12px 0;border-top:1px solid var(--ln)}
+.wi:first-child{border-top:0;padding-top:0}
+.wa{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px}
 `;

@@ -1,6 +1,7 @@
 import { sql } from "remix/data-table";
 
 import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
+import { balanceOf } from "./data.ts";
 import { fmt, toMinor } from "./money.ts";
 import { extKey, parseJson, typeOf } from "./sources/index.ts";
 import { today } from "./time.ts";
@@ -16,13 +17,15 @@ return Number.isFinite(n) && n > 0 ? Math.min(n, 100000) : 0;
 
 // ---------- buys ----------
 
-export async function addBuy(uid: string, f: FormData) {
-const category = text(f.get("category"), 60);
-const name = category === "Other" ? text(f.get("label"), 120) || "Other" : category || "Other";
+export async function addBuy(uid: string, f: FormData): Promise<string | void> {
+const name = text(f.get("label"), 120) || text(f.get("category"), 60) || "Other";
 const qty = count(f.get("qty")) || 1;
 const unit = toMinor(f.get("price"));
 if (!unit) return;
-await db.create(purchases, { id: id(), user_id: uid, name, qty, unit_minor: unit, total_minor: unit * qty, day: today(), created_at: Date.now() });
+const total = unit * qty;
+const bal = await balanceOf(uid);
+if (total > bal) return `Not enough balance. You have ${fmt(bal)}`;
+await db.create(purchases, { id: id(), user_id: uid, name, qty, unit_minor: unit, total_minor: total, day: today(), created_at: Date.now() });
 }
 
 // ---------- debts ----------
@@ -133,6 +136,20 @@ const add = toMinor(f.get("amount")) || 10000;
 if (!g) return;
 const saved = g.target_minor > 0 ? Math.min(g.saved_minor + add, g.target_minor) : g.saved_minor + add;
 await db.update(goals, g.id, g.target_minor > 0 && saved >= g.target_minor ? { saved_minor: saved, done_at: Date.now() } : { saved_minor: saved });
+}
+
+export async function buyWish(uid: string, f: FormData): Promise<string | void> {
+const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (!g) return;
+const price = g.target_minor || g.saved_minor;
+if (price > 0) {
+const bal = await balanceOf(uid);
+if (price > bal) return `Not enough balance for ${g.title}. You have ${fmt(bal)}`;
+}
+await db.transaction(async (tx) => {
+if (price > 0) await tx.create(purchases, { id: id(), user_id: uid, name: g.title, qty: 1, unit_minor: price, total_minor: price, day: today(), created_at: Date.now() });
+await tx.exec(sql`delete from goals where id = ${g.id} and user_id = ${uid}`);
+});
 }
 
 // ---------- income ----------

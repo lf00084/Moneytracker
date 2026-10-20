@@ -15,7 +15,7 @@ export type Goal = { id: string; title: string; target: number; saved: number; d
 export type Note = { id: string; body: string; at: number; edited: boolean };
 export type DayRow = { label: string; earned: number; bought: number; items: string[] };
 
-export type Part = "quick" | "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar";
+export type Part = "quick" | "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "names";
 
 export type State = {
 user: User;
@@ -23,6 +23,7 @@ back: string;
 error: string;
 avatar: string | null;
 quick: Quick[];
+names: string[];
 buys: Buy[];
 incomesToday: Income[];
 sources: Source[];
@@ -39,6 +40,14 @@ const row = rowsOf(r)[0];
 return Number(row?.s ?? row?.[0] ?? 0) || 0;
 };
 
+export async function balanceOf(uid: string): Promise<number> {
+const [i, p] = await Promise.all([
+db.exec(sql`select coalesce(sum(amount_minor), 0) as s from incomes where user_id = ${uid}`),
+db.exec(sql`select coalesce(sum(total_minor), 0) as s from purchases where user_id = ${uid}`),
+]);
+return scalar(i) - scalar(p);
+}
+
 /** Loads only the parts a page needs, in parallel. */
 export async function loadState(user: User, parts: Part[], extra: { back: string; error?: string }): Promise<State> {
 const need = new Set(parts);
@@ -50,6 +59,7 @@ back: extra.back,
 error: extra.error ?? "",
 avatar: null,
 quick: [],
+names: [],
 buys: [],
 incomesToday: [],
 sources: [],
@@ -104,6 +114,13 @@ s.incomesToday = rows.map((r) => ({ id: r.id, source: byId.get(r.source_id ?? ""
 }),
 );
 }
+
+if (need.has("names"))
+jobs.push(
+db
+.exec(sql`select min(name) as n, count(*) as c from purchases where user_id = ${uid} and debt_id is null group by lower(name) order by c desc, max(created_at) desc`)
+.then((r) => void (s.names = rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean))),
+);
 
 if (need.has("debts")) jobs.push(loadDebts(uid).then((d) => void (s.debts = d)));
 

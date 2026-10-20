@@ -5,8 +5,6 @@ import { dayLabel, dayOf, hhmm, longDay, today } from "../lib/time.ts";
 import { by, chips, fld, hd, ic, ICON_KEYS, sec, tg, themeSwitch } from "../ui/parts.ts";
 import { page } from "../ui/shell.ts";
 
-// ---------- numbers every page needs ----------
-
 function calc(s: State) {
 	const earned = s.incomesToday.reduce((a, i) => a + i.amount, 0);
 	const bought = s.buys.reduce((a, b) => a + b.total, 0);
@@ -39,8 +37,6 @@ const avatar = (s: State) => {
 	const url = s.avatar ? encodeURI(s.avatar).replace(/'/g, "%27") : "";
 	return `<div class="av"${url ? ` style="background:url('${esc(url)}') center/cover"` : ""}>${url ? "" : esc((s.user.name.trim()[0] ?? "?").toUpperCase())}</div>`;
 };
-
-// ---------- debts ----------
 
 const debtRow = (s: State, d: DebtView) => {
 	const unit = d.kind === "money" ? cur(s) : esc(d.item);
@@ -81,8 +77,6 @@ const oweD = (s: State, open: boolean, key: string) => {
 	return `<details class="sc" data-keep-open="${key}"${open ? " open" : ""}><summary class="sh"><span>I owe</span><span class="rr"><span class="lb">${fmt(c.oweMoney)} ${cur(s)} ${c.oweExtra}</span>${chev}</span></summary>${debtList(s)}</details>`;
 };
 
-// ---------- goals ----------
-
 const goalM = (s: State) => {
 	const c = calc(s);
 	const chipHtml = [
@@ -93,6 +87,15 @@ const goalM = (s: State) => {
 		"Road to goals",
 		`<div class="gl"><span class="big">${c.pct}<small>%</small></span><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div><div class="mt"><i style="width:${c.pct}%"></i></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}`,
 	);
+};
+
+const goalFold = (s: State, key: string) => {
+	const c = calc(s);
+	const chipHtml = [
+		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(g)}%</span>`),
+		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
+	].join("");
+	return `<details class="cd" data-keep-open="${key}"><summary class="osum"><div class="tg0">Road to goals</div><div class="ow"><b class="big2">${c.pct}<small>%</small></b><span class="lb">${fmt(c.toGo)} ${cur(s)} to go</span></div>${chev}</summary><div class="cb"><div class="mt"><i style="width:${c.pct}%"></i></div>${chipHtml ? `<div class="chips">${chipHtml}</div>` : ""}</div></details>`;
 };
 
 const saveBtn = (s: State, g: Goal) =>
@@ -125,8 +128,6 @@ const wishD = (s: State) =>
 
 const debtsM = (s: State) => tg("Debts", owePair(s) + debtList(s));
 
-// ---------- income ----------
-
 const srcLabel = (x: Source) => (x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto · every day") : "manual");
 
 const srcRows = (s: State) =>
@@ -151,14 +152,12 @@ const incomeM = (s: State) => tg("Sources", srcRows(s)) + tg("Add a source", add
 
 const incD = (s: State, title = "Income sources") => sec(title, `+${fmt(calc(s).earned)} today`, srcRows(s) + addSourceForm(s, true));
 
-// ---------- home ----------
+const side = (t: string) => `<span class="lb" style="text-align:right;line-height:1.25;font-size:11px;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${t}</span>`;
 
 const cardsM = (s: State) => {
 	const c = calc(s);
-	return `<div class="two">${tg("Earned today", `<div class="big2 pos">+${fmt(c.earned)} <small>${cur(s)}</small></div><div class="lb" style="margin-top:6px">${c.earnedLine}</div>`)}${tg(
-		"Bought today",
-		`<div class="big2 neg">−${fmt(c.bought)} <small>${cur(s)}</small></div><div class="lb" style="margin-top:6px">${s.buys.length} buys</div>`,
-	)}</div>`;
+	const row = (big: string, right: string) => `<div class="ow" style="margin:0;align-items:center;gap:8px"><div class="big2 ${big.startsWith("+") ? "pos" : "neg"}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>${side(right)}</div>`;
+	return `<div class="two">${tg("Earned today", row(`+${fmt(c.earned)}`, c.earnedLine))}${tg("Bought today", row(`−${fmt(c.bought)}`, `${s.buys.length} buys`))}</div>`;
 };
 
 const buyRows = (s: State) =>
@@ -193,8 +192,6 @@ const hero = (s: State) => {
 	const c = calc(s);
 	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v pos">+${fmt(c.earned)}</div><div class="lb">${c.earnedLine}</div></div><div><div class="lb">Bought today</div><div class="v neg">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v neg">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
 };
-
-// ---------- notes ----------
 
 const noteList = (s: State, key: string) => {
 	if (key === "dash")
@@ -234,8 +231,6 @@ const noteD = (s: State) =>
 		`<form class="cin" data-comp="dash" method="post" action="/notes" style="margin:14px 0">${back(s)}<input type="hidden" name="id" data-eid><textarea rows="1" name="text" placeholder="Message yourself"></textarea><button class="send" aria-label="Send">${ic("send")}</button></form>${noteList(s, "dash")}`,
 	);
 
-// ---------- history ----------
-
 const dayNet = (e: number, b: number) => `${e - b < 0 ? "−" : "+"}${fmt(Math.abs(e - b))}`;
 
 const histM = (s: State) =>
@@ -258,8 +253,6 @@ const histD = (s: State) => {
 			s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="pos">+${fmt(d.earned)}</b><b class="neg">−${fmt(d.bought)}</b><b>${dayNet(d.earned, d.bought)}</b>${chips(d.items.map(esc))}</div>`).join(""),
 	);
 };
-
-// ---------- profile + settings ----------
 
 const editFields = (s: State) =>
 	fld("Name", esc(s.user.name), { f: true, name: "name" }) +
@@ -304,32 +297,8 @@ const profileM = (s: State) =>
 
 const editM = (s: State) => `<div style="display:flex;justify-content:center;margin:14px 0 0">${avatar(s)}</div>` + tg("Profile", profileForm(s, "/profile"));
 
-const bgSection = (s: State) => {
-	const isUrl = s.user.bg_mode === "url" && !!s.user.bg_url;
-	const previewHtml = isUrl
-		? `<div style="margin-top:14px;border-radius:14px;overflow:hidden;border:1px solid var(--ln);height:130px;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url('${esc(
-				s.user.bg_url
-		  )}') center/cover;position:relative;display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-weight:600;font-size:12px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)">Current wallpaper preview</span></div>`
-		: `<div class="lb" style="margin-top:10px;padding:12px;border-radius:12px;background:var(--s2);text-align:center">Currently using iPhone 17 auto gradient (changes with time of day).</div>`;
-
-	return (
-		`<form method="post" action="/settings/background">` +
-		`<div class="lb" style="margin-bottom:8px">Enter an image URL (PNG or JPEG, up to 5 MB). A dark overlay is added so text stays readable.</div>` +
-		`<div class="ln">` +
-		`<input class="in" name="url" type="url" placeholder="https://..." value="${isUrl ? esc(s.user.bg_url) : ""}" autocomplete="off" style="font-size:14px">` +
-		`<button class="btn xs" style="flex:none">Check and apply</button>` +
-		`</div>` +
-		`</form>` +
-		previewHtml +
-		(isUrl
-			? `<form method="post" action="/settings/background/reset" style="margin-top:12px"><button class="btn o xs" style="width:100%">Use auto</button></form>`
-			: "")
-	);
-};
-
 const settingsM = (s: State) =>
 	err(s) +
-	tg("Background", bgSection(s)) +
 	tg("Quick buys", quickEditor(s)) +
 	tg("Money & income", prefsForm(s)) +
 	tg("Data", dataButtons);
@@ -337,7 +306,7 @@ const settingsM = (s: State) =>
 const settingsD = (s: State) =>
 	'<div class="hd"><h1 class="t">Settings</h1><span></span></div>' +
 	err(s) +
-	`<div class="g3"><div>${sec("Profile", "", profileForm(s, "/home"))}${sec("Background", "", bgSection(s))}${sec(
+	`<div class="g3"><div>${sec("Profile", "", profileForm(s, "/home"))}${sec(
 		"Account",
 		"",
 		`<form method="post" action="/logout"><button class="btn o">Log out</button></form>`,
@@ -346,8 +315,6 @@ const settingsD = (s: State) =>
 		"",
 		dataButtons,
 	)}</div></div>`;
-
-// ---------- desktop pages ----------
 
 const dashboardD = (s: State) =>
 	hero(s) +
@@ -371,13 +338,11 @@ const planD = (s: State) => `<div class="hd"><h1 class="t">Plan</h1><span class=
 
 const historyD = (s: State) => `<div class="hd"><h1 class="t">History</h1><span class="lb">last 7 days</span></div>${histD(s)}`;
 
-// ---------- pages ----------
-
 const base = (s: State) => ({
 	theme: s.user.theme,
-	bgMode: s.user.bg_mode as "auto" | "url",
-	bgUrl: s.user.bg_url,
 });
+
+const homeBar = () => `<div style="text-align:right"><div style="font-size:14px;font-weight:600;letter-spacing:-.01em">Today</div><div class="lb">${longDay(today())}</div></div>`;
 
 export const homePage = (s: State) =>
 	page({
@@ -385,7 +350,8 @@ export const homePage = (s: State) =>
 		title: "Home",
 		mobileTab: "home",
 		desktopTab: "home",
-		mobile: hd("Today", longDay(today())) + oweM(s, false, "owe") + cardsM(s) + tg("Income sources", srcRows(s)) + quickM(s) + tg(`Today's buys · ${s.buys.length}`, buyRows(s)),
+		mobileBar: homeBar(),
+		mobile: cardsM(s) + tg("Income sources", srcRows(s)) + quickM(s) + tg(`Today's buys · ${s.buys.length}`, buyRows(s)) + goalFold(s, "goal") + oweM(s, false, "owe"),
 		desktop: dashboardD(s),
 	});
 

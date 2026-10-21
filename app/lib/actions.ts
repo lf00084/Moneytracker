@@ -23,8 +23,6 @@ const qty = count(f.get("qty")) || 1;
 const unit = toMinor(f.get("price"));
 if (!unit) return "Enter a price";
 const total = unit * qty;
-const bal = await balanceOf(uid);
-if (total > bal) return `Not enough balance. You have ${fmt(bal)}`;
 await db.create(purchases, { id: id(), user_id: uid, name, qty, unit_minor: unit, total_minor: total, day: today(), created_at: Date.now() });
 }
 
@@ -120,8 +118,6 @@ return;
 
 const pay = Math.min(toMinor(f.get("amount")), d.amount_minor);
 if (!pay) return "Enter an amount";
-const bal = await balanceOf(uid);
-if (pay > bal) return `Not enough balance to pay ${fmt(pay)}. You have ${fmt(Math.max(0, bal))}`;
 const person = await db.find(people, d.person_id);
 const purchaseId = id();
 const now = Date.now();
@@ -284,8 +280,6 @@ if (row.ext_key) {
 const src = row.source_id ? await db.findOne(incomeSources, { where: { id: row.source_id, user_id: uid } }) : null;
 if (src?.mode === "auto") return "Auto income can't be undone. Pause the source instead";
 }
-const bal = await balanceOf(uid);
-if (bal - row.amount_minor < 0) return `Can't undo: you already spent it. Balance is ${fmt(Math.max(0, bal))}`;
 await db.deleteMany(incomes, { where: { id: row.id, user_id: uid } });
 }
 

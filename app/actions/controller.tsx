@@ -2,8 +2,8 @@ import { completeAuth, finishExternalAuth, startExternalAuth } from "remix/auth"
 import { Auth } from "remix/middleware/auth";
 import { createController } from "remix/router";
 import { Session } from "remix/session";
-
 import * as act from "../lib/actions.ts";
+import { assets } from "../lib/assets.ts";
 import { googleProvider } from "../lib/auth.ts";
 import { env } from "../env.ts";
 import { loadState, type Part, type State } from "../lib/data.ts";
@@ -29,32 +29,23 @@ import {
 	settingsPage,
 } from "../pages/screens.ts";
 import { routes } from "../routes.ts";
-
 const html = (body: string) => new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 const go = (href: string) => new Response(null, { status: 303, headers: { Location: href } });
-
 type Ctx = Parameters<typeof completeAuth>[0] & { get: (key: any) => any };
-
 const userOf = (ctx: Ctx): User | null => {
 	const a = ctx.get(Auth);
 	return a?.ok ? (a.identity as User) : null;
 };
-
 const formOf = (ctx: Ctx) => (ctx.get(FormData) as FormData | null) ?? new FormData();
-
-/** Only local paths are allowed, so a form cannot send you to another site. */
 const backTo = (f: FormData, fallback: string) => {
 	const b = String(f.get("back") ?? "");
 	return /^\/(?![/\\])/.test(b) ? b : fallback;
 };
-
 function takeError(ctx: Ctx) {
 	const session = ctx.get(Session);
 	const e = session.get("error");
 	return typeof e === "string" ? e : "";
 }
-
-/** A page that reads from the database. Anyone not signed in goes to /login. */
 const view =
 	(path: string, parts: Part[], render: (s: State) => string) =>
 	async (ctx: Ctx) => {
@@ -62,8 +53,6 @@ const view =
 		if (!user) return go("/login");
 		return html(render(await loadState(user, parts, { back: path, error: takeError(ctx) })));
 	};
-
-/** A form that changes data for the signed-in user, then returns to `fallback` (or the form's `back`). */
 const mutate =
 	(fallback: string, run: (user: User, f: FormData, ctx: Ctx) => Promise<unknown>) =>
 	async (ctx: Ctx) => {
@@ -73,7 +62,6 @@ const mutate =
 		await run(user, f, ctx);
 		return go(backTo(f, fallback));
 	};
-
 const attempt =
 	(fallback: string, run: (user: User, f: FormData) => Promise<string | void>) =>
 	async (ctx: Ctx) => {
@@ -84,24 +72,29 @@ const attempt =
 		const error = await run(user, f);
 		return error ? fail(ctx, to, error) : go(to);
 	};
-
 function fail(ctx: Ctx, to: string, message: string) {
 	ctx.get(Session).flash("error", message);
 	return go(to);
 }
-
 function signInAs(ctx: Ctx, userId: string) {
-	const session = completeAuth(ctx); // rotates the session id first, so a stolen old id is useless
+	const session = completeAuth(ctx);
 	session.set("auth", { userId });
 }
-
 export default createController(routes, {
 	actions: {
 		root(ctx: Ctx) {
 			return go(userOf(ctx) ? "/home" : "/login");
 		},
-
-		// ---------- email + password ----------
+		manifest: () => assets.manifest(),
+		favicon: () => assets.favicon(),
+		faviconIco: () => assets.icon192(),
+		icon192: () => assets.icon192(),
+		icon512: () => assets.icon512(),
+		iconMaskable: () => assets.iconMaskable(),
+		appleIcon: () => assets.appleIcon(),
+		sw: () => assets.sw(),
+		robots: () => assets.robots(),
+		sitemap: () => assets.sitemap(),
 		login(ctx: Ctx) {
 			if (userOf(ctx)) return go("/home");
 			return html(loginPage(takeError(ctx)));
@@ -131,11 +124,9 @@ export default createController(routes, {
 		logout(ctx: Ctx) {
 			const session = ctx.get(Session);
 			session.unset("auth");
-			session.regenerateId(true); // true deletes the old row from the sessions table
+			session.regenerateId(true);
 			return go("/login");
 		},
-
-		// ---------- google ----------
 		googleLogin(ctx: Ctx) {
 			if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
 				return fail(ctx, "/login", "Google login is not configured. Please sign in with email and password.");
@@ -153,8 +144,6 @@ export default createController(routes, {
 				return fail(ctx, "/login", "Google sign-in failed. Try again.");
 			}
 		},
-
-		// ---------- pages ----------
 		home: view("/home", ["today", "sources", "names", "debts", "goals", "notes", "balance"], homePage),
 		debts: view("/debts", ["debts", "goals", "balance"], debtsPage),
 		notes: view("/notes", ["notes"], notesPage),
@@ -165,9 +154,9 @@ export default createController(routes, {
 		profile: view("/profile", ["avatar", "balance"], profilePage),
 		profileEdit: view("/profile/edit", ["avatar"], profileEditPage),
 		settings: view("/settings", [], settingsPage),
-
-		// ---------- forms ----------
 		buy: attempt("/home", (u, f) => act.addBuy(u.id, f)),
+		setBalance: attempt("/profile", (u, f) => act.setBalance(u.id, f)),
+		historyIncome: attempt("/history", (u, f) => act.addDayIncome(u.id, f)),
 		deleteBuy: attempt("/home", (u, f) => act.deleteBuy(u.id, f)),
 		addDebt: attempt("/debts", (u, f) => act.addDebt(u.id, f)),
 		payDebt: attempt("/debts", (u, f) => act.payDebt(u.id, f)),
@@ -184,7 +173,6 @@ export default createController(routes, {
 		deleteSource: attempt("/income", (u, f) => act.deleteSource(u.id, f)),
 		addPlan: mutate("/plan", async () => {}),
 		quickBuy: mutate("/settings", (u, f) => act.quickOp(u.id, f)),
-
 		async saveProfile(ctx: Ctx) {
 			const user = userOf(ctx);
 			if (!user) return go("/login");
@@ -224,8 +212,6 @@ export default createController(routes, {
 			await act.resetUserBackground(user.id);
 			return go("/settings");
 		},
-
-		// ---------- account ----------
 		async exportCsv(ctx: Ctx) {
 			const user = userOf(ctx);
 			if (!user) return go("/login");

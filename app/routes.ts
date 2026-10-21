@@ -1,8 +1,16 @@
 import { get, post, route } from "remix/routes";
-
 export const routes = route({
-	// Auth
 	root: get("/"),
+	manifest: get("/manifest.webmanifest"),
+	favicon: get("/favicon.svg"),
+	faviconIco: get("/favicon.ico"),
+	icon192: get("/icon-192.png"),
+	icon512: get("/icon-512.png"),
+	iconMaskable: get("/icon-maskable.png"),
+	appleIcon: get("/apple-touch-icon.png"),
+	sw: get("/sw.js"),
+	robots: get("/robots.txt"),
+	sitemap: get("/sitemap.xml"),
 	login: get("/login"),
 	signIn: post("/login"),
 	signup: get("/signup"),
@@ -10,8 +18,6 @@ export const routes = route({
 	logout: post("/logout"),
 	googleLogin: get("/login/google"),
 	googleCallback: get("/auth/google/callback"),
-
-	// Pages
 	home: get("/home"),
 	debts: get("/debts"),
 	notes: get("/notes"),
@@ -21,9 +27,9 @@ export const routes = route({
 	history: get("/history"),
 	profile: get("/profile"),
 	profileEdit: get("/profile/edit"),
+	setBalance: post("/profile/balance"),
+	historyIncome: post("/history/income"),
 	settings: get("/settings"),
-
-	// Forms
 	buy: post("/buy"),
 	deleteBuy: post("/buy/delete"),
 	addDebt: post("/debts"),
@@ -46,8 +52,6 @@ export const routes = route({
 	setTheme: post("/settings/theme"),
 	setBackground: post("/settings/background"),
 	resetBackground: post("/settings/background/reset"),
-
-	// Account
 	exportCsv: get("/export.csv"),
 	deleteAccount: post("/account/delete"),
 });

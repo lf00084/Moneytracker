@@ -1,8 +1,6 @@
 import { fld, GOOGLE, logo } from "../ui/parts.ts";
 import { page } from "../ui/shell.ts";
-
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
-
 const form = (up: boolean, error: string) =>
 	`<div class="auth-center-wrap">` +
 	`<div class="auth-glass-box">` +
@@ -23,10 +21,7 @@ const form = (up: boolean, error: string) =>
 	`</form>` +
 	`</div>` +
 	`</div>`;
-
 export const loginPage = (error = "") =>
-	page({ title: "Sign in", user: false, full: true, mobile: form(false, error), desktop: form(false, error) });
-
+	page({ title: "Sign in", path: "/login", desc: "Sign in to Moneytracker, your quiet personal money tracker.", user: false, full: true, mobile: form(false, error), desktop: form(false, error) });
 export const signupPage = (error = "") =>
-	page({ title: "Create account", user: false, full: true, mobile: form(true, error), desktop: form(true, error) });
-
+	page({ title: "Create account", path: "/signup", desc: "Create a free Moneytracker account and start tracking your spending, debts and goals.", user: false, full: true, mobile: form(true, error), desktop: form(true, error) });

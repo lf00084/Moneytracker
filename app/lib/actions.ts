@@ -5,7 +5,7 @@ import { fmt, toMinor, toSigned } from "./money.ts";
 import { extKey, parseJson, typeOf } from "./sources/index.ts";
 import { today } from "./time.ts";
 import { updateBg } from "./users.ts";
-import { ICON_KEYS } from "../ui/parts.ts";
+import { ICON_KEYS } from "../ui/icons.tsx";
 const id = () => crypto.randomUUID();
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 const count = (v: unknown) => {

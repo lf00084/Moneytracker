@@ -39,10 +39,10 @@ const debtRow = (s: State, d: DebtView) => {
 	const hidden = `<input type="hidden" name="debt_id" value="${d.id}">${back(s)}`;
 	const all = d.kind === "money" ? plain(d.owed) : String(d.owed);
 	const panel = (flag: string, action: string, title: string, btn: string) =>
-		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}${flag === "data-payp" && d.kind === "money" ? ` · you have ${fmt(Math.max(0, s.balance))} ${cur(s)}` : ""}</label><div class="ln"><div class="iw"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off">${flag === "data-payp" ? `<button type="button" class="all" data-all="${all}" aria-label="Fill the full amount">All</button>` : ""}<span class="mu">${unit}</span></div><button class="btn xs">${btn}</button><button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn="Remove ${esc(d.person)} from the list without marking it paid?" aria-label="Remove without paying">${ic("trash")}</button></div></form>`;
+		`<form method="post" action="${action}" class="ad" ${flag} hidden>${hidden}<label>${title} ${esc(d.person)}</label><div class="ln"><div class="iw"><input class="in f" name="amount" inputmode="decimal" placeholder="0" autocomplete="off">${flag === "data-payp" ? `<button type="button" class="all" data-all="${all}" aria-label="Fill the full amount">All</button>` : ""}<span class="mu">${unit}</span></div><button class="btn xs">${btn}</button><button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn="Remove ${esc(d.person)} from the list without marking it paid?" aria-label="Remove without paying">${ic("trash")}</button></div></form>`;
 	return (
 		`<div class="dbw"><div class="db"><button type="button" class="ib sm hi" data-tg aria-label="Add debt to ${esc(d.person)}">${ic("plus")}</button>` +
-		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span class="sp">${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
+		`<div class="dn"><div class="l1"><b>${esc(d.person)}</b><span>${label}</span></div><div class="mt s n"><i style="width:${pct}%"></i></div></div>` +
 		`<button type="button" class="btn xs o" data-pay>Pay</button></div>` +
 		panel("data-addp", "/debts", "Add to", "Add") +
 		panel("data-payp", "/debts/pay", "Pay", "Pay") +
@@ -80,7 +80,7 @@ const oweD = (s: State, open: boolean, key: string) => {
 const roadChips = (s: State) =>
 	[
 		...s.goals.map((g) => `<span class="chip">${esc(g.title)} ${pctOf(s, g)}%</span>`),
-		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip n">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
+		...s.debts.filter((d) => d.kind === "money").map((d) => `<span class="chip">${esc(d.person)} ${d.paid + d.owed ? Math.round((d.paid / (d.paid + d.owed)) * 100) : 0}%</span>`),
 	].join("");
 const goalM = (s: State) => {
 	const c = calc(s);
@@ -184,13 +184,13 @@ const homeInc = (s: State) => {
 const c = calc(s);
 const rows = s.sources.filter((x) => x.active).map((x) => homeRow(s, x)).join("") + s.incomesToday.filter((i) => !i.sourceId).map((i) => incRow(s, i)).join("");
 const form = `<form method="post" action="/history/income" class="sf xfm" data-adp hidden>${back(s)}<div class="ln"><input class="in" name="amount" placeholder="Other income today" inputmode="decimal" autocomplete="off" required><button class="btn">Add</button></div></form>`;
-return xcard("inc", true, "Income today", `<b class="big2 ea">+${fmt(c.earned)} <small>${cur(s)}</small></b><span class="lb">${c.earnedLine}</span>`, rows || '<div class="lb" style="padding:8px 0">No sources yet.</div>', "", form, "Add other income");
+return xcard("inc", true, "Income today", `<b class="big2">+${fmt(c.earned)} <small>${cur(s)}</small></b><span class="lb">${c.earnedLine}</span>`, rows || '<div class="lb" style="padding:8px 0">No sources yet.</div>', "", form, "Add other income");
 };
 const incD = (s: State, title = "Income sources", id = "f-src-d") => addSourceForm(s, true, id) + listCard(true, title, `+${fmt(calc(s).earned)} today`, srcRows(s), id, "Add source");
 const cardsM = (s: State) => {
 	const c = calc(s);
 	const row = (cls: string, big: string) => `<div class="big2 ${cls}" style="white-space:nowrap">${big} <small>${cur(s)}</small></div>`;
-	return `<div class="two">${tg("Earned today", row("ea", `+${fmt(c.earned)}`))}${tg("Bought today", row("sp", `−${fmt(c.bought)}`))}</div>`;
+	return `<div class="two">${tg("Earned today", row("", `+${fmt(c.earned)}`))}${tg("Bought today", row("", `−${fmt(c.bought)}`))}</div>`;
 };
 const buyRows = (s: State) =>
 	`<div>${
@@ -205,7 +205,7 @@ const buysX = (s: State) => xcard("buys", true, "Today's buys", "", buyRows(s), 
 const buysD = (s: State) => spendForm(s, true, "f-buy-d") + listCard(true, "Today's buys", `${s.buys.length}`, buyRows(s), "f-buy-d", "Add a spend");
 const hero = (s: State) => {
 	const c = calc(s);
-	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v ea">+${fmt(c.earned)}</div>${c.earnedLine ? `<div class="lb">${c.earnedLine}</div>` : ""}</div><div><div class="lb">Bought today</div><div class="v sp">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v sp">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
+	return `<div class="hero"><div><div class="lb">Earned today</div><div class="v">+${fmt(c.earned)}</div>${c.earnedLine ? `<div class="lb">${c.earnedLine}</div>` : ""}</div><div><div class="lb">Bought today</div><div class="v">−${fmt(c.bought)}</div><div class="lb">${s.buys.length} buys</div></div><div><div class="lb">Road to goals</div><div class="v">${c.pct}%</div><div class="mt"><i style="width:${c.pct}%"></i></div></div><div><div class="lb">I owe</div><div class="v sp">${fmt(c.oweMoney)}</div><div class="lb">${cur(s)} ${c.oweExtra}</div></div></div>`;
 };
 const noteList = (s: State, key: string) => {
 	if (key === "dash")

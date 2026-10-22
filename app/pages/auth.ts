@@ -6,7 +6,7 @@ const form = (up: boolean, error: string) =>
 	`<div class="auth-glass-box">` +
 	`<div class="auth-logo-center">${logo("/login")}</div>` +
 	`<h1 class="auth-title">${up ? "Create account" : "Sign in"}</h1>` +
-	`<div class="auth-sub">${up ? "Quiet money tracking. Start in seconds." : "Quiet money. Welcome back."}</div>` +
+	`<div class="auth-sub">${up ? "Track what you spend and earn, day by day. Start in seconds." : "Track what you spend and earn, day by day."}</div>` +
 	`<form class="au" method="post" action="${up ? "/signup" : "/login"}">` +
 	`<a class="gbtn" href="/login/google">${GOOGLE}<span>${up ? "Sign up with Google" : "Continue with Google"}</span></a>` +
 	`<div class="or">or</div>` +

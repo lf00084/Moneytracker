@@ -71,6 +71,11 @@ d.addEventListener('click',function(e){
     v.innerHTML=hide?(v.getAttribute('data-bal')+' <small>'+v.getAttribute('data-cur')+'</small>'):'••••••';
     return
   }
+  if((q=t.closest('[data-all]'))){
+    var af=q.closest('.iw').querySelector('input');
+    af.value=q.getAttribute('data-all');af.focus();
+    return
+  }
   if((q=t.closest('[data-tg],[data-pay]'))){
     var w=q.closest('.dbw'),which=q.hasAttribute('data-tg')?'[data-addp]':'[data-payp]',other=q.hasAttribute('data-tg')?'[data-payp]':'[data-addp]';
     var p=w.querySelector(which),o=w.querySelector(other);

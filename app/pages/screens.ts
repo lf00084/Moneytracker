@@ -23,6 +23,7 @@ function calc(s: State) {
 	return { earned, bought, earnedLine, oweMoney, oweExtra, pct, toGo: Math.max(0, total - done) };
 }
 const cur = (s: State) => esc(s.user.currency);
+const LANG = "English";
 const back = (s: State) => `<input type="hidden" name="back" value="${esc(s.back)}">`;
 const err = (s: State) => (s.error ? `<div class="neg" role="alert" style="margin:10px 0;font-size:13px">${esc(s.error)}</div>` : "");
 const covered = (s: State) => new Map(s.goals.map((g) => [g.id, Math.min(Math.max(0, s.balance), g.target)] as const));
@@ -278,27 +279,21 @@ s.days.map((d) => `<div class="tr"><b>${esc(d.label)}</b><b class="ea">+${fmt(d.
 };
 const editFields = (s: State) =>
 	fld("Name", esc(s.user.name), { f: true, name: "name" }) +
-	fld("Email", esc(s.user.email), { t: "email", name: "email" }) +
-	fld("Phone", esc(s.user.phone), { t: "tel", name: "phone", p: "+212 6 00 00 00 00" }) +
-	fld("Bio", esc(s.user.bio), { name: "bio", p: "A line about you" });
+	fld("Email", esc(s.user.email), { t: "email", name: "email" });
 const profileForm = (s: State, cancel: string) =>
 	`<form method="post" action="/profile/edit">${err(s)}${editFields(s)}<div style="display:flex;gap:10px;margin-top:18px"><button class="btn" style="flex:1">Save</button><a class="btn o" style="flex:1" href="${cancel}">Cancel</a></div></form>`;
 const prefsForm = (s: State) =>
 	`<form method="post" action="/settings">${fld("Currency", esc(s.user.currency), { name: "currency" })}${fld("Auto income runs at", esc(s.user.run_at), { name: "run_at" })}${fld("Week starts", esc(s.user.week_start), { name: "week" })}<button class="btn" style="margin-top:14px">Save</button></form>`;
 const dataButtons = `<div style="display:flex;gap:10px;margin-top:6px"><a class="btn o" style="flex:1" href="/export.csv">Export CSV</a><form method="post" action="/account/delete" style="flex:1;display:flex" data-confirm="Delete your account and all your data? This cannot be undone."><button class="btn dng" style="flex:1">Delete account</button></form></div>`;
-const balanceCard = (s: State) =>
-	tg(
-		"Total balance",
-		`<div class="ow" style="margin:0"><b class="big2" data-bal="${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}" data-cur="${cur(s)}">••••••</b><button type="button" class="ib sm" data-eye aria-label="Show balance">${ic("eye")}</button></div>`,
-	);
+const balanceCard = (s: State, edit = false) =>
+	`<div class="cd"><div class="tg">Total balance</div><div class="cb"><div class="ow" style="margin:0"><span style="display:flex;align-items:center;gap:10px"><b class="big2" data-bal="${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}" data-cur="${cur(s)}">••••••</b><button type="button" class="ib sm" data-eye aria-label="Show balance">${ic("eye")}</button></span>${edit ? '<button type="button" class="lnk" data-edit-bal>Edit balance</button>' : ""}</div>${edit ? `<div data-balf hidden>${balanceForm(s)}</div>` : ""}</div></div>`;
 const plainBal = (s: State) => (s.balance / 100).toFixed(2).replace(/\.00$/, "");
 const balanceForm = (s: State) =>
 	`<form method="post" action="/profile/balance">${back(s)}<div class="fl"><label>Balance (${cur(s)})</label><input class="in f" name="balance" inputmode="decimal" value="${plainBal(s)}" autocomplete="off" required></div><button class="btn full" style="margin-top:14px">Update balance</button></form>`;
 const profileM = (s: State) =>
 	err(s) +
-	`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:20px 0 6px">${avatar(s)}<div style="text-align:center"><div style="font-size:22px;font-weight:700;letter-spacing:-.04em">${esc(s.user.name)}</div><div class="lb">${esc(s.user.email)}</div></div></div>` +
-	balanceCard(s) +
-	tg("Update balance", balanceForm(s)) +
+	`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:20px 0 6px">${avatar(s)}<div style="text-align:center"><div style="font-size:22px;font-weight:700;letter-spacing:-.04em">${esc(s.user.name)}</div><div class="lb">${esc(s.user.email)}</div><div class="chips" style="justify-content:center;margin-top:10px"><span class="chip" style="cursor:default">${cur(s)}</span><span class="chip" style="cursor:default">${LANG}</span></div></div></div>` +
+	balanceCard(s, true) +
 	tg("Appearance", themeSwitch()) +
 	tg(
 		"Account",
@@ -310,9 +305,9 @@ const settingsM = (s: State) =>
 	tg("Money & income", prefsForm(s)) +
 	tg("Data", dataButtons) + '<div class="lb" style="text-align:center;margin:18px 0">Moneytracker v1.0 · stable</div>';
 const settingsD = (s: State) =>
-	'<div class="hd"><h1 class="t">Settings</h1><span></span></div>' +
+	`<div class="hd"><h1 class="t">Settings</h1><span class="lb">${cur(s)} · ${LANG}</span></div>` +
 	err(s) +
-	`<div class="g3"><div>${sec("Balance", "", balanceForm(s))}${sec("Profile", "", profileForm(s, "/home"))}${sec(
+	`<div class="g3"><div>${balanceCard(s, true)}${sec("Profile", "", profileForm(s, "/home"))}${sec(
 		"Account",
 		"",
 		`<form method="post" action="/logout"><button class="btn o">Log out</button></form>`,

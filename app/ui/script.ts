@@ -71,6 +71,7 @@ d.addEventListener('click',function(e){
     v.innerHTML=hide?(v.getAttribute('data-bal')+' <small>'+v.getAttribute('data-cur')+'</small>'):'••••••';
     return
   }
+  if((q=t.closest('[data-edit-bal]'))){var bf=q.closest('.cd,.sc').querySelector('[data-balf]');bf.hidden=!bf.hidden;q.textContent=bf.hidden?'Edit balance':'Cancel';if(!bf.hidden){var bi=bf.querySelector('input:not([type=hidden])');if(bi){bi.focus();bi.select()}}return}
   if((q=t.closest('[data-all]'))){
     var af=q.closest('.iw').querySelector('input');
     af.value=q.getAttribute('data-all');af.focus();

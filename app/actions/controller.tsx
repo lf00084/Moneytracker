@@ -187,8 +187,6 @@ export default createController(routes, {
 			const error = await updateProfile(user.id, {
 				name: String(f.get("name") ?? ""),
 				email: String(f.get("email") ?? ""),
-				phone: String(f.get("phone") ?? ""),
-				bio: String(f.get("bio") ?? ""),
 			});
 			return error ? fail(ctx, "/profile/edit", error) : go("/profile");
 		},

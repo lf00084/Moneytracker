@@ -157,7 +157,7 @@ export async function getActiveAvatar(userId: string): Promise<string | null> {
 	return img?.url ?? null;
 }
 
-export async function updateProfile(userId: string, input: { name: string; email: string; phone: string; bio: string }) {
+export async function updateProfile(userId: string, input: { name: string; email: string }) {
 	const email = normEmail(input.email);
 	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Enter a valid email.";
 	const clash = await db.findOne(users, { where: { email } });
@@ -165,8 +165,6 @@ export async function updateProfile(userId: string, input: { name: string; email
 	await db.update(users, userId, {
 		name: input.name.trim().slice(0, 80) || email.split("@")[0]!,
 		email,
-		phone: input.phone.trim().slice(0, 64),
-		bio: input.bio.trim().slice(0, 500),
 		updated_at: Date.now(),
 	});
 	return null;

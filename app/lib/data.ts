@@ -1,5 +1,5 @@
 import { sql } from "remix/data-table";
-import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
+import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
 import { settleAuto } from "./auto.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
@@ -9,7 +9,8 @@ export type Buy = { id: string; name: string; qty: number; unit: number; total: 
 export type Income = { id: string; sourceId: string; source: string; amount: number; day: string };
 export type Source = { id: string; name: string; mode: string; every: string; amount: number; created: number; type: string; config: Json; currency: string; active: boolean; sort: number };
 export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number };
-export type Goal = { id: string; title: string; target: number; saved: number; done: boolean };
+export type GoalItem = { id: string; name: string; price: number; done: boolean };
+export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] };
 export type Note = { id: string; body: string; at: number; edited: boolean };
 export type DayRow = { day: string; label: string; earned: number; bought: number; buys: Buy[]; incomes: Income[] };
 export type Part = "quick" | "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "names";
@@ -113,8 +114,15 @@ db
 if (need.has("debts")) jobs.push(loadDebts(uid).then((d) => void (s.debts = d)));
 if (need.has("goals"))
 jobs.push(
-db.findMany(goals, { where: { user_id: uid }, orderBy: ["created_at", "asc"] }).then((rows) => {
-s.goals = rows.map((g) => ({ id: g.id, title: g.title, target: g.target_minor, saved: g.saved_minor, done: !!g.done_at }));
+Promise.all([
+db.findMany(goals, { where: { user_id: uid }, orderBy: ["created_at", "asc"] }),
+db.findMany(goalItems, { where: { user_id: uid }, orderBy: ["created_at", "asc"] }),
+]).then(([rows, its]) => {
+s.goals = rows.map((g) => {
+const items: GoalItem[] = its.filter((i) => i.goal_id === g.id).map((i) => ({ id: i.id, name: i.name, price: i.price_minor, done: !!i.done_at }));
+const left = items.filter((i) => !i.done);
+return { id: g.id, title: g.title, target: left.reduce((a, i) => a + i.price, 0), saved: g.saved_minor, done: items.length > 0 && left.length === 0, items };
+});
 }),
 );
 if (need.has("notes"))

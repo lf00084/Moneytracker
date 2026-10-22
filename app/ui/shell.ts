@@ -4,8 +4,8 @@ import { script, themeBoot } from "./script.ts";
 import { liveClockNow } from "../lib/time.ts";
 import { SITE } from "../lib/assets.ts";
 import { env } from "../env.ts";
-export type MobileTab = "home" | "notes" | "goals" | "history" | "profile" | "";
-export type DesktopTab = "home" | "notes" | "plan" | "history" | "settings" | "";
+export type MobileTab = "home" | "notes" | "goals" | "income" | "pad" | "history" | "profile" | "";
+export type DesktopTab = "home" | "notes" | "plan" | "income" | "pad" | "history" | "settings" | "";
 const splitCss = ".top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .live-clock .clock-date,.top-status-bar.tsplit .live-clock .clock-subdate{display:none}";
 export type PageOptions = {
 title: string;
@@ -28,6 +28,8 @@ const bottomBar = (a: MobileTab) =>
 [
 ["home", "Home", "home", "/home"],
 ["notes", "Notes", "notes", "/notes"],
+["income", "Income", "gear", "/income"],
+["pad", "Pad", "pad", "/pad"],
 ["profile", "Profile", "user", "/profile"],
 ] as const
 )
@@ -41,6 +43,8 @@ const sidebar = (a: DesktopTab) =>
 ["home", "Home", "home", "/home"],
 ["notes", "Notes", "notes", "/notes"],
 ["plan", "Plan", "goal", "/plan"],
+["income", "Income", "coin", "/income"],
+["pad", "Pad", "pad", "/pad"],
 ["history", "History", "hist", "/history"],
 ["settings", "Settings", "gear", "/settings"],
 ] as const
@@ -68,7 +72,7 @@ return (
 `<meta property="og:type" content="website"><meta property="og:site_name" content="${SITE.name}"><meta property="og:title" content="${attr(o.title)} · ${SITE.name}"><meta property="og:description" content="${attr(desc)}"><meta property="og:image" content="${origin}/icon-512.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${attr(o.title)} · ${SITE.name}"><meta name="twitter:description" content="${attr(desc)}">` +
 (o.path && !user ? `<link rel="canonical" href="${origin}${o.path}"><meta property="og:url" content="${origin}${o.path}">` : "") +
 (user ? "" : `<script type="application/ld+json">${ld}</script>`) +
-`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">` +
+`<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@500;600&display=swap">` +
 `<style>${css}${splitCss}</style><script>${o.theme ? "" : themeBoot}</script></head>` +
 `<body>` +
 `<div class="app">` +

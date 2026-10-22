@@ -42,6 +42,8 @@ if (!/duplicate column/i.test(String(err))) throw err;
 }
 
 await client.execute("CREATE UNIQUE INDEX IF NOT EXISTS incomes_ext_key_idx ON incomes(ext_key) WHERE ext_key <> ''");
+await client.execute("INSERT INTO goal_items (id, user_id, goal_id, name, price_minor, done_at, created_at) SELECT lower(hex(randomblob(16))), user_id, id, title, target_minor, NULL, created_at FROM goals g WHERE target_minor > 0 AND NOT EXISTS (SELECT 1 FROM goal_items i WHERE i.goal_id = g.id)");
+await client.execute("UPDATE goals SET target_minor = 0 WHERE target_minor > 0 AND EXISTS (SELECT 1 FROM goal_items i WHERE i.goal_id = goals.id)");
 
 const { rows } = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
 console.log("tables:", rows.map((r) => r.name).join(", "));

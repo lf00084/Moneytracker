@@ -162,6 +162,18 @@ CREATE TABLE IF NOT EXISTS goals (
 );
 CREATE INDEX IF NOT EXISTS goals_user_idx ON goals(user_id);
 
+CREATE TABLE IF NOT EXISTS goal_items (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_id       TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  price_minor   INTEGER NOT NULL DEFAULT 0,
+  done_at       INTEGER,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS goal_items_goal_idx ON goal_items(goal_id);
+CREATE INDEX IF NOT EXISTS goal_items_user_idx ON goal_items(user_id);
+
 CREATE TABLE IF NOT EXISTS notes (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

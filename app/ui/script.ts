@@ -57,6 +57,7 @@ d.addEventListener('toggle',function(e){
     open[x.getAttribute('data-keep-open')]=x.open;
     try{localStorage.setItem('mt:open',JSON.stringify(open))}catch(err){}
   }
+  if(x.matches&&x.matches('.xd')&&!x.open){var xf=x.querySelector('[data-adp]'),xb=x.parentNode.querySelector('[data-xplus]');if(xf)xf.hidden=true;if(xb)xb.classList.remove('on')}
 },true);
 
 /* ---------- clicks ---------- */
@@ -84,6 +85,15 @@ d.addEventListener('click',function(e){
       pn.hidden=!pn.hidden;
       q.classList.toggle('on',!pn.hidden);
       if(!pn.hidden){var fi=pn.querySelector('input:not([type=hidden])');if(fi)fi.focus()}
+    }
+    return
+  }
+  if((q=t.closest('[data-xplus]'))){
+    var xc=q.closest('.xc'),xd=xc.querySelector('details'),xm=xc.querySelector('[data-adp]');
+    if(xm){
+      if(!xd.open){xd.open=true;xm.hidden=false}else xm.hidden=!xm.hidden;
+      q.classList.toggle('on',!xm.hidden);
+      if(!xm.hidden){var xi=xm.querySelector('input:not([type=hidden])');if(xi)xi.focus()}
     }
     return
   }

@@ -1,5 +1,5 @@
 import { sql } from "remix/data-table";
-import { db, debtPayments, debts, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
+import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
 import { balanceOf } from "./data.ts";
 import { fmt, toMinor, toSigned } from "./money.ts";
 import { extKey, parseJson, typeOf } from "./sources/index.ts";
@@ -141,31 +141,46 @@ await tx.update(debts, d.id, { amount_minor: d.amount_minor - pay });
 }
 export async function addGoal(uid: string, f: FormData): Promise<string | void> {
 const title = text(f.get("name"), 120);
-if (!title) return "Enter what you want";
-await db.create(goals, {
-id: id(),
-user_id: uid,
-title,
-target_minor: toMinor(f.get("price")),
-saved_minor: 0,
-is_wish: 1,
-created_at: Date.now(),
-});
+if (!title) return "Enter a goal name";
+await db.create(goals, { id: id(), user_id: uid, title, target_minor: 0, saved_minor: 0, is_wish: 1, created_at: Date.now() });
+}
+export async function addGoalItem(uid: string, f: FormData): Promise<string | void> {
+const g = await db.findOne(goals, { where: { id: text(f.get("goal_id"), 36), user_id: uid } });
+if (!g) return "Goal not found";
+const name = text(f.get("name"), 120);
+if (!name) return "Enter an item";
+const price = toMinor(f.get("price"));
+if (!price) return "Enter a price";
+await db.create(goalItems, { id: id(), user_id: uid, goal_id: g.id, name, price_minor: price, created_at: Date.now() });
+}
+export async function editGoal(uid: string, f: FormData): Promise<string | void> {
+const name = text(f.get("name"), 120);
+if (!name) return "Enter a goal name";
+await db.exec(sql`update goals set title = ${name} where id = ${text(f.get("id"), 36)} and user_id = ${uid}`);
+}
+export async function editGoalItem(uid: string, f: FormData): Promise<string | void> {
+const name = text(f.get("name"), 120);
+if (!name) return "Enter an item";
+const price = toMinor(f.get("price"));
+if (!price) return "Enter a price";
+await db.exec(sql`update goal_items set name = ${name}, price_minor = ${price} where id = ${text(f.get("id"), 36)} and user_id = ${uid} and done_at is null`);
+}
+export async function deleteGoalItem(uid: string, f: FormData) {
+await db.exec(sql`delete from goal_items where id = ${text(f.get("id"), 36)} and user_id = ${uid}`);
 }
 export async function deleteWish(uid: string, f: FormData) {
-await db.exec(sql`delete from goals where id = ${text(f.get("id"), 36)} and user_id = ${uid}`);
+const gid = text(f.get("id"), 36);
+await db.exec(sql`delete from goal_items where goal_id = ${gid} and user_id = ${uid}`);
+await db.exec(sql`delete from goals where id = ${gid} and user_id = ${uid}`);
 }
 export async function buyWish(uid: string, f: FormData): Promise<string | void> {
-const g = await db.findOne(goals, { where: { id: text(f.get("id"), 36), user_id: uid } });
-if (!g) return;
-const price = g.target_minor;
-if (price > 0) {
+const it = await db.findOne(goalItems, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (!it || it.done_at) return;
 const bal = await balanceOf(uid);
-if (price > bal) return `Not enough balance for ${g.title}. You have ${fmt(Math.max(0, bal))}`;
-}
+if (it.price_minor > bal) return `Not enough balance for ${it.name}. You have ${fmt(Math.max(0, bal))}`;
 await db.transaction(async (tx) => {
-if (price > 0) await tx.create(purchases, { id: id(), user_id: uid, name: g.title, qty: 1, unit_minor: price, total_minor: price, day: today(), created_at: Date.now() });
-await tx.exec(sql`delete from goals where id = ${g.id} and user_id = ${uid}`);
+await tx.create(purchases, { id: id(), user_id: uid, name: it.name, qty: 1, unit_minor: it.price_minor, total_minor: it.price_minor, day: today(), created_at: Date.now() });
+await tx.update(goalItems, it.id, { done_at: Date.now() });
 });
 }
 export async function addSource(uid: string, f: FormData) {
@@ -237,6 +252,25 @@ if (done) return `${s.name} is already added today`;
 f.set("day", day);
 return saveDay(uid, f);
 }
+export async function editSource(uid: string, f: FormData): Promise<string | void> {
+const s = await db.findOne(incomeSources, { where: { id: text(f.get("id"), 36), user_id: uid } });
+if (!s) return "Unknown source";
+const name = text(f.get("name"), 80);
+if (!name) return "Enter a name";
+const taken = await db.findMany(incomeSources, { where: { user_id: uid } });
+if (taken.some((x) => x.id !== s.id && x.name.toLowerCase() === name.toLowerCase())) return `You already have a source called ${name}`;
+const amount = toMinor(f.get("amount"));
+if (s.type === "job") {
+await db.update(incomeSources, s.id, { name, config: amount ? JSON.stringify({ ...parseJson(s.config), fixed_minor: amount }) : s.config });
+return;
+}
+if (s.type && s.type !== "manual") {
+await db.update(incomeSources, s.id, { name });
+return;
+}
+if (s.mode === "auto" && !amount) return "Enter how much it pays";
+await db.update(incomeSources, s.id, { name, amount_minor: amount });
+}
 export async function toggleSource(uid: string, f: FormData) {
 const s = await db.findOne(incomeSources, { where: { id: text(f.get("id"), 36), user_id: uid } });
 if (s) await db.update(incomeSources, s.id, { active: s.active === 0 ? 1 : 0 });
@@ -294,6 +328,7 @@ sql`delete from people where user_id = ${uid}`,
 sql`delete from purchases where user_id = ${uid}`,
 sql`delete from incomes where user_id = ${uid}`,
 sql`delete from income_sources where user_id = ${uid}`,
+sql`delete from goal_items where user_id = ${uid}`,
 sql`delete from goals where user_id = ${uid}`,
 sql`delete from notes where user_id = ${uid}`,
 sql`delete from quick_buys where user_id = ${uid}`,

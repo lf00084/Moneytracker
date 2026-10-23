@@ -35,7 +35,7 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 	}).replace(/</g, "\\u003c");
 
 	return (
-		<html lang="en" data-theme={theme === "light" ? "light" : "dark"}>
+		<html lang="en" data-theme={theme === "light" ? "light" : "dark"} data-rmx-preserve-attrs="data-theme">
 			<head>
 				<meta charset="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -72,8 +72,10 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 				{import.meta.env.DEV ? <script type="module" src="/@vite/client"></script> : null}
 			</head>
 			<body>
+				<div class="nb" aria-hidden="true" data-rmx-preserve-dom></div>
 				{children}
 				<script src={`/assets/app.js?v=${V.js}`} defer></script>
+				{user ? <script type="module" src={`/assets/entry.js?v=${V.entry}`}></script> : null}
 				<script>{REGISTER_SW}</script>
 			</body>
 		</html>

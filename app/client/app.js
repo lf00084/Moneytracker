@@ -1,5 +1,6 @@
 (function(){
-var d=document,r=d.documentElement;
+if(window.__mt)return;window.__mt=1;
+var d=document,r=d.documentElement,nav=window.navigation;
 function all(sel,root){return [].slice.call((root||d).querySelectorAll(sel))}
 function money(n){return (Math.round(n*100)/100).toLocaleString('en-US')}
 
@@ -9,7 +10,6 @@ function setTheme(t){
   try{fetch('/settings/theme',{method:'POST',body:new URLSearchParams({theme:t}),credentials:'same-origin',redirect:'manual'})}catch(e){}
 }
 
-/* ---------- quick buy ---------- */
 function calc(f){
   var q=parseFloat(f.querySelector('[data-qty]').value)||0,p=parseFloat(String(f.querySelector('[data-price]').value).replace(',','.'))||0;
   var t=Math.round(q*p*100)/100,o=f.querySelector('[data-tot]');
@@ -26,22 +26,20 @@ function pick(q,keep){
   f.querySelector('[data-price]').value=q.getAttribute('data-p')||'';
   calc(f);
 }
-all('.qk4').forEach(function(g){var first=g.querySelector('[data-q]');if(first)pick(first,false)});
 
-/* ---------- notes ---------- */
 function endEdit(c){
   var id=c.querySelector('[data-eid]');if(id)id.value='';
   var eb=c.querySelector('.eb');if(eb)eb.hidden=true;
   c.querySelector('textarea').value='';
 }
-all('[data-list]').forEach(function(L){
-  var last=L.lastElementChild;
-  if(L.getAttribute('data-list')!=='dash'&&last&&last.scrollIntoView)last.scrollIntoView({block:'end'});
-});
+function tails(){
+  all('[data-list]').forEach(function(L){
+    var last=L.lastElementChild;
+    if(L.getAttribute('data-list')!=='dash'&&last&&last.scrollIntoView)last.scrollIntoView({block:'end'});
+  });
+}
 
-/* ---------- "I owe" open or closed, kept in the browser ---------- */
 var open={};try{open=JSON.parse(localStorage.getItem('mt:open')||'{}')}catch(e){}
-all('details[data-keep-open]').forEach(function(x){var k=x.getAttribute('data-keep-open');if(k in open)x.open=!!open[k]});
 d.addEventListener('toggle',function(e){
   var x=e.target;
   if(x.matches&&x.matches('details[data-keep-open]')){
@@ -51,7 +49,6 @@ d.addEventListener('toggle',function(e){
   if(x.matches&&x.matches('.xd')&&!x.open){var xf=x.querySelector('[data-adp]'),xb=x.parentNode.querySelector('[data-xplus]');if(xf)xf.hidden=true;if(xb)xb.classList.remove('on')}
 },true);
 
-/* ---------- clicks ---------- */
 d.addEventListener('click',function(e){
   var t=e.target,q;
   if(t.closest('[data-theme-toggle]')){setTheme(r.getAttribute('data-theme')==='dark'?'light':'dark');return}
@@ -150,7 +147,8 @@ d.addEventListener('submit',function(e){
   if(msg&&!confirm(msg)){e.preventDefault();return}
   setTimeout(function(){if(e.defaultPrevented)return;all('button',f).forEach(function(b){if(!b.disabled){b.disabled=true;b.setAttribute('data-busy','1')}})},0);
 });
-window.addEventListener('pageshow',function(e){if(e.persisted)all('button[data-busy]').forEach(function(b){b.disabled=false;b.removeAttribute('data-busy')})});
+function unbusy(){all('button[data-busy]').forEach(function(b){b.disabled=false;b.removeAttribute('data-busy')})}
+window.addEventListener('pageshow',function(e){if(e.persisted)unbusy()});
 
 d.addEventListener('keydown',function(e){
   if(e.key!=='Enter'||e.shiftKey)return;
@@ -161,7 +159,6 @@ d.addEventListener('keydown',function(e){
   }
 });
 
-/* ---------- live clock (Africa/Casablanca) ---------- */
 function updateLiveClock(){
   var tEls = all('[data-clock-time]');
   var dEls = all('[data-clock-date]');
@@ -183,16 +180,69 @@ function updateLiveClock(){
 }
 setInterval(updateLiveClock, 1000);
 
-/* ---------- background fallback ---------- */
-var bgCustomEl = d.querySelector('[data-bg-custom]');
-if(bgCustomEl){
-  var bgUrl = bgCustomEl.getAttribute('data-bg-custom');
-  if(bgUrl){
-    var testImg = new Image();
-    testImg.onerror = function(){
-      bgCustomEl.classList.add('bg-fallback-auto');
-    };
-    testImg.src = bgUrl;
-  }
+function init(){
+  all('.qk4:not([data-i])').forEach(function(g){g.setAttribute('data-i','1');var first=g.querySelector('[data-q]');if(first)pick(first,false)});
+  all('details[data-keep-open]:not([data-i])').forEach(function(x){x.setAttribute('data-i','1');var k=x.getAttribute('data-keep-open');if(k in open)x.open=!!open[k]});
+  all('[data-bg-custom]:not([data-i])').forEach(function(el){
+    el.setAttribute('data-i','1');
+    var u=el.getAttribute('data-bg-custom');
+    if(u){var im=new Image();im.onerror=function(){el.classList.add('bg-fallback-auto')};im.src=u}
+  });
 }
+
+function toast(m){
+  var t=d.createElement('div');
+  t.className='toast';t.setAttribute('role','status');t.textContent=m;
+  d.body.appendChild(t);
+  setTimeout(function(){t.classList.add('out')},2800);
+  setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},3300);
+}
+
+var timer=0,guard=0,dest=null;
+function bar(){return d.querySelector('.nb')}
+function start(){
+  clearTimeout(timer);clearTimeout(guard);
+  timer=setTimeout(function(){
+    if(!nav.transition)return;
+    var b=bar();
+    if(b){b.classList.remove('done');void b.offsetWidth;b.classList.add('on')}
+    r.setAttribute('data-nav','busy');
+  },120);
+  guard=setTimeout(finish,20000);
+}
+function finish(){
+  clearTimeout(timer);clearTimeout(guard);
+  var b=bar();
+  if(b&&b.classList.contains('on')){
+    b.classList.remove('on');b.classList.add('done');
+    setTimeout(function(){b.classList.remove('done')},700);
+  }
+  r.removeAttribute('data-nav');
+}
+function settle(){init();tails();unbusy()}
+
+if(nav&&nav.addEventListener){
+  nav.addEventListener('navigate',function(e){
+    if(!e.canIntercept||e.hashChange||e.downloadRequest)return;
+    dest={url:e.destination.url,post:!!e.formData};
+    start();
+  });
+  nav.addEventListener('navigatesuccess',function(){finish();setTimeout(settle,0)});
+  nav.addEventListener('navigateerror',function(e){
+    finish();unbusy();
+    var err=e.error,u=dest;
+    if(err&&err.name==='AbortError')return;
+    if(u&&!u.post){location.assign(u.url);return}
+    toast('That did not go through. Check your connection and try again.');
+  });
+}
+
+var queued=0;
+new MutationObserver(function(){
+  if(queued)return;
+  queued=1;
+  requestAnimationFrame(function(){queued=0;init()});
+}).observe(r,{childList:true,subtree:true});
+
+settle();
 })();

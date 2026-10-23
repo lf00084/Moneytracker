@@ -91,5 +91,6 @@ export const routes = route({
 		css: get("/assets/app.css"),
 		js: get("/assets/app.js"),
 		theme: get("/assets/theme.js"),
+		entry: get("/assets/entry.js"),
 	},
 });

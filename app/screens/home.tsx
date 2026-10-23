@@ -1,6 +1,6 @@
-import { Frame } from "remix/component";
 import { BuysDesktop, BuysExpand, Hero, TodayCards } from "../components/buys.tsx";
 import { GoalsExpand } from "../components/goals.tsx";
+import { Lazy } from "../components/Lazy.tsx";
 import { HomeIncome, IncomeDesktop } from "../components/income.tsx";
 import { AppLayout } from "../components/Layout.tsx";
 import { BalanceCard } from "../components/profile.tsx";
@@ -39,16 +39,7 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 					<div>
 						<OweDesktop s={s} open={false} storeKey="owe" />
 						<IncomeDesktop s={s} title="Income today" />
-						<Frame
-							src={routes.pages.frameNotes.href()}
-							fallback={
-								<div class="sc">
-									<div class="sk"></div>
-									<div class="sk"></div>
-									<div class="sk"></div>
-								</div>
-							}
-						/>
+						<Lazy name="notes" src={routes.pages.frameNotes.href()} title="Note to yourself" lines={3} />
 					</div>
 				</div>
 			</>

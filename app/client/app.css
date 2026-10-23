@@ -308,3 +308,19 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .live-clock .clock-date,.top-status-bar.tsplit .live-clock .clock-subdate{display:none}
 .sk{height:12px;border-radius:6px;margin:14px 0;background:linear-gradient(90deg,rgba(128,128,128,.14),rgba(128,128,128,.26),rgba(128,128,128,.14));background-size:200% 100%;animation:sk 1.2s linear infinite}
 @keyframes sk{to{background-position:-200% 0}}
+.nb{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;height:3px;z-index:1000;pointer-events:none;background:linear-gradient(90deg,var(--ac),var(--acl));transform:scaleX(0);transform-origin:0 50%;opacity:0;border-radius:0 3px 3px 0}
+.nb.on{opacity:1;transform:scaleX(.88);transition:transform 12s cubic-bezier(.05,.75,.1,1)}
+.nb.done{opacity:0;transform:scaleX(1);transition:transform .18s ease-out,opacity .3s ease .18s}
+main{transition:opacity .2s ease}
+html[data-nav=busy],html[data-nav=busy] a,html[data-nav=busy] button{cursor:progress}
+html[data-nav=busy] main{opacity:.55}
+button[data-busy]{cursor:progress}
+.btn[data-busy]{opacity:.7}
+.btn[data-busy]::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skc{overflow:hidden}
+.skc .skt{width:40%;height:14px;margin:4px 0 18px}
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,420px);padding:11px 16px;border-radius:var(--rm);background:var(--s2);color:var(--ink);border:1px solid var(--ln);box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13px;z-index:1000;animation:toast .2s ease-out}
+.toast.out{opacity:0;transition:opacity .4s}
+@keyframes toast{from{opacity:0;transform:translate(-50%,8px)}}
+@media(prefers-reduced-motion:reduce){.nb.on,.nb.done,main{transition:none}.sk,.btn[data-busy]::after{animation:none}}

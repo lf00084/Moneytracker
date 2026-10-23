@@ -12,8 +12,8 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 			</div>
 			<h1 class="auth-title">{up ? "Create account" : "Sign in"}</h1>
 			<div class="auth-sub">{up ? "Track what you spend and earn, day by day. Start in seconds." : "Track what you spend and earn, day by day."}</div>
-			<form class="au" method="post" action={up ? "/signup" : "/login"}>
-				<a class="gbtn" href="/login/google">
+			<form class="au" method="post" action={up ? "/signup" : "/login"} data-rmx-document>
+				<a class="gbtn" href="/login/google" data-rmx-document>
 					<GoogleMark />
 					<span>{up ? "Sign up with Google" : "Continue with Google"}</span>
 				</a>
@@ -28,7 +28,7 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 				<Field label="Password" type="password" name="password" placeholder="••••••••" />
 				<button class="btn full">{up ? "Create account" : "Sign in"}</button>
 				<div class="auth-switch-wrap">
-					<a class="lnk-switch" href={up ? "/login" : "/signup"}>
+					<a class="lnk-switch" href={up ? "/login" : "/signup"} data-rmx-document>
 						{up ? (
 							<>
 								Already have an account? <b>Sign in</b>

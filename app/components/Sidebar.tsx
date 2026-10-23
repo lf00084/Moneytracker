@@ -28,7 +28,7 @@ export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 			<ThemeIcons />
 			<span>Theme</span>
 		</button>
-		<form method="post" action="/logout">
+		<form method="post" action="/logout" data-rmx-document>
 			<button class="sbl">
 				<Icon name="out" />
 				<span class="neg">Log out</span>

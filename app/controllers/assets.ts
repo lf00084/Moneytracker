@@ -2,6 +2,7 @@ import { createController } from "remix/router";
 import appCss from "../client/app.css?raw";
 import appJs from "../client/app.js?raw";
 import themeJs from "../client/theme.js?raw";
+import entryJs from "../client/dist/entry.js?raw";
 import { assets } from "../lib/assets.ts";
 import { hash } from "../lib/versions.ts";
 import { routes } from "../routes.ts";
@@ -31,5 +32,6 @@ export default createController(routes.assets, {
 		css: file(appCss, "text/css; charset=utf-8"),
 		js: file(appJs, "application/javascript; charset=utf-8"),
 		theme: file(themeJs, "application/javascript; charset=utf-8"),
+		entry: file(entryJs, "application/javascript; charset=utf-8"),
 	},
 });

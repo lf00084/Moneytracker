@@ -76,10 +76,10 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 
 const DataButtons = view(() => (
 	<div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-		<a class="btn o" style={{ flex: "1" }} href="/export.csv">
+		<a class="btn o" style={{ flex: "1" }} href="/export.csv" data-rmx-document>
 			Export CSV
 		</a>
-		<form method="post" action="/account/delete" style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
+		<form method="post" action="/account/delete" data-rmx-document style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
 			<button class="btn dng" style={{ flex: "1" }}>
 				Delete account
 			</button>
@@ -121,7 +121,7 @@ export const ProfileMobile = view<{ s: State }>(({ s }) => (
 			<LinkRow href="/profile/edit" label="Edit profile" />
 			<LinkRow href="/settings" label="Settings" />
 			<LinkRow href="/history" label="History" />
-			<form method="post" action="/logout">
+			<form method="post" action="/logout" data-rmx-document>
 				<button class="li">
 					<span class="neg">Log out</span>
 					<span class="mu">›</span>
@@ -171,7 +171,7 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 					<ProfileForm s={s} cancel="/home" />
 				</Section>
 				<Section title="Account">
-					<form method="post" action="/logout">
+					<form method="post" action="/logout" data-rmx-document>
 						<button class="btn o">Log out</button>
 					</form>
 				</Section>

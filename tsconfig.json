@@ -15,7 +15,7 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"jsx": "react-jsx",
-		"jsxImportSource": "~/app/ui",
+		"jsxImportSource": "remix/component",
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"isolatedModules": true,

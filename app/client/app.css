@@ -306,3 +306,5 @@ details.dd .chev{position:absolute;right:16px;top:14px}
 .iw .all:hover{filter:brightness(1.15)}
 .sf .iw{margin-bottom:10px}
 .top-status-bar.tsplit{justify-content:space-between}.top-status-bar.tsplit .live-clock{align-items:flex-start;text-align:left}.top-status-bar.tsplit .live-clock .clock-date,.top-status-bar.tsplit .live-clock .clock-subdate{display:none}
+.sk{height:12px;border-radius:6px;margin:14px 0;background:linear-gradient(90deg,rgba(128,128,128,.14),rgba(128,128,128,.26),rgba(128,128,128,.14));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}

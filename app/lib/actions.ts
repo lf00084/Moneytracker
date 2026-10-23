@@ -5,7 +5,6 @@ import { fmt, toMinor, toSigned } from "./money.ts";
 import { extKey, parseJson, typeOf } from "./sources/index.ts";
 import { today } from "./time.ts";
 import { updateBg } from "./users.ts";
-import { ICON_KEYS } from "../ui/icons.tsx";
 const id = () => crypto.randomUUID();
 const text = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 const count = (v: unknown) => {
@@ -17,6 +16,8 @@ const pickDay = (f: FormData) => {
 const d = text(f.get("day"), 10) || today();
 return realDay(d) && d <= today() ? d : null;
 };
+const ICON_KEYS = ["Smoke", "Coffee", "Bread", "Food", "Bus", "Phone", "Gift", "Cart", "Tag"];
+
 export async function addBuy(uid: string, f: FormData): Promise<string | void> {
 const name = text(f.get("label"), 120) || "Item";
 const qty = count(f.get("qty")) || 1;

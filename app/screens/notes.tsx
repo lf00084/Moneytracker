@@ -1,42 +1,30 @@
-import type { State } from "../lib/data.ts"
-import { dayLabel, dayOf, hhmm } from "../lib/time.ts"
-import { Icon } from "../ui/icons.tsx"
-import type { PageSpec } from "../ui/layout.tsx"
-import { Section } from "../ui/primitives.tsx"
-import { Back, Empty } from "./shared.tsx"
-const ChatHead = () => (
-<div class="ch"><div class="av s">S</div><div><b>Message yourself</b><div class="lb">only you can see this</div></div></div>
-)
-const NoteList = ({ s, k }: { s: State; k: string }) => {
-if (k === "dash") {
-const last = s.notes.slice(-2).reverse()
-return <div data-list="dash">{last.length ? last.map((n) => <div class="rw"><span>{n.body}</span><span class="lb">{hhmm(n.at)}</span></div>) : <Empty>No notes yet.</Empty>}</div>
-}
-let prev = ""
-const out: unknown[] = []
-for (const n of s.notes) {
-const label = dayLabel(dayOf(n.at))
-if (label !== prev) {
-out.push(<div class="day"><span>{label}</span></div>)
-prev = label
-}
-out.push(
-<div class="msg" data-id={n.id}><div class="bub">{n.body}</div><div class="meta">{n.edited ? "edited · " : ""}{hhmm(n.at)}</div><div class="acts" hidden><button type="button" class="btn xs o" data-act="copy">Copy</button><button type="button" class="btn xs o" data-act="edit">Edit</button><form method="post" action="/notes/delete" style="display:contents" data-confirm="Delete this note?"><Back s={s} /><input type="hidden" name="id" value={n.id} /><button class="btn xs dng">Delete</button></form></div></div>,
-)
-}
-return <div data-list={k}>{out}</div>
-}
-const Composer = ({ s, k }: { s: State; k: string }) => (
-<form class="cm" data-comp={k} method="post" action="/notes"><Back s={s} /><input type="hidden" name="id" data-eid /><div class="eb" hidden><span><b>Editing</b> message</span><button type="button" data-cancel>✕</button></div><div class="cin"><textarea rows="1" name="text" placeholder="Message yourself"></textarea><button class="send" aria-label="Send"><Icon name="send" /></button></div></form>
-)
-export const NoteDash = ({ s }: { s: State }) => (
-<Section title="Note to yourself" right={`${s.notes.length} saved`}><form class="cin" data-comp="dash" method="post" action="/notes" style="margin:14px 0"><Back s={s} /><input type="hidden" name="id" data-eid /><textarea rows="1" name="text" placeholder="Message yourself"></textarea><button class="send" aria-label="Send"><Icon name="send" /></button></form><NoteList s={s} k="dash" /></Section>
-)
-export const notes = (s: State): PageSpec => ({
-title: "Notes",
-mobileTab: "notes",
-desktopTab: "notes",
-mobile: <><ChatHead /><NoteList s={s} k="m" /></>,
-dock: <Composer s={s} k="m" />,
-desktop: <div class="chat" data-x><ChatHead /><NoteList s={s} k="d" /><div style="margin:30px 0 0"><Composer s={s} k="d" /></div></div>,
-})
+import { AppLayout } from "../components/Layout.tsx";
+import { ChatHead, Composer, NoteList } from "../components/notes.tsx";
+import { view } from "../components/view.ts";
+import type { State } from "../lib/data.ts";
+
+/** Message-yourself chat. On phones the composer is pinned above the bottom bar. */
+export const NotesScreen = view<{ s: State }>(({ s }) => (
+	<AppLayout
+		title="Notes"
+		theme={s.user.theme}
+		mobileTab="notes"
+		desktopTab="notes"
+		mobile={
+			<>
+				<ChatHead />
+				<NoteList s={s} listKey="m" />
+			</>
+		}
+		dock={<Composer s={s} listKey="m" />}
+		desktop={
+			<div class="chat" data-x>
+				<ChatHead />
+				<NoteList s={s} listKey="d" />
+				<div style={{ margin: "30px 0 0" }}>
+					<Composer s={s} listKey="d" />
+				</div>
+			</div>
+		}
+	/>
+));

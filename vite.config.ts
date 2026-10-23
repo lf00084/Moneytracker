@@ -1,16 +1,22 @@
-import { cloudflare } from "@cloudflare/vite-plugin"
-import { fileURLToPath } from "node:url"
-import { defineConfig } from "vite"
-const ui = (file: string) => fileURLToPath(new URL(`./app/ui/${file}`, import.meta.url))
+/**
+ * Vite configuration. The Cloudflare plugin builds and runs the worker declared in
+ * `wrangler.jsonc`. The app renders on the server only, so there is no client entry. JSX is
+ * compiled against Remix's own runtime.
+ */
+
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { defineConfig } from "vite";
+
 export default defineConfig({
-server: { host: "0.0.0.0", port: 3000, allowedHosts: true },
-resolve: {
-tsconfigPaths: true,
-alias: [
-{ find: "~/app/ui/jsx-runtime", replacement: ui("jsx-runtime.ts") },
-{ find: "~/app/ui/jsx-dev-runtime", replacement: ui("jsx-dev-runtime.ts") },
-],
-},
-oxc: { jsx: { runtime: "automatic", importSource: "~/app/ui" } },
-plugins: [cloudflare()],
-})
+	server: {
+		host: "0.0.0.0",
+		port: 3000,
+		allowedHosts: true,
+	},
+
+	resolve: { tsconfigPaths: true },
+
+	oxc: { jsx: { runtime: "automatic", importSource: "remix/component" } },
+
+	plugins: [cloudflare()],
+});

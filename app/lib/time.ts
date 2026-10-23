@@ -54,8 +54,7 @@ export function liveClockNow() {
 		timeZone: TZ,
 		weekday: "long",
 	}).format(now);
-	const subDateStr = `<span class="clock-num">${numDate}</span> <span class="clock-dot">·</span> <span class="clock-ar">${arabicDay}</span>`;
-	return { timeStr, dateStr, subDateStr };
+	return { timeStr, dateStr, numDate, arabicDay };
 }
 
 export function getTimePeriod(): "morning" | "day" | "evening" | "night" {

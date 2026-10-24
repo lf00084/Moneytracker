@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   week_start    TEXT NOT NULL DEFAULT 'Monday',
   bg_mode       TEXT NOT NULL DEFAULT 'auto',
   bg_url        TEXT NOT NULL DEFAULT '',
+  usdt_rate_minor INTEGER NOT NULL DEFAULT 1100,
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
 );
@@ -182,3 +183,35 @@ CREATE TABLE IF NOT EXISTS notes (
   updated_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS notes_user_idx ON notes(user_id, created_at);
+
+-- ---------- trading ----------
+
+CREATE TABLE IF NOT EXISTS trade_sessions (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day           TEXT NOT NULL,
+  deposit_minor INTEGER NOT NULL,
+  rate_minor    INTEGER NOT NULL,
+  purchase_id   TEXT,
+  income_id     TEXT,
+  status        TEXT NOT NULL DEFAULT 'open',
+  pnl_minor     INTEGER NOT NULL DEFAULT 0,
+  return_usdt_minor INTEGER NOT NULL DEFAULT 0,
+  return_mad_minor  INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL,
+  settled_at    INTEGER
+);
+CREATE INDEX IF NOT EXISTS trade_sessions_user_idx ON trade_sessions(user_id, status, created_at);
+
+CREATE TABLE IF NOT EXISTS trade_results (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id    TEXT NOT NULL REFERENCES trade_sessions(id) ON DELETE CASCADE,
+  game          TEXT NOT NULL,
+  idx           INTEGER NOT NULL,
+  won           INTEGER NOT NULL,
+  pnl_minor     INTEGER NOT NULL,
+  created_at    INTEGER NOT NULL,
+  UNIQUE (session_id, game, idx)
+);
+CREATE INDEX IF NOT EXISTS trade_results_user_idx ON trade_results(user_id, created_at);

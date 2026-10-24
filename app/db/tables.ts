@@ -17,6 +17,7 @@ run_at: c.varchar(8),
 week_start: c.varchar(16),
 bg_mode: c.varchar(8),
 bg_url: c.varchar(2048),
+usdt_rate_minor: c.integer(),
 created_at: c.integer(),
 updated_at: c.integer(),
 },
@@ -170,4 +171,37 @@ columns: { id: c.varchar(36), user_id: c.varchar(36), goal_id: c.varchar(36), na
 export const notes = table({
 name: "notes",
 columns: { id: c.varchar(36), user_id: c.varchar(36), body: c.varchar(5000), created_at: c.integer(), updated_at: c.integer() },
+});
+
+export const tradeSessions = table({
+name: "trade_sessions",
+columns: {
+id: c.varchar(36),
+user_id: c.varchar(36),
+day: c.varchar(10),
+deposit_minor: c.integer(),
+rate_minor: c.integer(),
+purchase_id: c.varchar(36),
+income_id: c.varchar(36),
+status: c.varchar(8),
+pnl_minor: c.integer(),
+return_usdt_minor: c.integer(),
+return_mad_minor: c.integer(),
+created_at: c.integer(),
+settled_at: c.integer(),
+},
+});
+
+export const tradeResults = table({
+name: "trade_results",
+columns: {
+id: c.varchar(36),
+user_id: c.varchar(36),
+session_id: c.varchar(36),
+game: c.varchar(8),
+idx: c.integer(),
+won: c.integer(),
+pnl_minor: c.integer(),
+created_at: c.integer(),
+},
 });

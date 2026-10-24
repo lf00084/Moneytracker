@@ -13,6 +13,7 @@ export const ICONS: Record<string, string> = {
 	gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 	edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
 	pad: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+	trade: '<path d="M3 17l5-6 4 3 8-9"/><path d="M15 5h5v5"/>',
 	coin: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 0 1 0 3.6h-3a1.8 1.8 0 0 0 0 3.6h4.5"/>',
 	out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
 	plus: '<path d="M12 5v14M5 12h14"/>',

@@ -53,8 +53,9 @@ export const peopleCount = (s: State) => new Set(s.debts.map((d) => d.person)).s
 // ---------- income ----------
 
 export const srcAmount = (x: Source) => (x.type === "job" ? Number(x.config.fixed_minor) || 0 : x.amount);
+export const srcRate = (x: Source) => (x.type === "job" ? Number(x.config.rate_minor) || 0 : 0);
 export const gotToday = (s: State, x: Source) => s.incomesToday.filter((i) => i.sourceId === x.id);
-export const sourceTag = (x: Source) => (!x.active ? "paused" : x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto") : "manual");
+export const sourceTag = (x: Source) => (!x.active ? "paused" : x.type === "job" ? "hours" : x.mode === "auto" ? (x.every === "month" ? "monthly" : "auto") : "manual");
 
 // ---------- history ----------
 

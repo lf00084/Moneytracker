@@ -1,19 +1,21 @@
 import { sql } from "remix/data-table";
 import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases, quickBuys } from "../db/index.ts";
 import { settleAuto } from "./auto.ts";
+import type { TradeSession } from "./trade-math.ts";
+import { loadTrades } from "./trading.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
 import { getActiveAvatar, type User } from "./users.ts";
 export type Quick = { id: string; name: string; icon: string; price: number };
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number };
-export type Income = { id: string; sourceId: string; source: string; amount: number; day: string };
+export type Income = { id: string; sourceId: string; source: string; amount: number; day: string; hours: number; locked: boolean };
 export type Source = { id: string; name: string; mode: string; every: string; amount: number; created: number; type: string; config: Json; currency: string; active: boolean; sort: number };
 export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number };
 export type GoalItem = { id: string; name: string; price: number; done: boolean };
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] };
 export type Note = { id: string; body: string; at: number; edited: boolean };
 export type DayRow = { day: string; label: string; earned: number; bought: number; buys: Buy[]; incomes: Income[] };
-export type Part = "quick" | "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "names";
+export type Part = "quick" | "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "names" | "trading";
 export type State = {
 user: User;
 back: string;
@@ -21,6 +23,8 @@ error: string;
 avatar: string | null;
 quick: Quick[];
 names: string[];
+incomeNames: string[];
+trades: TradeSession[];
 buys: Buy[];
 incomesToday: Income[];
 sources: Source[];
@@ -54,6 +58,8 @@ error: extra.error ?? "",
 avatar: null,
 quick: [],
 names: [],
+incomeNames: [],
+trades: [],
 buys: [],
 incomesToday: [],
 sources: [],
@@ -94,7 +100,18 @@ sort: r.sort ?? 0,
 s.sources = sourceRows;
 }
 const byId = new Map(sourceRows.map((x) => [x.id, x.name]));
-const toIncome = (r: { id: string; source_id: string | null; amount_minor: number; day: string }): Income => ({ id: r.id, sourceId: r.source_id ?? "", source: byId.get(r.source_id ?? "") ?? "Other", amount: r.amount_minor, day: r.day });
+const toIncome = (r: { id: string; source_id: string | null; amount_minor: number; day: string; meta: string }): Income => {
+const m = parseJson(r.meta);
+return {
+id: r.id,
+sourceId: r.source_id ?? "",
+source: byId.get(r.source_id ?? "") ?? (String(m.name ?? "").trim() || "Other"),
+amount: r.amount_minor,
+day: r.day,
+hours: Number(m.hours) || 0,
+locked: !!m.trade,
+};
+};
 if (need.has("today")) {
 jobs.push(
 db.findMany(purchases, { where: { user_id: uid, day: t }, orderBy: ["created_at", "desc"] }).then((rows) => {
@@ -108,10 +125,14 @@ s.incomesToday = rows.map(toIncome);
 if (need.has("names"))
 jobs.push(
 db
-.exec(sql`select min(name) as n, count(*) as c from purchases where user_id = ${uid} and debt_id is null group by lower(name) order by c desc, max(created_at) desc`)
+.exec(sql`select min(name) as n, count(*) as c from purchases where user_id = ${uid} and debt_id is null and name not like 'Deposit % USDT' group by lower(name) order by c desc, max(created_at) desc`)
 .then((r) => void (s.names = rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean))),
+db
+.exec(sql`select min(json_extract(meta, '$.name')) as n, count(*) as c from incomes where user_id = ${uid} and source_id is null and ext_key = '' and coalesce(json_extract(meta, '$.name'), '') <> '' group by lower(json_extract(meta, '$.name')) order by c desc, max(created_at) desc limit 30`)
+.then((r) => void (s.incomeNames = rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean))),
 );
 if (need.has("debts")) jobs.push(loadDebts(uid).then((d) => void (s.debts = d)));
+if (need.has("trading")) jobs.push(loadTrades(uid).then((t) => void (s.trades = t)));
 if (need.has("goals"))
 jobs.push(
 Promise.all([

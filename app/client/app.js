@@ -113,6 +113,7 @@ d.addEventListener('click',function(e){
     var form=q.closest('form');
     all('[data-mode]',form).forEach(function(c){c.classList.toggle('on',c===q)});
     form.querySelector('[data-mode-input]').value=q.getAttribute('data-mode');
+    form.setAttribute('data-m',q.getAttribute('data-mode'));
     return
   }
   if((q=t.closest('.bub'))){

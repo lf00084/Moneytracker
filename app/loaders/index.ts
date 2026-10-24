@@ -7,7 +7,7 @@
 import { loadState, type Part, type State } from "../lib/data.ts";
 import type { User } from "../lib/users.ts";
 
-export type ScreenKey = "home" | "debts" | "notes" | "goals" | "plan" | "income" | "history" | "profile" | "profileEdit" | "settings" | "pad";
+export type ScreenKey = "home" | "debts" | "notes" | "goals" | "plan" | "income" | "history" | "profile" | "profileEdit" | "settings" | "pad" | "trading";
 
 type ScreenDef = { path: string; parts: Part[]; first?: Part[] };
 
@@ -23,6 +23,7 @@ export const screenDefs: Record<ScreenKey, ScreenDef> = {
 	profileEdit: { path: "/profile/edit", parts: ["avatar", "balance"] },
 	settings: { path: "/settings", parts: ["balance"] },
 	pad: { path: "/pad", parts: [] },
+	trading: { path: "/trading", parts: ["trading"] },
 };
 
 export const isScreen = (key: string): key is ScreenKey => Object.hasOwn(screenDefs, key);

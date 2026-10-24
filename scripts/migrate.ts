@@ -24,6 +24,7 @@ const addColumns = [
 "ALTER TABLE quick_buys ADD COLUMN price_minor INTEGER NOT NULL DEFAULT 0",
 "ALTER TABLE users ADD COLUMN bg_mode TEXT NOT NULL DEFAULT 'auto'",
 "ALTER TABLE users ADD COLUMN bg_url TEXT NOT NULL DEFAULT ''",
+"ALTER TABLE users ADD COLUMN usdt_rate_minor INTEGER NOT NULL DEFAULT 1100",
 "ALTER TABLE income_sources ADD COLUMN type TEXT NOT NULL DEFAULT 'manual'",
 "ALTER TABLE income_sources ADD COLUMN config TEXT NOT NULL DEFAULT '{}'",
 "ALTER TABLE income_sources ADD COLUMN currency TEXT NOT NULL DEFAULT 'MAD'",

@@ -38,7 +38,10 @@ const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
 			<form method="post" action="/history/income" style={{ marginTop: "14px" }}>
 				<Back s={s} />
 				<div class="ln">
+					<input class="in" name="label" placeholder="Name (optional)" autocomplete="off" />
 					<input class="in pr" name="amount" placeholder="Income" inputmode="decimal" autocomplete="off" required />
+				</div>
+				<div class="ln" style={{ marginTop: "8px" }}>
 					<input class="in" type="date" name="day" value={t} max={t} required />
 					<button class="btn xs">Add income</button>
 				</div>

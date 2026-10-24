@@ -15,6 +15,7 @@ import {
 	ProfileEditScreen,
 	ProfileScreen,
 	SettingsScreen,
+	TradingScreen,
 } from "../screens/index.ts";
 import { routes } from "../routes.ts";
 import { go, takeError, userOf, type Ctx } from "../utils/request.ts";
@@ -44,6 +45,7 @@ export default createController(routes.pages, {
 		profileEdit: screen("profileEdit", (s) => <ProfileEditScreen s={s} />),
 		settings: screen("settings", (s) => <SettingsScreen s={s} />),
 		pad: screen("pad", (s) => <PadScreen s={s} />),
+		trading: screen("trading", (s) => <TradingScreen s={s} />),
 
 		async frameNotes(ctx: Ctx) {
 			const user = userOf(ctx);

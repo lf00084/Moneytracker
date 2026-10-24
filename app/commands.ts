@@ -6,6 +6,8 @@
  * afterwards; unless `back` is false it goes to the page the form came from instead.
  */
 import * as act from "./lib/actions.ts";
+import { toMinor } from "./lib/money.ts";
+import * as trading from "./lib/trading.ts";
 import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts";
 
 export type Command = {
@@ -46,9 +48,15 @@ export const commands = {
 	toggleSource: { run: (u, f) => act.toggleSource(u.id, f), to: "/income" },
 	editSource: { run: (u, f) => act.editSource(u.id, f), to: "/income" },
 	deleteSource: { run: (u, f) => act.deleteSource(u.id, f), to: "/income" },
+	setHours: { run: (u, f) => act.setHours(u.id, f), to: "/home" },
+	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },
+	tradeResult: { run: (u, f) => trading.saveResult(u.id, f), to: "/trading" },
+	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
+	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
+	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },
 	addPlan: { run: async () => {}, to: "/plan" },
 	saveProfile: { run: (u, f) => updateProfile(u.id, { name: text(f, "name"), email: text(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
-	saveSettings: { run: quiet((u, f) => updatePrefs(u.id, { currency: text(f, "currency"), run_at: text(f, "run_at"), week_start: text(f, "week") })), to: "/settings" },
+	saveSettings: { run: quiet((u, f) => updatePrefs(u.id, { currency: text(f, "currency"), run_at: text(f, "run_at"), week_start: text(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")) })), to: "/settings" },
 	quickBuy: { run: quiet((u, f) => act.quickOp(u.id, f)), to: "/settings" },
 	setTheme: { run: quiet((u, f) => setTheme(u.id, text(f, "theme"))), to: "/settings", empty: true },
 	setBackground: { run: (u, f) => act.validateAndSetBackground(u.id, text(f, "url")), to: "/settings", back: false },

@@ -324,3 +324,35 @@ button[data-busy]{cursor:progress}
 .toast.out{opacity:0;transition:opacity .4s}
 @keyframes toast{from{opacity:0;transform:translate(-50%,8px)}}
 @media(prefers-reduced-motion:reduce){.nb.on,.nb.done,main{transition:none}.sk,.btn[data-busy]::after{animation:none}}
+.srw{border-bottom:1px solid var(--ln)}
+.srw:last-child{border-bottom:0}
+.srw>.rw{border:0;padding:12px 0}
+.sc .srw>.rw{padding:14px 0}
+.hrs{margin:0 0 12px;background:var(--bg);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+.hrs-h{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:13px;font-weight:600}
+.hrs-h .lb{flex:1;text-align:right}
+.hv{display:flex;flex:none;color:var(--mu);transition:transform .18s ease}
+.hrs[open] .hv{transform:rotate(180deg)}
+.hrs-b{padding:0 14px 12px}
+.hrs-b .chips{margin:2px 0 10px}
+.hrx{gap:8px}
+.hrx .in{flex:1 1 0;padding:9px 12px;font-size:14px;border-radius:12px}
+.mh{display:none}
+form[data-m=manual] .mh-manual,form[data-m=job] .mh-job,form[data-m=daily] .mh-daily,form[data-m=monthly] .mh-monthly{display:block}
+.ln.src-job{display:none;margin-top:10px}
+form[data-m=job] .ln.src-job{display:flex}
+form[data-m=job] .src-amt{display:none}
+.qi{margin-top:16px;padding-top:14px;border-top:1px solid var(--ln)}
+.qi .chips.nm{margin:0 0 10px}
+.qi .ln .in{flex:1 1 0}
+.qi .ln .in.pr{flex:0 0 96px;width:96px}
+.trd{max-width:640px;margin:0 auto}
+.tbn{margin:2px 0 6px;line-height:1.5}
+.tbr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--ln)}
+.tbr:last-child{border-bottom:0;padding-bottom:0}
+.tbr.lock{opacity:.45}
+.tbf{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0}
+.tbf .in{width:96px;flex:0 1 96px;min-width:0;padding:8px 10px;font-size:14px;border-radius:12px}
+.btn.win{background:rgba(76,195,138,.14);color:var(--pos);border-color:rgba(76,195,138,.45)}
+.btn.lose{background:rgba(255,90,77,.12);color:var(--neg);border-color:rgba(255,90,77,.4)}
+.tbs{font-size:11px;font-weight:600;border:1px solid currentColor;border-radius:12px;padding:2px 9px;font-family:var(--mono)}

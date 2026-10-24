@@ -32,7 +32,8 @@ const amount = toMinor(f.get("amount"));
 if (!amount) return "Enter an amount";
 const day = pickDay(f);
 if (!day) return "Pick a day that is not in the future";
-await db.create(incomes, { id: id(), user_id: uid, amount_minor: amount, day, created_at: Date.now(), meta: '{"manual":1}', ext_key: "" });
+const label = text(f.get("label"), 60);
+await db.create(incomes, { id: id(), user_id: uid, amount_minor: amount, day, created_at: Date.now(), meta: JSON.stringify(label ? { manual: 1, name: label } : { manual: 1 }), ext_key: "" });
 }
 export async function setBalance(uid: string, f: FormData): Promise<string | void> {
 const target = toSigned(f.get("balance"));
@@ -54,6 +55,9 @@ const d = await tx.findOne(debts, { where: { id: p.debt_id, user_id: uid } });
 if (d) await tx.update(debts, d.id, { amount_minor: d.amount_minor + back });
 await tx.exec(sql`delete from debt_payments where purchase_id = ${p.id} and user_id = ${uid}`);
 }
+await tx.exec(sql`delete from incomes where user_id = ${uid} and ext_key in (select 'trade:' || id from trade_sessions where purchase_id = ${p.id} and user_id = ${uid})`);
+await tx.exec(sql`delete from trade_results where user_id = ${uid} and session_id in (select id from trade_sessions where purchase_id = ${p.id} and user_id = ${uid})`);
+await tx.exec(sql`delete from trade_sessions where purchase_id = ${p.id} and user_id = ${uid}`);
 await tx.exec(sql`delete from purchases where id = ${p.id} and user_id = ${uid}`);
 });
 }
@@ -187,10 +191,10 @@ await tx.update(goalItems, it.id, { done_at: Date.now() });
 export async function addSource(uid: string, f: FormData) {
 const name = text(f.get("name"), 80);
 if (!name) return "Enter a name";
-const kind = typeOf(text(f.get("type"), 16));
+const mode = text(f.get("mode"), 10);
+const kind = typeOf(mode === "job" ? "job" : text(f.get("type"), 16));
 const config = kind.parseConfig(f);
 if (typeof config === "string") return config;
-const mode = text(f.get("mode"), 10);
 const amount = toMinor(f.get("amount"));
 if ((mode === "daily" || mode === "monthly") && !amount) return "Enter how much it pays";
 const taken = await db.findMany(incomeSources, { where: { user_id: uid } });
@@ -262,7 +266,11 @@ const taken = await db.findMany(incomeSources, { where: { user_id: uid } });
 if (taken.some((x) => x.id !== s.id && x.name.toLowerCase() === name.toLowerCase())) return `You already have a source called ${name}`;
 const amount = toMinor(f.get("amount"));
 if (s.type === "job") {
-await db.update(incomeSources, s.id, { name, config: amount ? JSON.stringify({ ...parseJson(s.config), fixed_minor: amount }) : s.config });
+const rate = toMinor(f.get("rate"));
+await db.update(incomeSources, s.id, {
+name,
+config: JSON.stringify({ ...parseJson(s.config), ...(amount ? { fixed_minor: amount } : {}), ...(rate ? { rate_minor: rate } : {}) }),
+});
 return;
 }
 if (s.type && s.type !== "manual") {
@@ -271,6 +279,20 @@ return;
 }
 if (s.mode === "auto" && !amount) return "Enter how much it pays";
 await db.update(incomeSources, s.id, { name, amount_minor: amount });
+}
+export async function setHours(uid: string, f: FormData): Promise<string | void> {
+const s = await db.findOne(incomeSources, { where: { id: text(f.get("source_id"), 36), user_id: uid } });
+if (!s || s.type !== "job") return "Unknown source";
+const cfg = parseJson(s.config);
+const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, today()) } });
+if (!row) return "Add the fixed pay first";
+const hours = Number(String(f.get("hours") ?? "").trim().replace(",", "."));
+if (!Number.isFinite(hours) || hours < 0 || hours > 24) return "Extra hours must be between 0 and 24";
+if (hours > 0 && !(Number(cfg.rate_minor) > 0)) return "Set the price per hour first. Tap the pencil on the Income page";
+const fixed = Number(parseJson(row.meta).fixed_minor) || Number(cfg.fixed_minor) || 0;
+const entry = typeOf("job").entry({ config: { ...cfg, fixed_minor: fixed }, form: f, fallback: 0, last: null });
+if (typeof entry === "string") return entry;
+await db.update(incomes, row.id, { amount_minor: entry.amount, meta: JSON.stringify(entry.meta) });
 }
 export async function toggleSource(uid: string, f: FormData) {
 const s = await db.findOne(incomeSources, { where: { id: text(f.get("id"), 36), user_id: uid } });
@@ -288,6 +310,7 @@ await tx.exec(sql`delete from income_sources where id = ${s.id} and user_id = ${
 export async function deleteIncome(uid: string, f: FormData): Promise<string | void> {
 const row = await db.findOne(incomes, { where: { id: text(f.get("id"), 80), user_id: uid } });
 if (!row) return;
+if (row.ext_key.startsWith("trade:")) return "Undo this from the Trading page";
 if (row.ext_key) {
 const src = row.source_id ? await db.findOne(incomeSources, { where: { id: row.source_id, user_id: uid } }) : null;
 if (src?.mode === "auto") return "Auto income can't be undone. Pause the source instead";
@@ -329,6 +352,8 @@ sql`delete from people where user_id = ${uid}`,
 sql`delete from purchases where user_id = ${uid}`,
 sql`delete from incomes where user_id = ${uid}`,
 sql`delete from income_sources where user_id = ${uid}`,
+sql`delete from trade_results where user_id = ${uid}`,
+sql`delete from trade_sessions where user_id = ${uid}`,
 sql`delete from goal_items where user_id = ${uid}`,
 sql`delete from goals where user_id = ${uid}`,
 sql`delete from notes where user_id = ${uid}`,
@@ -355,7 +380,7 @@ db.findMany(incomeSources, { where: { user_id: uid } }),
 ]);
 const names = new Map(ss.map((s) => [s.id, s.name]));
 const lines = ["date,type,name,qty,amount"];
-for (const i of is) lines.push([i.day, "income", cell(names.get(i.source_id ?? "") ?? "Other"), 1, fmt(i.amount_minor).replace(/,/g, "")].join(","));
+for (const i of is) lines.push([i.day, "income", cell(names.get(i.source_id ?? "") ?? (String(parseJson(i.meta).name ?? "").trim() || "Other")), 1, fmt(i.amount_minor).replace(/,/g, "")].join(","));
 for (const b of bs) lines.push([b.day, "buy", cell(b.name), b.qty, fmt(b.total_minor).replace(/,/g, "")].join(","));
 return lines.join("\n");
 }

@@ -1,13 +1,14 @@
 import type { Income, Source, State } from "../lib/data.ts";
 import { fmt } from "../lib/money.ts";
-import { calc, gotToday, plain, sourceTag, srcAmount } from "../lib/view.ts";
+import { calc, gotToday, plain, sourceTag, srcAmount, srcRate } from "../lib/view.ts";
 import { Icon } from "./Icon.tsx";
-import { Back, Empty, ExpandCard, ListCard } from "./ui.tsx";
+import { Back, Empty, ExpandCard, ListCard, NameChips } from "./ui.tsx";
 import { view } from "./view.ts";
 
 const contents = { display: "contents" };
 
-/** The hidden fields every income form carries: where to come back to, and which row. */
+const HOUR_CHOICES = [1, 2, 3, 4];
+
 const Hid = view<{ s: State; id: string }>(({ s, id }) => (
 	<>
 		<Back s={s} />
@@ -15,26 +16,27 @@ const Hid = view<{ s: State; id: string }>(({ s, id }) => (
 	</>
 ));
 
-/** An income that is not tied to a source ("Other income today") or one already added today. */
 export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 	<div class="by">
 		<div>
 			<div>{i.source}</div>
+			{i.hours ? <div class="lb">{`+${i.hours}h extra`}</div> : null}
 		</div>
 		<span class="rt">
 			<b class="ea">+{fmt(i.amount)}</b>
-			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} from ${i.source}?`}>
-				<Back s={s} />
-				<input type="hidden" name="id" value={i.id} />
-				<button class="ub" aria-label="Undo income">
-					<Icon name="undo" />
-				</button>
-			</form>
+			{i.locked ? null : (
+				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} from ${i.source}?`}>
+					<Back s={s} />
+					<input type="hidden" name="id" value={i.id} />
+					<button class="ub" aria-label="Undo income">
+						<Icon name="undo" />
+					</button>
+				</form>
+			)}
 		</span>
 	</div>
 ));
 
-/** What you can do with a source right now: add today's money, undo it, or pause/resume. */
 const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggle }) => {
 	const got = gotToday(s, x);
 	const sum = got.reduce((a, i) => a + i.amount, 0);
@@ -105,53 +107,151 @@ const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 	</form>
 ));
 
-/** Row on the desktop income card. */
-const SourceRow = view<{ s: State; x: Source }>(({ s, x }) => (
-	<div class="rw">
-		<div>
-			<div>
-				{x.name}
-				<span class="tag">{sourceTag(x)}</span>
+const HoursPanel = view<{ s: State; x: Source; got: Income }>(({ s, x, got }) => {
+	const rate = srcRate(x);
+	const now = got.hours;
+	const summary = now ? `${now}h · +${fmt(Math.round(now * rate))}` : rate ? `${fmt(rate)} per hour` : "no hour price yet";
+	return (
+		<details class="hrs" data-keep-open={`hrs-${x.id}-${got.day}`} open={true}>
+			<summary class="hrs-h">
+				<span>Extra hours</span>
+				<span class="lb">{summary}</span>
+				<span class="hv">
+					<Icon name="chev" />
+				</span>
+			</summary>
+			<div class="hrs-b">
+				{rate ? (
+					<>
+						<form method="post" action="/income/hours" class="chips hrc">
+							<Back s={s} />
+							<input type="hidden" name="source_id" value={x.id} />
+							{HOUR_CHOICES.map((h) => (
+								<button key={h} class={now === h ? "chip on" : "chip"} name="hours" value={String(h)}>
+									{h}h
+								</button>
+							))}
+							{now ? (
+								<button class="chip n" name="hours" value="0">
+									Clear
+								</button>
+							) : null}
+						</form>
+						<form method="post" action="/income/hours" class="ln hrx">
+							<Back s={s} />
+							<input type="hidden" name="source_id" value={x.id} />
+							<input class="in" name="hours" placeholder="Other number of hours" inputmode="decimal" autocomplete="off" required />
+							<button class="btn xs o">Add</button>
+						</form>
+					</>
+				) : (
+					<div class="lb">Tap the pencil on the Income page and type the price for one extra hour.</div>
+				)}
 			</div>
+		</details>
+	);
+});
+
+const noteOf = (x: Source, got: Income[]) => (x.type === "job" && got[0] ? (got[0].hours ? `${fmt(got[0].amount)} · ${got[0].hours}h extra` : `${fmt(got[0].amount)} · no extra hours`) : "");
+
+const SourceRow = view<{ s: State; x: Source }>(({ s, x }) => {
+	const got = gotToday(s, x);
+	const note = noteOf(x, got);
+	return (
+		<div class="srw">
+			<div class="rw">
+				<div>
+					<div>
+						{x.name}
+						<span class="tag">{sourceTag(x)}</span>
+					</div>
+					{note ? <div class="lb">{note}</div> : null}
+				</div>
+				<span class="rt">
+					<SourceMain s={s} x={x} toggle />
+					<DeleteSource s={s} x={x} />
+				</span>
+			</div>
+			{x.type === "job" && x.active && got[0] ? <HoursPanel s={s} x={x} got={got[0]} /> : null}
 		</div>
-		<span class="rt">
-			<SourceMain s={s} x={x} toggle />
-			<DeleteSource s={s} x={x} />
-		</span>
-	</div>
+	);
+});
+
+const QuickIncome = view<{ s: State }>(({ s }) => (
+	<form method="post" action="/history/income" class="qi">
+		<Back s={s} />
+		<NameChips names={s.incomeNames} />
+		<div class="ln">
+			<input class="in" name="label" data-name placeholder="Other income name" autocomplete="off" />
+			<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
+			<button class="btn xs">Add</button>
+		</div>
+	</form>
 ));
 
-const SourceList = view<{ s: State }>(({ s }) => (s.sources.length ? <>{s.sources.map((x) => <SourceRow key={x.id} s={s} x={x} />)}</> : <Empty>No sources yet. Add one below.</Empty>));
+const SourceList = view<{ s: State }>(({ s }) => {
+	const others = s.incomesToday.filter((i) => !i.sourceId);
+	return s.sources.length || others.length ? (
+		<>
+			{s.sources.map((x) => (
+				<SourceRow key={x.id} s={s} x={x} />
+			))}
+			{others.map((i) => (
+				<IncomeRow key={i.id} s={s} i={i} />
+			))}
+		</>
+	) : (
+		<Empty>No sources yet. Add one below.</Empty>
+	);
+});
 
-/** Row on the phone home screen: only active sources. */
-const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => (
-	<div class="rw">
-		<div>
-			<div>{x.name}</div>
+const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
+	const got = gotToday(s, x);
+	const note = noteOf(x, got);
+	return (
+		<div class="srw">
+			<div class="rw">
+				<div>
+					<div>{x.name}</div>
+					{note ? <div class="lb">{note}</div> : null}
+				</div>
+				<span class="rt">
+					<SourceMain s={s} x={x} toggle={false} />
+				</span>
+			</div>
+			{x.type === "job" && got[0] ? <HoursPanel s={s} x={x} got={got[0]} /> : null}
 		</div>
-		<span class="rt">
-			<SourceMain s={s} x={x} toggle={false} />
-		</span>
-	</div>
-));
+	);
+});
 
-/** Manual / daily / monthly picker for a new source. */
+const MODES = [
+	{ key: "manual", label: "Manual" },
+	{ key: "job", label: "Fixed + hours" },
+	{ key: "daily", label: "Auto daily" },
+	{ key: "monthly", label: "Monthly" },
+];
+
 const ModeChips = view(() => (
 	<>
 		<input type="hidden" name="mode" value="manual" data-mode-input />
 		<div class="chips" style={{ margin: "10px 0 4px" }}>
-			<span class="chip on" data-mode="manual" style={{ cursor: "pointer" }}>
-				Manual
-			</span>
-			<span class="chip" data-mode="daily" style={{ cursor: "pointer" }}>
-				Auto daily
-			</span>
-			<span class="chip" data-mode="monthly" style={{ cursor: "pointer" }}>
-				Monthly
-			</span>
+			{MODES.map((m) => (
+				<span key={m.key} class={m.key === "manual" ? "chip on" : "chip"} data-mode={m.key} style={{ cursor: "pointer" }}>
+					{m.label}
+				</span>
+			))}
 		</div>
-		<div class="lb" style={{ marginBottom: "2px" }}>
-			Manual: you tap it, once a day. Auto: added for you.
+		<div class="lb mh mh-manual" style={{ marginBottom: "2px" }}>
+			Manual: you tap it once a day. Leave the amount empty if the number is different each day.
+		</div>
+		<div class="lb mh mh-job" style={{ marginBottom: "2px" }}>
+			Fixed + hours: the same pay each day, plus a price for every extra hour. After you tap it on Home you pick the extra hours.
+		</div>
+		<div class="lb mh mh-daily" style={{ marginBottom: "2px" }}>
+			Auto daily: the money is added for you every day.
+		</div>
+		<div class="lb mh mh-monthly" style={{ marginBottom: "2px" }}>
+			Monthly: the money is added for you once a month.
 		</div>
 	</>
 ));
@@ -160,41 +260,44 @@ const SourceFields = view<{ s: State }>(({ s }) => (
 	<>
 		<Back s={s} />
 		<div class="ln">
-			<input class="in" name="name" placeholder="New source" autocomplete="off" required />
-			<input class="in pr" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" />
+			<input class="in" name="name" placeholder="Source name (like Construction)" autocomplete="off" required />
+			<input class="in pr src-amt" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" />
+		</div>
+		<div class="ln src-job">
+			<input class="in" name="fixed" placeholder="Fixed per day" inputmode="decimal" autocomplete="off" />
+			<input class="in" name="rate" placeholder="Price per hour" inputmode="decimal" autocomplete="off" />
 		</div>
 		<ModeChips />
 		<button class="btn full">Add source</button>
 	</>
 ));
 
-/** Desktop: add-source form that the card's big "+" reveals. */
 const AddSourceForm = view<{ s: State; id: string }>(({ s, id }) => (
-	<form method="post" action="/income" id={id} class="sc spf" data-adp hidden>
+	<form method="post" action="/income" id={id} class="sc spf" data-adp data-m="manual" hidden>
 		<SourceFields s={s} />
 	</form>
 ));
 
-/** Phone: add-source form inside the card footer. */
 const SourceForm = view<{ s: State }>(({ s }) => (
-	<form method="post" action="/income" class="sf xfm" data-adp hidden>
+	<form method="post" action="/income" class="sf xfm" data-adp data-m="manual" hidden>
 		<SourceFields s={s} />
 	</form>
 ));
 
-/** Desktop income card with its add form. */
 export const IncomeDesktop = view<{ s: State; title?: string; id?: string }>(({ s, title = "Income sources", id = "f-src-d" }) => (
 	<>
 		<AddSourceForm s={s} id={id} />
 		<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add source">
 			<SourceList s={s} />
+			<QuickIncome s={s} />
 		</ListCard>
 	</>
 ));
 
-/** One source in manage mode: pause/resume, edit, delete. */
 const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const fixed = srcAmount(x);
+	const rate = srcRate(x);
+	const job = x.type === "job";
 	return (
 		<div class="dbw">
 			<div class="rw">
@@ -203,7 +306,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 						{x.name}
 						<span class="tag">{sourceTag(x)}</span>
 					</div>
-					{fixed ? <div class="lb">{`${fmt(fixed)} ${s.user.currency}`}</div> : null}
+					{fixed ? <div class="lb">{`${fmt(fixed)} ${s.user.currency}${job ? ` + ${rate ? fmt(rate) : "?"} per hour` : ""}`}</div> : null}
 				</div>
 				<span class="rt">
 					<form method="post" action="/income/toggle" style={contents}>
@@ -219,17 +322,29 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 			<form method="post" action="/income/edit" class="ad" data-addp hidden>
 				<Hid s={s} id={x.id} />
 				<label>Edit {x.name}</label>
-				<div class="ln">
-					<input class="in f" name="name" value={x.name} autocomplete="off" required />
-					<input class="in pr2" name="amount" value={fixed ? plain(fixed) : ""} placeholder="Amount" inputmode="decimal" autocomplete="off" />
-					<button class="btn xs">Save</button>
-				</div>
+				{job ? (
+					<>
+						<div class="ln">
+							<input class="in f" name="name" value={x.name} autocomplete="off" required />
+						</div>
+						<div class="ln" style={{ marginTop: "8px" }}>
+							<input class="in" name="amount" value={fixed ? plain(fixed) : ""} placeholder="Fixed per day" inputmode="decimal" autocomplete="off" />
+							<input class="in" name="rate" value={rate ? plain(rate) : ""} placeholder="Price per hour" inputmode="decimal" autocomplete="off" />
+							<button class="btn xs">Save</button>
+						</div>
+					</>
+				) : (
+					<div class="ln">
+						<input class="in f" name="name" value={x.name} autocomplete="off" required />
+						<input class="in pr2" name="amount" value={fixed ? plain(fixed) : ""} placeholder="Amount" inputmode="decimal" autocomplete="off" />
+						<button class="btn xs">Save</button>
+					</div>
+				)}
 			</form>
 		</div>
 	);
 });
 
-/** Phone "Income sources" card on the income page. */
 export const IncomeExpand = view<{ s: State }>(({ s }) => (
 	<ExpandCard
 		storeKey="income"
@@ -248,7 +363,6 @@ export const IncomeExpand = view<{ s: State }>(({ s }) => (
 	</ExpandCard>
 ));
 
-/** Phone "Income today" card on the home screen. */
 export const HomeIncome = view<{ s: State }>(({ s }) => {
 	const c = calc(s);
 	const sources = s.sources.filter((x) => x.active);
@@ -270,10 +384,12 @@ export const HomeIncome = view<{ s: State }>(({ s }) => {
 			form={
 				<form method="post" action="/history/income" class="sf xfm" data-adp hidden>
 					<Back s={s} />
+					<NameChips names={s.incomeNames} />
 					<div class="ln">
-						<input class="in" name="amount" placeholder="Other income today" inputmode="decimal" autocomplete="off" required />
-						<button class="btn">Add</button>
+						<input class="in" name="label" data-name placeholder="Name (like Fiverr)" autocomplete="off" />
+						<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
 					</div>
+					<button class="btn full">Add income</button>
 				</form>
 			}
 		>

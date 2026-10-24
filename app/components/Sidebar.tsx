@@ -1,13 +1,14 @@
 import { Icon, Logo, ThemeIcons } from "./Icon.tsx";
 import { view } from "./view.ts";
 
-export type DesktopTab = "home" | "notes" | "plan" | "income" | "pad" | "history" | "settings" | "";
+export type DesktopTab = "home" | "notes" | "plan" | "income" | "trading" | "pad" | "history" | "settings" | "";
 
 const LINKS = [
 	{ key: "home", label: "Home", icon: "home", href: "/home" },
 	{ key: "notes", label: "Notes", icon: "notes", href: "/notes" },
 	{ key: "plan", label: "Plan", icon: "goal", href: "/plan" },
 	{ key: "income", label: "Income", icon: "coin", href: "/income" },
+	{ key: "trading", label: "Trading", icon: "trade", href: "/trading" },
 	{ key: "pad", label: "Pad", icon: "pad", href: "/pad" },
 	{ key: "history", label: "History", icon: "hist", href: "/history" },
 	{ key: "settings", label: "Settings", icon: "gear", href: "/settings" },

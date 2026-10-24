@@ -13,6 +13,7 @@ export type User = {
 	week_start: string;
 	bg_mode: string;
 	bg_url: string;
+	usdt_rate: number;
 };
 
 const normEmail = (e: string) => e.trim().toLowerCase();
@@ -28,6 +29,7 @@ const toUser = (r: any): User => ({
 	week_start: r.week_start || "Monday",
 	bg_mode: r.bg_mode || "auto",
 	bg_url: r.bg_url ?? "",
+	usdt_rate: Number(r.usdt_rate_minor) > 0 ? Number(r.usdt_rate_minor) : 1100,
 });
 
 export async function getUserById(id: string): Promise<User | null> {
@@ -48,6 +50,7 @@ const newUserRow = (id: string, email: string, name: string, verified: number, n
 	week_start: "Monday",
 	bg_mode: "auto",
 	bg_url: "",
+	usdt_rate_minor: 1100,
 	created_at: now,
 	updated_at: now,
 });
@@ -89,7 +92,7 @@ export async function signUpWithPassword(input: { name: string; email: string; p
 		// Two signups with the same email at the same moment hit the UNIQUE index.
 		return { ok: false, error: "That email already has an account." };
 	}
-	return { ok: true, user: toUser(row as User) };
+	return { ok: true, user: toUser(row) };
 }
 
 export async function signInWithPassword(emailRaw: string, password: string): Promise<User | null> {
@@ -99,7 +102,7 @@ export async function signInWithPassword(emailRaw: string, password: string): Pr
 		await fakeVerify(password);
 		return null;
 	}
-	return (await verifyPassword(password, pw.hash)) ? toUser(user as User) : null;
+	return (await verifyPassword(password, pw.hash)) ? toUser(user) : null;
 }
 
 type GoogleProfile = { id?: string; email?: string | null; name?: string | null; picture?: string | null };
@@ -109,7 +112,7 @@ export async function upsertFromGoogle(account: { providerAccountId: string }, p
 	const link = await db.findOne(oauthAccounts, { where: { provider: "google", provider_account_id: account.providerAccountId } });
 	if (link) {
 		const existing = await db.find(users, link.user_id);
-		if (existing) return toUser(existing as User);
+		if (existing) return toUser(existing);
 	}
 
 	const email = normEmail(profile.email ?? "");
@@ -145,7 +148,7 @@ export async function upsertFromGoogle(account: { providerAccountId: string }, p
 				});
 			}
 		}
-		return toUser(user as User);
+		return toUser(user);
 	});
 }
 
@@ -170,11 +173,12 @@ export async function updateProfile(userId: string, input: { name: string; email
 	return null;
 }
 
-export async function updatePrefs(userId: string, input: { currency: string; run_at: string; week_start: string }) {
+export async function updatePrefs(userId: string, input: { currency: string; run_at: string; week_start: string; usdt_rate_minor: number }) {
 	await db.update(users, userId, {
 		currency: input.currency.trim().toUpperCase().slice(0, 8) || "MAD",
 		run_at: /^([01]?\d|2[0-3]):[0-5]\d$/.test(input.run_at.trim()) ? input.run_at.trim().padStart(5, "0") : "06:00",
 		week_start: input.week_start.trim().slice(0, 16) || "Monday",
+		...(input.usdt_rate_minor > 0 && input.usdt_rate_minor <= 100000000 ? { usdt_rate_minor: input.usdt_rate_minor } : {}),
 		updated_at: Date.now(),
 	});
 }

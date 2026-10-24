@@ -32,6 +32,8 @@ const addColumns = [
 "ALTER TABLE income_sources ADD COLUMN sort INTEGER NOT NULL DEFAULT 0",
 "ALTER TABLE incomes ADD COLUMN meta TEXT NOT NULL DEFAULT '{}'",
 "ALTER TABLE incomes ADD COLUMN ext_key TEXT NOT NULL DEFAULT ''",
+"ALTER TABLE incomes ADD COLUMN usd_minor INTEGER NOT NULL DEFAULT 0",
+"ALTER TABLE users ADD COLUMN usd_rate_minor INTEGER NOT NULL DEFAULT 1000",
 ];
 for (const statement of addColumns) {
 try {

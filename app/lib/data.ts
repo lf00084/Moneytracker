@@ -6,6 +6,8 @@ import { loadTrades } from "./trading.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
 import { getActiveAvatar, type User } from "./users.ts";
+import { exoStatus, settleExo } from "./exoclick.ts";
+const settleAll = async (uid: string) => void (await Promise.all([settleAuto(uid), settleExo(uid)]));
 export type Quick = { id: string; name: string; icon: string; price: number };
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number };
 export type Income = { id: string; sourceId: string; source: string; amount: number; day: string; hours: number; locked: boolean };
@@ -23,6 +25,9 @@ error: string;
 avatar: string | null;
 quick: Quick[];
 names: string[];
+incNames: string[];
+exo: Record<string, string>;
+exoToday: Record<string, number>;
 incomeNames: string[];
 trades: TradeSession[];
 buys: Buy[];
@@ -40,7 +45,7 @@ const row = rowsOf(r)[0];
 return Number(row?.s ?? row?.[0] ?? 0) || 0;
 };
 export async function balanceOf(uid: string): Promise<number> {
-await settleAuto(uid);
+await settleAll(uid);
 const [i, p] = await Promise.all([
 db.exec(sql`select coalesce(sum(amount_minor), 0) as s from incomes where user_id = ${uid}`),
 db.exec(sql`select coalesce(sum(total_minor), 0) as s from purchases where user_id = ${uid}`),
@@ -58,6 +63,9 @@ error: extra.error ?? "",
 avatar: null,
 quick: [],
 names: [],
+incNames: [],
+exo: {},
+exoToday: {},
 incomeNames: [],
 trades: [],
 buys: [],
@@ -69,7 +77,7 @@ notes: [],
 days: [],
 balance: 0,
 };
-if (need.has("today") || need.has("sources") || need.has("history") || need.has("balance")) await settleAuto(uid);
+if (need.has("today") || need.has("sources") || need.has("history") || need.has("balance")) await settleAll(uid);
 const jobs: Promise<void>[] = [];
 if (need.has("avatar")) jobs.push(getActiveAvatar(uid).then((a) => void (s.avatar = a)));
 if (need.has("quick"))
@@ -98,6 +106,7 @@ sort: r.sort ?? 0,
 }))
 .sort((a, b) => a.sort - b.sort);
 s.sources = sourceRows;
+jobs.push(exoStatus(sourceRows).then((e) => void (s.exo = e)));
 }
 const byId = new Map(sourceRows.map((x) => [x.id, x.name]));
 const toIncome = (r: { id: string; source_id: string | null; amount_minor: number; day: string; meta: string }): Income => {
@@ -118,7 +127,9 @@ db.findMany(purchases, { where: { user_id: uid, day: t }, orderBy: ["created_at"
 s.buys = rows.map(toBuy);
 }),
 db.findMany(incomes, { where: { user_id: uid, day: t } }).then((rows) => {
-s.incomesToday = rows.map(toIncome);
+const mapped = rows.map(toIncome);
+s.incomesToday = mapped.filter((i) => !i.live);
+for (const i of mapped) if (i.sourceId && (i.live || i.usd)) s.exoToday[i.sourceId] = i.usd;
 }),
 );
 }
@@ -130,6 +141,12 @@ db
 db
 .exec(sql`select min(json_extract(meta, '$.name')) as n, count(*) as c from incomes where user_id = ${uid} and source_id is null and ext_key = '' and coalesce(json_extract(meta, '$.name'), '') <> '' group by lower(json_extract(meta, '$.name')) order by c desc, max(created_at) desc limit 30`)
 .then((r) => void (s.incomeNames = rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean))),
+);
+if (need.has("incnames"))
+jobs.push(
+db
+.exec(sql`select min(json_extract(meta, '$.label')) as n, count(*) as c from incomes where user_id = ${uid} and json_extract(meta, '$.label') is not null and json_extract(meta, '$.label') <> '' group by lower(json_extract(meta, '$.label')) order by c desc, max(created_at) desc limit 12`)
+.then((r) => void (s.incNames = rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean))),
 );
 if (need.has("debts")) jobs.push(loadDebts(uid).then((d) => void (s.debts = d)));
 if (need.has("trading")) jobs.push(loadTrades(uid).then((t) => void (s.trades = t)));
@@ -161,7 +178,7 @@ db.findMany(incomes, { where: { user_id: uid }, orderBy: ["day", "desc"], limit:
 s.days = Array.from({ length: 30 }, (_, i) => {
 const day = addDays(t, -i);
 const b = bs.filter((x) => x.day === day);
-const inc = is.filter((x) => x.day === day);
+const inc = is.filter((x) => x.day === day && parseJson(x.meta).final !== 0);
 return {
 day,
 label: dayLabel(day),

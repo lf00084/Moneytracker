@@ -1,11 +1,12 @@
 import { balance } from "./balance.ts"
+import { exoclick } from "./exoclick.ts"
 import { job } from "./job.ts"
 import { manual } from "./manual.ts"
 import type { Json, SourceType } from "./types.ts"
 
 export type { Ctx, Entry, Field, Json, SourceType } from "./types.ts"
 
-const registry: Record<string, SourceType> = { manual, job, balance }
+const registry: Record<string, SourceType> = { manual, job, fixed: { ...job, key: "fixed", label: "Fixed + hours" }, balance, exoclick }
 
 export const typeList = Object.values(registry)
 

@@ -13,6 +13,7 @@ export type User = {
 	week_start: string;
 	bg_mode: string;
 	bg_url: string;
+	usd_rate_minor: number;
 	usdt_rate: number;
 };
 
@@ -29,6 +30,7 @@ const toUser = (r: any): User => ({
 	week_start: r.week_start || "Monday",
 	bg_mode: r.bg_mode || "auto",
 	bg_url: r.bg_url ?? "",
+	usd_rate_minor: r.usd_rate_minor || 1000,
 	usdt_rate: Number(r.usdt_rate_minor) > 0 ? Number(r.usdt_rate_minor) : 1100,
 });
 
@@ -178,6 +180,7 @@ export async function updatePrefs(userId: string, input: { currency: string; run
 		currency: input.currency.trim().toUpperCase().slice(0, 8) || "MAD",
 		run_at: /^([01]?\d|2[0-3]):[0-5]\d$/.test(input.run_at.trim()) ? input.run_at.trim().padStart(5, "0") : "06:00",
 		week_start: input.week_start.trim().slice(0, 16) || "Monday",
+		...(Number(String(input.usd_rate ?? "").replace(",", ".")) > 0 ? { usd_rate_minor: Math.round(Number(String(input.usd_rate).replace(",", ".")) * 100) } : {}),
 		...(input.usdt_rate_minor > 0 && input.usdt_rate_minor <= 100000000 ? { usdt_rate_minor: input.usdt_rate_minor } : {}),
 		updated_at: Date.now(),
 	});

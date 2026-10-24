@@ -6,6 +6,7 @@
  * afterwards; unless `back` is false it goes to the page the form came from instead.
  */
 import * as act from "./lib/actions.ts";
+import * as inc from "./lib/income.ts";
 import { toMinor } from "./lib/money.ts";
 import * as trading from "./lib/trading.ts";
 import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts";
@@ -42,11 +43,13 @@ export const commands = {
 	editGoalItem: { run: (u, f) => act.editGoalItem(u.id, f), to: "/goals" },
 	addGoalItem: { run: (u, f) => act.addGoalItem(u.id, f), to: "/goals" },
 	deleteGoalItem: { run: (u, f) => act.deleteGoalItem(u.id, f), to: "/goals" },
-	addSource: { run: (u, f) => act.addSource(u.id, f), to: "/income" },
+	addSource: { run: (u, f) => inc.addSource(u.id, f), to: "/income" },
+	setHours: { run: (u, f) => inc.setHours(u.id, f), to: "/home" },
+	addNamed: { run: (u, f) => inc.addNamed(u.id, f), to: "/home" },
 	addIncome: { run: (u, f) => act.addIncome(u.id, f), to: "/income" },
 	deleteIncome: { run: (u, f) => act.deleteIncome(u.id, f), to: "/income" },
 	toggleSource: { run: (u, f) => act.toggleSource(u.id, f), to: "/income" },
-	editSource: { run: (u, f) => act.editSource(u.id, f), to: "/income" },
+	editSource: { run: (u, f) => inc.editSource(u.id, f), to: "/income" },
 	deleteSource: { run: (u, f) => act.deleteSource(u.id, f), to: "/income" },
 	setHours: { run: (u, f) => act.setHours(u.id, f), to: "/home" },
 	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },

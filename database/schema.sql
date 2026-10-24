@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   week_start    TEXT NOT NULL DEFAULT 'Monday',
   bg_mode       TEXT NOT NULL DEFAULT 'auto',
   bg_url        TEXT NOT NULL DEFAULT '',
+  usd_rate_minor INTEGER NOT NULL DEFAULT 1000,
   usdt_rate_minor INTEGER NOT NULL DEFAULT 1100,
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
@@ -103,7 +104,8 @@ CREATE TABLE IF NOT EXISTS incomes (
   day           TEXT NOT NULL,                    -- YYYY-MM-DD
   created_at    INTEGER NOT NULL,
   meta          TEXT NOT NULL DEFAULT '{}',
-  ext_key       TEXT NOT NULL DEFAULT ''
+  ext_key       TEXT NOT NULL DEFAULT '',
+  usd_minor     INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS incomes_day_idx ON incomes(user_id, day);
 -- one payout per source per day (auto income and once-a-day manual sources)

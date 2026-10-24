@@ -59,6 +59,8 @@ export const routes = route({
 		deleteGoalItem: post("/goals/item/delete"),
 		addSource: post("/income"),
 		addIncome: post("/income/add"),
+		setHours: post("/income/hours"),
+		addNamed: post("/income/named"),
 		deleteIncome: post("/income/delete"),
 		toggleSource: post("/income/toggle"),
 		editSource: post("/income/edit"),

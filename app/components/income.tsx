@@ -1,13 +1,21 @@
 import type { Income, Source, State } from "../lib/data.ts";
 import { fmt } from "../lib/money.ts";
-import { calc, gotToday, plain, sourceTag, srcAmount, srcRate } from "../lib/view.ts";
+import { calc, gotToday, isFixed, plain, srcAmount } from "../lib/view.ts";
 import { Icon } from "./Icon.tsx";
 import { Back, Empty, ExpandCard, ListCard, NameChips } from "./ui.tsx";
 import { view } from "./view.ts";
 
 const contents = { display: "contents" };
-
-const HOUR_CHOICES = [1, 2, 3, 4];
+const rateOf = (x: Source) => Number(x.config.rate_minor) || 0;
+const tagOf = (x: Source) => (!x.active ? "paused" : x.type === "exoclick" ? "exoclick" : isFixed(x.type) ? "fixed" : x.mode === "auto" ? (x.every === "month" ? "monthly" : "daily") : "manual");
+const usdTxt = (n: number) => `$${fmt(n)}`;
+const exoSub = (s: State, x: Source) => {
+	const st = s.exo[x.id];
+	const usd = s.exoToday[x.id];
+	if (st) return st;
+	if (usd === undefined) return "syncing...";
+	return `≈ ${fmt(Math.round((usd * s.user.usd_rate_minor) / 100))} ${s.user.currency} when the day ends`;
+};
 
 const Hid = view<{ s: State; id: string }>(({ s, id }) => (
 	<>
@@ -20,29 +28,67 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 	<div class="by">
 		<div>
 			<div>{i.source}</div>
-			{i.hours ? <div class="lb">{`+${i.hours}h extra`}</div> : null}
+			{i.hours ? <div class="lb">{`incl. ${i.hours}h extra`}</div> : null}
 		</div>
 		<span class="rt">
 			<b class="ea">+{fmt(i.amount)}</b>
-			{i.locked ? null : (
-				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} from ${i.source}?`}>
-					<Back s={s} />
-					<input type="hidden" name="id" value={i.id} />
-					<button class="ub" aria-label="Undo income">
-						<Icon name="undo" />
-					</button>
-				</form>
-			)}
+			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} from ${i.source}?`}>
+				<Back s={s} />
+				<input type="hidden" name="id" value={i.id} />
+				<button class="ub" aria-label="Undo income">
+					<Icon name="undo" />
+				</button>
+			</form>
 		</span>
 	</div>
 ));
+
+const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) => {
+	const rate = rateOf(x);
+	const h = row.hours;
+	const opts = [1, 2, 3, 4];
+	return (
+		<details class="hx" data-keep-open={`hx-${x.id}-${row.day}`} open={h ? undefined : true}>
+			<summary>
+				<span>Extra hours</span>
+				<span>{h ? `+${h}h · +${fmt(Math.round(h * rate))}` : `${fmt(rate)} / hour`}</span>
+				<span class="chev">
+					<Icon name="chev" />
+				</span>
+			</summary>
+			<div class="hxb">
+				<div class="hxg">
+					{opts.map((n) => (
+						<form key={n} method="post" action="/income/hours" style={contents}>
+							<Back s={s} />
+							<input type="hidden" name="source_id" value={x.id} />
+							<input type="hidden" name="hours" value={String(n)} />
+							<input type="hidden" name="toggle" value="1" />
+							<button class={h === n ? "chip hc on" : "chip hc"}>
+								<b>{n}h</b>
+								<small>+{fmt(n * rate)}</small>
+							</button>
+						</form>
+					))}
+				</div>
+				<form method="post" action="/income/hours" class="hxm">
+					<Back s={s} />
+					<input type="hidden" name="source_id" value={x.id} />
+					<input class="in" name="hours" value={h && !opts.includes(h) ? String(h) : ""} placeholder="Other hours" inputmode="decimal" autocomplete="off" />
+					<button class="btn xs o">Set</button>
+					<button type="button" class="btn xs o" data-close>
+						Close
+					</button>
+				</form>
+			</div>
+		</details>
+	);
+});
 
 const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggle }) => {
 	const got = gotToday(s, x);
 	const sum = got.reduce((a, i) => a + i.amount, 0);
 	const fixed = srcAmount(x);
-	const auto = x.mode === "auto";
-
 	if (toggle && !x.active) {
 		return (
 			<form method="post" action="/income/toggle" style={contents}>
@@ -51,7 +97,26 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 			</form>
 		);
 	}
-	if (auto) {
+	if (x.type === "exoclick") {
+		const usd = s.exoToday[x.id];
+		return (
+			<>
+				{usd !== undefined ? <b class="ea">{usdTxt(usd)}</b> : null}
+				{s.exo[x.id] ? (
+					<a class="btn xs o" href="/income">
+						Fix
+					</a>
+				) : null}
+				{toggle ? (
+					<form method="post" action="/income/toggle" style={contents}>
+						<Hid s={s} id={x.id} />
+						<button class="btn xs o">Pause</button>
+					</form>
+				) : null}
+			</>
+		);
+	}
+	if (x.mode === "auto") {
 		return (
 			<>
 				<b class="ea">+{fmt(x.amount)}</b>
@@ -67,9 +132,7 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 	if (got.length) {
 		return (
 			<>
-				<button class="btn xs" disabled>
-					Added
-				</button>
+				<b class="ea">+{fmt(sum)}</b>
 				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
 					<button class="ub" aria-label={`Undo ${x.name}`}>
@@ -92,7 +155,7 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 		<form method="post" action="/income/add" class="ln" style={{ gap: "6px" }}>
 			<Back s={s} />
 			<input type="hidden" name="source_id" value={x.id} />
-			<input class="in pr2" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" required />
+			<input class="in pr2" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
 			<button class="btn xs o">Add</button>
 		</form>
 	);
@@ -107,206 +170,126 @@ const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 	</form>
 ));
 
-const HoursPanel = view<{ s: State; x: Source; got: Income }>(({ s, x, got }) => {
-	const rate = srcRate(x);
-	const now = got.hours;
-	const summary = now ? `${now}h · +${fmt(Math.round(now * rate))}` : rate ? `${fmt(rate)} per hour` : "no hour price yet";
-	return (
-		<details class="hrs" data-keep-open={`hrs-${x.id}-${got.day}`} open={true}>
-			<summary class="hrs-h">
-				<span>Extra hours</span>
-				<span class="lb">{summary}</span>
-				<span class="hv">
-					<Icon name="chev" />
-				</span>
-			</summary>
-			<div class="hrs-b">
-				{rate ? (
-					<>
-						<form method="post" action="/income/hours" class="chips hrc">
-							<Back s={s} />
-							<input type="hidden" name="source_id" value={x.id} />
-							{HOUR_CHOICES.map((h) => (
-								<button key={h} class={now === h ? "chip on" : "chip"} name="hours" value={String(h)}>
-									{h}h
-								</button>
-							))}
-							{now ? (
-								<button class="chip n" name="hours" value="0">
-									Clear
-								</button>
-							) : null}
-						</form>
-						<form method="post" action="/income/hours" class="ln hrx">
-							<Back s={s} />
-							<input type="hidden" name="source_id" value={x.id} />
-							<input class="in" name="hours" placeholder="Other number of hours" inputmode="decimal" autocomplete="off" required />
-							<button class="btn xs o">Add</button>
-						</form>
-					</>
-				) : (
-					<div class="lb">Tap the pencil on the Income page and type the price for one extra hour.</div>
-				)}
-			</div>
-		</details>
-	);
-});
-
-const noteOf = (x: Source, got: Income[]) => (x.type === "job" && got[0] ? (got[0].hours ? `${fmt(got[0].amount)} · ${got[0].hours}h extra` : `${fmt(got[0].amount)} · no extra hours`) : "");
-
-const SourceRow = view<{ s: State; x: Source }>(({ s, x }) => {
-	const got = gotToday(s, x);
-	const note = noteOf(x, got);
-	return (
-		<div class="srw">
-			<div class="rw">
-				<div>
-					<div>
-						{x.name}
-						<span class="tag">{sourceTag(x)}</span>
-					</div>
-					{note ? <div class="lb">{note}</div> : null}
-				</div>
-				<span class="rt">
-					<SourceMain s={s} x={x} toggle />
-					<DeleteSource s={s} x={x} />
-				</span>
-			</div>
-			{x.type === "job" && x.active && got[0] ? <HoursPanel s={s} x={x} got={got[0]} /> : null}
-		</div>
-	);
-});
-
-const QuickIncome = view<{ s: State }>(({ s }) => (
-	<form method="post" action="/history/income" class="qi">
-		<Back s={s} />
-		<NameChips names={s.incomeNames} />
-		<div class="ln">
-			<input class="in" name="label" data-name placeholder="Other income name" autocomplete="off" />
-			<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
-			<button class="btn xs">Add</button>
-		</div>
-	</form>
-));
-
-const SourceList = view<{ s: State }>(({ s }) => {
-	const others = s.incomesToday.filter((i) => !i.sourceId);
-	return s.sources.length || others.length ? (
-		<>
-			{s.sources.map((x) => (
-				<SourceRow key={x.id} s={s} x={x} />
-			))}
-			{others.map((i) => (
-				<IncomeRow key={i.id} s={s} i={i} />
-			))}
-		</>
-	) : (
-		<Empty>No sources yet. Add one below.</Empty>
-	);
-});
-
 const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
-	const got = gotToday(s, x);
-	const note = noteOf(x, got);
+	const fixedSrc = isFixed(x.type);
+	const got = fixedSrc ? gotToday(s, x)[0] : undefined;
+	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} + ${fmt(rateOf(x))} / hour`) : "";
 	return (
-		<div class="srw">
+		<div class="sw">
 			<div class="rw">
 				<div>
 					<div>{x.name}</div>
-					{note ? <div class="lb">{note}</div> : null}
+					{sub ? <div class={x.type === "exoclick" && s.exo[x.id] ? "lb neg" : "lb"}>{sub}</div> : null}
 				</div>
 				<span class="rt">
 					<SourceMain s={s} x={x} toggle={false} />
 				</span>
 			</div>
-			{x.type === "job" && got[0] ? <HoursPanel s={s} x={x} got={got[0]} /> : null}
+			{got ? <HoursPanel s={s} x={x} row={got} /> : null}
 		</div>
 	);
 });
 
-const MODES = [
-	{ key: "manual", label: "Manual" },
-	{ key: "job", label: "Fixed + hours" },
-	{ key: "daily", label: "Auto daily" },
-	{ key: "monthly", label: "Monthly" },
-];
-
-const ModeChips = view(() => (
+const NamedFields = view<{ s: State }>(({ s }) => (
 	<>
-		<input type="hidden" name="mode" value="manual" data-mode-input />
-		<div class="chips" style={{ margin: "10px 0 4px" }}>
-			{MODES.map((m) => (
-				<span key={m.key} class={m.key === "manual" ? "chip on" : "chip"} data-mode={m.key} style={{ cursor: "pointer" }}>
-					{m.label}
-				</span>
-			))}
+		<Back s={s} />
+		<NameChips names={s.incNames} />
+		<div class="ln">
+			<input class="in" name="label" data-name placeholder="Name (e.g. Tip)" autocomplete="off" />
+			<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
 		</div>
-		<div class="lb mh mh-manual" style={{ marginBottom: "2px" }}>
-			Manual: you tap it once a day. Leave the amount empty if the number is different each day.
-		</div>
-		<div class="lb mh mh-job" style={{ marginBottom: "2px" }}>
-			Fixed + hours: the same pay each day, plus a price for every extra hour. After you tap it on Home you pick the extra hours.
-		</div>
-		<div class="lb mh mh-daily" style={{ marginBottom: "2px" }}>
-			Auto daily: the money is added for you every day.
-		</div>
-		<div class="lb mh mh-monthly" style={{ marginBottom: "2px" }}>
-			Monthly: the money is added for you once a month.
-		</div>
+		<button class="btn full">Add income</button>
 	</>
 ));
+
+const KINDS: [string, string][] = [
+	["fixed", "Fixed + hours"],
+	["manual", "Manual"],
+	["daily", "Auto daily"],
+	["monthly", "Monthly"],
+	["exoclick", "ExoClick"],
+];
 
 const SourceFields = view<{ s: State }>(({ s }) => (
 	<>
 		<Back s={s} />
-		<div class="ln">
-			<input class="in" name="name" placeholder="Source name (like Construction)" autocomplete="off" required />
-			<input class="in pr src-amt" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" />
+		<input class="in" name="name" placeholder="Source name (e.g. Construction)" autocomplete="off" required />
+		<input type="hidden" name="kind" value="fixed" data-mode-input />
+		<div class="chips" style={{ margin: "10px 0 8px" }}>
+			{KINDS.map(([k, l]) => (
+				<span key={k} class={k === "fixed" ? "chip on" : "chip"} data-mode={k} style={{ cursor: "pointer" }}>
+					{l}
+				</span>
+			))}
 		</div>
-		<div class="ln src-job">
-			<input class="in" name="fixed" placeholder="Fixed per day" inputmode="decimal" autocomplete="off" />
-			<input class="in" name="rate" placeholder="Price per hour" inputmode="decimal" autocomplete="off" />
+		<div class="kf kf-fixed">
+			<div class="ln">
+				<input class="in" name="fixed" placeholder="Per day" inputmode="decimal" autocomplete="off" />
+				<input class="in" name="rate" placeholder="Per extra hour" inputmode="decimal" autocomplete="off" />
+			</div>
+			<div class="lb">Tap it once a day on Home, then pick the extra hours.</div>
 		</div>
-		<ModeChips />
+		<div class="kf kf-manual">
+			<div class="lb">You type the amount yourself each day.</div>
+		</div>
+		<div class="kf kf-daily kf-monthly">
+			<input class="in" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" />
+			<div class="lb">Added for you automatically.</div>
+		</div>
+		<div class="kf kf-exoclick">
+			<input class="in" name="api_key" type="password" placeholder="ExoClick API key" autocomplete="off" />
+			<div class="lb">Saved encrypted. Counted in USD during the day, converted to {s.user.currency} when the day ends.</div>
+		</div>
 		<button class="btn full">Add source</button>
 	</>
 ));
 
-const AddSourceForm = view<{ s: State; id: string }>(({ s, id }) => (
-	<form method="post" action="/income" id={id} class="sc spf" data-adp data-m="manual" hidden>
-		<SourceFields s={s} />
-	</form>
-));
-
 const SourceForm = view<{ s: State }>(({ s }) => (
-	<form method="post" action="/income" class="sf xfm" data-adp data-m="manual" hidden>
+	<form method="post" action="/income" class="sf xfm" data-kind="fixed" data-adp hidden>
 		<SourceFields s={s} />
 	</form>
 ));
 
-export const IncomeDesktop = view<{ s: State; title?: string; id?: string }>(({ s, title = "Income sources", id = "f-src-d" }) => (
-	<>
-		<AddSourceForm s={s} id={id} />
-		<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add source">
-			<SourceList s={s} />
-			<QuickIncome s={s} />
-		</ListCard>
-	</>
-));
+export const IncomeDesktop = view<{ s: State; title?: string; id?: string }>(({ s, title = "Income today", id = "f-inc-d" }) => {
+	const sources = s.sources.filter((x) => x.active);
+	const others = s.incomesToday.filter((i) => !i.sourceId);
+	return (
+		<>
+			<form method="post" action="/income/named" id={id} class="sc spf" data-adp hidden>
+				<NamedFields s={s} />
+			</form>
+			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income">
+				{sources.length || others.length ? (
+					<>
+						{sources.map((x) => (
+							<HomeRow key={x.id} s={s} x={x} />
+						))}
+						{others.map((i) => (
+							<IncomeRow key={i.id} s={s} i={i} />
+						))}
+					</>
+				) : (
+					<Empty>No sources yet. Add one on the Income page.</Empty>
+				)}
+			</ListCard>
+		</>
+	);
+});
 
 const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
+	const fixedSrc = isFixed(x.type);
 	const fixed = srcAmount(x);
-	const rate = srcRate(x);
-	const job = x.type === "job";
+	const cur = s.user.currency;
+	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? `${fmt(fixed)} + ${fmt(rateOf(x))} / hour ${cur}` : x.mode === "auto" ? `${fmt(x.amount)} ${cur}` : "";
 	return (
 		<div class="dbw">
 			<div class="rw">
 				<div>
 					<div>
 						{x.name}
-						<span class="tag">{sourceTag(x)}</span>
+						<span class="tag">{tagOf(x)}</span>
 					</div>
-					{fixed ? <div class="lb">{`${fmt(fixed)} ${s.user.currency}${job ? ` + ${rate ? fmt(rate) : "?"} per hour` : ""}`}</div> : null}
+					{sub ? <div class={x.type === "exoclick" && s.exo[x.id] ? "lb neg" : "lb"}>{sub}</div> : null}
 				</div>
 				<span class="rt">
 					<form method="post" action="/income/toggle" style={contents}>
@@ -322,24 +305,18 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 			<form method="post" action="/income/edit" class="ad" data-addp hidden>
 				<Hid s={s} id={x.id} />
 				<label>Edit {x.name}</label>
-				{job ? (
-					<>
-						<div class="ln">
-							<input class="in f" name="name" value={x.name} autocomplete="off" required />
-						</div>
-						<div class="ln" style={{ marginTop: "8px" }}>
-							<input class="in" name="amount" value={fixed ? plain(fixed) : ""} placeholder="Fixed per day" inputmode="decimal" autocomplete="off" />
-							<input class="in" name="rate" value={rate ? plain(rate) : ""} placeholder="Price per hour" inputmode="decimal" autocomplete="off" />
-							<button class="btn xs">Save</button>
-						</div>
-					</>
-				) : (
-					<div class="ln">
-						<input class="in f" name="name" value={x.name} autocomplete="off" required />
-						<input class="in pr2" name="amount" value={fixed ? plain(fixed) : ""} placeholder="Amount" inputmode="decimal" autocomplete="off" />
-						<button class="btn xs">Save</button>
+				<input class="in f" name="name" value={x.name} autocomplete="off" required />
+				{fixedSrc ? (
+					<div class="ln" style={{ marginTop: "8px" }}>
+						<input class="in" name="fixed" value={fixed ? plain(fixed) : ""} placeholder="Per day" inputmode="decimal" autocomplete="off" />
+						<input class="in" name="rate" value={rateOf(x) ? plain(rateOf(x)) : ""} placeholder="Per extra hour" inputmode="decimal" autocomplete="off" />
 					</div>
-				)}
+				) : null}
+				{x.type === "exoclick" ? <input class="in" style={{ marginTop: "8px" }} name="api_key" type="password" placeholder="New API key (leave empty to keep)" autocomplete="off" /> : null}
+				{!fixedSrc && x.type !== "exoclick" && x.mode === "auto" ? <input class="in" style={{ marginTop: "8px" }} name="amount" value={plain(x.amount)} placeholder="Amount" inputmode="decimal" autocomplete="off" /> : null}
+				<button class="btn xs" style={{ marginTop: "10px" }}>
+					Save
+				</button>
 			</form>
 		</div>
 	);
@@ -372,7 +349,7 @@ export const HomeIncome = view<{ s: State }>(({ s }) => {
 			storeKey="inc"
 			open
 			title="Income today"
-			label="Add other income"
+			label="Add manual income"
 			head={
 				<>
 					<b class="big2">
@@ -382,14 +359,8 @@ export const HomeIncome = view<{ s: State }>(({ s }) => {
 				</>
 			}
 			form={
-				<form method="post" action="/history/income" class="sf xfm" data-adp hidden>
-					<Back s={s} />
-					<NameChips names={s.incomeNames} />
-					<div class="ln">
-						<input class="in" name="label" data-name placeholder="Name (like Fiverr)" autocomplete="off" />
-						<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
-					</div>
-					<button class="btn full">Add income</button>
+				<form method="post" action="/income/named" class="sf xfm" data-adp hidden>
+					<NamedFields s={s} />
 				</form>
 			}
 		>
@@ -403,7 +374,7 @@ export const HomeIncome = view<{ s: State }>(({ s }) => {
 					))}
 				</>
 			) : (
-				<Empty>No sources yet.</Empty>
+				<Empty>No sources yet. Add one on the Income page.</Empty>
 			)}
 		</ExpandCard>
 	);

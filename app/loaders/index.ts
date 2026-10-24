@@ -12,7 +12,7 @@ export type ScreenKey = "home" | "debts" | "notes" | "goals" | "plan" | "income"
 type ScreenDef = { path: string; parts: Part[]; first?: Part[] };
 
 export const screenDefs: Record<ScreenKey, ScreenDef> = {
-	home: { path: "/home", parts: ["today", "sources", "names", "debts", "goals", "notes", "balance"], first: ["today", "sources", "names", "debts", "goals", "balance"] },
+	home: { path: "/home", parts: ["today", "sources", "names", "incnames", "debts", "goals", "notes", "balance"], first: ["today", "sources", "names", "incnames", "debts", "goals", "balance"] },
 	debts: { path: "/debts", parts: ["debts", "goals", "balance"] },
 	notes: { path: "/notes", parts: ["notes"] },
 	goals: { path: "/goals", parts: ["goals", "debts", "balance"] },

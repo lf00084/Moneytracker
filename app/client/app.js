@@ -51,6 +51,7 @@ d.addEventListener('toggle',function(e){
 
 d.addEventListener('click',function(e){
   var t=e.target,q;
+  if((q=t.closest('[data-close]'))){var cd=q.closest('details');if(cd)cd.open=false;return}
   if(t.closest('[data-theme-toggle]')){setTheme(r.getAttribute('data-theme')==='dark'?'light':'dark');return}
   if((q=t.closest('[data-set-theme]'))){setTheme(q.getAttribute('data-set-theme'));return}
   if((q=t.closest('[data-eye]'))){
@@ -113,6 +114,7 @@ d.addEventListener('click',function(e){
     var form=q.closest('form');
     all('[data-mode]',form).forEach(function(c){c.classList.toggle('on',c===q)});
     form.querySelector('[data-mode-input]').value=q.getAttribute('data-mode');
+    form.setAttribute('data-kind',q.getAttribute('data-mode'));
     form.setAttribute('data-m',q.getAttribute('data-mode'));
     return
   }

@@ -68,6 +68,7 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 		<Field label="Currency" value={s.user.currency} name="currency" />
 		<Field label={`1 USDT costs (${s.user.currency})`} value={plain(s.user.usdt_rate)} name="usdt" />
 		<Field label="Auto income runs at" value={s.user.run_at} name="run_at" />
+		<Field label="1 USD in MAD (ExoClick)" value={plain(s.user.usd_rate_minor)} name="usd_rate" />
 		<Field label="Week starts" value={s.user.week_start} name="week" />
 		<button class="btn" style={{ marginTop: "14px" }}>
 			Save

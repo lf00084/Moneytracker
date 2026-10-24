@@ -6,7 +6,7 @@ import { loadTrades } from "./trading.ts";
 import { parseJson, type Json } from "./sources/index.ts";
 import { addDays, dayLabel, today } from "./time.ts";
 import { getActiveAvatar, type User } from "./users.ts";
-import { exoStatus, settleExo } from "./exoclick.ts";
+import { exoStatus, liveExo, settleExo } from "./exoclick.ts";
 const settleAll = async (uid: string) => void (await Promise.all([settleAuto(uid), settleExo(uid)]));
 export type Quick = { id: string; name: string; icon: string; price: number };
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number };
@@ -126,11 +126,18 @@ jobs.push(
 db.findMany(purchases, { where: { user_id: uid, day: t }, orderBy: ["created_at", "desc"] }).then((rows) => {
 s.buys = rows.map(toBuy);
 }),
-db.findMany(incomes, { where: { user_id: uid, day: t } }).then((rows) => {
+Promise.all([
+db.findMany(incomes, { where: { user_id: uid, day: t } }),
+liveExo(uid, sourceRows.filter((x) => x.type === "exoclick" && x.active).map((x) => x.id), user.usd_rate_minor),
+]).then(([rows, live]) => {
 const exo = new Set(sourceRows.filter((x) => x.type === "exoclick").map((x) => x.id));
-const live = rows.filter((r) => r.source_id && exo.has(r.source_id));
-for (const r of live) s.exoToday[r.source_id!] = r.usd_minor || 0;
-s.incomesToday = rows.filter((r) => !live.includes(r)).map(toIncome);
+s.incomesToday = rows.filter((r) => !(r.source_id && exo.has(r.source_id))).map(toIncome);
+for (const x of sourceRows) {
+const v = live[x.id];
+if (!v) continue;
+s.exoToday[x.id] = v.usd;
+s.incomesToday.push({ id: `exo-${x.id}`, sourceId: x.id, source: x.name, amount: v.mad, day: v.day, hours: 0, locked: true });
+}
 }),
 );
 }

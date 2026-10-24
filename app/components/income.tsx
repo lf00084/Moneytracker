@@ -9,7 +9,7 @@ const contents = { display: "contents" };
 const rateOf = (x: Source) => Number(x.config.rate_minor) || 0;
 const tagOf = (x: Source) => (!x.active ? "paused" : x.type === "exoclick" ? "exoclick" : isFixed(x.type) ? "fixed" : x.mode === "auto" ? (x.every === "month" ? "monthly" : "daily") : "manual");
 const usdTxt = (n: number) => `$${fmt(n)}`;
-const exoSub = (s: State, x: Source) => s.exo[x.id] || "earned today";
+const exoSub = (s: State, x: Source) => s.exo[x.id] || `${usdTxt(s.exoToday[x.id] ?? 0)} today`;
 
 const Hid = view<{ s: State; id: string }>(({ s, id }) => (
 	<>
@@ -92,10 +92,9 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 		);
 	}
 	if (x.type === "exoclick") {
-		const usd = s.exoToday[x.id] ?? 0;
 		return (
 			<>
-				<b class="ea">{usdTxt(usd)}</b>
+				<b class="ea">+{fmt(sum)}</b>
 				{s.exo[x.id] ? (
 					<a class="btn xs o" href="/income">
 						Fix
@@ -169,7 +168,7 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const got = fixedSrc ? gotToday(s, x)[0] : undefined;
 	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} + ${fmt(rateOf(x))} / hour`) : "";
 	return (
-		<div class="sw">
+		<div class="sw" data-exo={x.type === "exoclick" ? "1" : undefined}>
 			<div class="rw">
 				<div>
 					<div>{x.name}</div>
@@ -276,7 +275,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const cur = s.user.currency;
 	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? `${fmt(fixed)} + ${fmt(rateOf(x))} / hour ${cur}` : x.mode === "auto" ? `${fmt(x.amount)} ${cur}` : "";
 	return (
-		<div class="dbw">
+		<div class="dbw" data-exo={x.type === "exoclick" ? "1" : undefined}>
 			<div class="rw">
 				<div>
 					<div>

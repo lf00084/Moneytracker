@@ -2,9 +2,12 @@ import { sql } from "remix/data-table"
 import { db, incomes, incomeSources, users } from "../db/index.ts"
 import { decryptSecret } from "./secret.ts"
 import { extKey, parseJson, type Json } from "./sources/index.ts"
-import { addDays, dayOf, today } from "./time.ts"
+import { addDays, dayOf } from "./time.ts"
 
 const BASE = "https://api.exoclick.com/v2"
+const EVERY = 4 * 60000
+const RESET_HOUR = 5
+export const exoDay = (ms: number) => dayOf(ms - RESET_HOUR * 3600000)
 const tokens = new Map<string, { t: string; exp: number }>()
 const lastTry = new Map<string, number>()
 const errors = new Map<string, string>()
@@ -89,9 +92,9 @@ const res = rowsOf(await db.exec(sql`select id, day, usd_minor, meta from income
 const have = new Map<string, { id: string; usd: number; meta: Json }>()
 for (const r of res) have.set(String(col(r, "day", 1)), { id: String(col(r, "id", 0)), usd: Number(col(r, "usd_minor", 2)) || 0, meta: parseJson(String(col(r, "meta", 3))) })
 const todayRow = have.get(t)
-const stale = !todayRow || now - (Number(todayRow.meta.fetched_at) || 0) > 45000
+const stale = !todayRow || now - (Number(todayRow.meta.fetched_at) || 0) > EVERY
 if (!gap && !stale) return
-if ((lastTry.get(s.id) ?? 0) + 20000 > now) return
+if ((lastTry.get(s.id) ?? 0) + EVERY > now) return
 lastTry.set(s.id, now)
 const data = await fetchDays(apiKey, from, t)
 if (typeof data === "string") {
@@ -129,8 +132,8 @@ const srcs = all.filter((s) => s.active !== 0)
 if (!srcs.length) return
 const u = await db.find(users, uid)
 const rate = u?.usd_rate_minor || 1000
-const t = today()
 const now = Date.now()
+const t = exoDay(now)
 for (const s of srcs) {
 try {
 await settleOne(uid, s, rate, t, now)
@@ -146,6 +149,18 @@ for (const x of list) {
 if (x.type !== "exoclick") continue
 const enc = String(x.config.key_enc ?? "")
 out[x.id] = !enc ? "Set your API key" : !(await decryptSecret(enc)) ? "Session secret changed. Set the API key again" : (errors.get(x.id) ?? "")
+}
+return out
+}
+
+export async function liveExo(uid: string, ids: string[], rate: number): Promise<Record<string, { day: string; usd: number; mad: number }>> {
+const out: Record<string, { day: string; usd: number; mad: number }> = {}
+if (!ids.length) return out
+const day = exoDay(Date.now())
+for (const id of ids) {
+const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(id, day) } })
+const usd = row?.usd_minor || 0
+out[id] = { day, usd, mad: Math.round((usd * rate) / 100) }
 }
 return out
 }

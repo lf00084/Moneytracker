@@ -51,7 +51,6 @@ export const commands = {
 	toggleSource: { run: (u, f) => act.toggleSource(u.id, f), to: "/income" },
 	editSource: { run: (u, f) => inc.editSource(u.id, f), to: "/income" },
 	deleteSource: { run: (u, f) => act.deleteSource(u.id, f), to: "/income" },
-	setHours: { run: (u, f) => act.setHours(u.id, f), to: "/home" },
 	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },
 	tradeResult: { run: (u, f) => trading.saveResult(u.id, f), to: "/trading" },
 	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },

@@ -51,6 +51,11 @@ d.addEventListener('toggle',function(e){
 
 d.addEventListener('click',function(e){
   var t=e.target,q;
+  if((q=t.closest('button[name][value]'))&&q.form){
+    var sh=q.form.querySelector('input[type=hidden][data-sub="'+q.name+'"]');
+    if(!sh){sh=d.createElement('input');sh.type='hidden';sh.name=q.name;sh.setAttribute('data-sub',q.name);q.form.appendChild(sh)}
+    sh.value=q.value;
+  }
   if((q=t.closest('[data-close]'))){var cd=q.closest('details');if(cd)cd.open=false;return}
   if(t.closest('[data-theme-toggle]')){setTheme(r.getAttribute('data-theme')==='dark'?'light':'dark');return}
   if((q=t.closest('[data-set-theme]'))){setTheme(q.getAttribute('data-set-theme'));return}

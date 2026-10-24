@@ -9,13 +9,7 @@ const contents = { display: "contents" };
 const rateOf = (x: Source) => Number(x.config.rate_minor) || 0;
 const tagOf = (x: Source) => (!x.active ? "paused" : x.type === "exoclick" ? "exoclick" : isFixed(x.type) ? "fixed" : x.mode === "auto" ? (x.every === "month" ? "monthly" : "daily") : "manual");
 const usdTxt = (n: number) => `$${fmt(n)}`;
-const exoSub = (s: State, x: Source) => {
-	const st = s.exo[x.id];
-	const usd = s.exoToday[x.id];
-	if (st) return st;
-	if (usd === undefined) return "syncing...";
-	return `≈ ${fmt(Math.round((usd * s.user.usd_rate_minor) / 100))} ${s.user.currency} when the day ends`;
-};
+const exoSub = (s: State, x: Source) => s.exo[x.id] || "earned today";
 
 const Hid = view<{ s: State; id: string }>(({ s, id }) => (
 	<>
@@ -98,10 +92,10 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 		);
 	}
 	if (x.type === "exoclick") {
-		const usd = s.exoToday[x.id];
+		const usd = s.exoToday[x.id] ?? 0;
 		return (
 			<>
-				{usd !== undefined ? <b class="ea">{usdTxt(usd)}</b> : null}
+				<b class="ea">{usdTxt(usd)}</b>
 				{s.exo[x.id] ? (
 					<a class="btn xs o" href="/income">
 						Fix

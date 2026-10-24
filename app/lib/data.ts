@@ -127,9 +127,10 @@ db.findMany(purchases, { where: { user_id: uid, day: t }, orderBy: ["created_at"
 s.buys = rows.map(toBuy);
 }),
 db.findMany(incomes, { where: { user_id: uid, day: t } }).then((rows) => {
-const mapped = rows.map(toIncome);
-s.incomesToday = mapped.filter((i) => !i.live);
-for (const i of mapped) if (i.sourceId && (i.live || i.usd)) s.exoToday[i.sourceId] = i.usd;
+const exo = new Set(sourceRows.filter((x) => x.type === "exoclick").map((x) => x.id));
+const live = rows.filter((r) => r.source_id && exo.has(r.source_id));
+for (const r of live) s.exoToday[r.source_id!] = r.usd_minor || 0;
+s.incomesToday = rows.filter((r) => !live.includes(r)).map(toIncome);
 }),
 );
 }

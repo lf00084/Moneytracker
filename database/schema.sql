@@ -213,6 +213,9 @@ CREATE TABLE IF NOT EXISTS trade_results (
   idx           INTEGER NOT NULL,
   won           INTEGER NOT NULL,
   pnl_minor     INTEGER NOT NULL,
+  state         TEXT NOT NULL DEFAULT 'done',
+  asset         TEXT NOT NULL DEFAULT '',
+  tf            INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL,
   UNIQUE (session_id, game, idx)
 );

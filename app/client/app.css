@@ -381,3 +381,4 @@ form[data-kind=fixed] .kf-fixed,form[data-kind=manual] .kf-manual,form[data-kind
 .kf .ln .in{margin-bottom:8px}
 .kf .lb{margin-bottom:10px}
 .ad>.in{display:block;width:100%}
+/*file9*/.btn.miss{background:var(--s2);color:var(--mu);border-color:var(--ln)}

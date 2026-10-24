@@ -9,6 +9,8 @@ import {
 	btcLost,
 	btcOf,
 	DEPOSIT,
+	isDone,
+	PICKS,
 	PRED_COUNT,
 	predOf,
 	strip,
@@ -38,17 +40,19 @@ const SessionHid = view<{ s: State; t: TradeSession }>(({ s, t }) => (
 
 const PredictRow = view<{ s: State; t: TradeSession; game: Game; idx: number; r: TradeResult | undefined; state: RowState; canUndo: boolean }>(
 	({ s, t, game, idx, r, state, canUndo }) => {
-		if (r) {
+		const meta = r && r.asset ? `${r.asset} ${r.tf}m` : "";
+		if (r && isDone(r)) {
 			return (
 				<div class="tbr">
 					<div>
 						<b>Predict {idx}</b>
+						{meta ? <div class="lb">{meta}</div> : null}
 					</div>
 					<span class="rt">
-						<span class={`tbs ${r.won ? "pos" : "neg"}`}>{r.won ? "Win" : "Lost"}</span>
-						<b class={tone(r.pnl)}>{sg(r.pnl)}</b>
+						<span class={`tbs ${r.won ? "pos" : "mu"}`}>{r.won ? "Win" : "Missed"}</span>
+						<b class={r.won ? tone(r.pnl) : "mu"}>{sg(r.pnl)}</b>
 						{canUndo ? (
-							<form method="post" action="/trading/undo" style={contents} data-confirm={`Remove the result of predict ${idx}?`}>
+							<form method="post" action="/trading/undo" style={contents} data-confirm={`Move predict ${idx} back to waiting?`}>
 								<SessionHid s={s} t={t} />
 								<input type="hidden" name="result_id" value={r.id} />
 								<button class="ub" aria-label={`Undo predict ${idx}`}>
@@ -60,23 +64,68 @@ const PredictRow = view<{ s: State; t: TradeSession; game: Game; idx: number; r:
 				</div>
 			);
 		}
+		if (r) {
+			return (
+				<div class="tbr">
+					<div>
+						<b>Predict {idx}</b>
+						<div class="lb">{meta ? `${meta} · waiting` : "waiting"}</div>
+					</div>
+					<form method="post" action="/trading/result" class="tbf">
+						<SessionHid s={s} t={t} />
+						<input type="hidden" name="game" value={game} />
+						<input type="hidden" name="idx" value={String(idx)} />
+						<input class="in" name="pnl" placeholder="PnL USDT" inputmode="decimal" autocomplete="off" />
+						<button class="btn xs win" name="outcome" value="win">
+							Win
+						</button>
+						<button class="btn xs miss" name="outcome" value="miss" formnovalidate>
+							Miss
+						</button>
+					</form>
+					{canUndo ? (
+						<form method="post" action="/trading/undo" style={contents}>
+							<SessionHid s={s} t={t} />
+							<input type="hidden" name="result_id" value={r.id} />
+							<button class="ub" aria-label={`Cancel predict ${idx}`}>
+								<Icon name="undo" />
+							</button>
+						</form>
+					) : null}
+				</div>
+			);
+		}
+		if (state === "active" && game === "btc") {
+			return (
+				<div class="tbr" style={{ flexDirection: "column", alignItems: "stretch" }}>
+					<b>Predict {idx}</b>
+					<form method="post" action="/trading/set" style={contents}>
+						<SessionHid s={s} t={t} />
+						<input type="hidden" name="game" value={game} />
+						<input type="hidden" name="idx" value={String(idx)} />
+						<div class="hxg">
+							{PICKS.map(([a, m]) => (
+								<button key={`${a}-${m}`} class="chip hc" name="pick" value={`${a}-${m}`}>
+									<b>{a}</b>
+									<small>{m}m</small>
+								</button>
+							))}
+						</div>
+					</form>
+				</div>
+			);
+		}
 		if (state === "active") {
 			return (
 				<div class="tbr">
 					<div>
 						<b>Predict {idx}</b>
 					</div>
-					<form method="post" action="/trading/result" class="tbf">
+					<form method="post" action="/trading/set" class="tbf">
 						<SessionHid s={s} t={t} />
 						<input type="hidden" name="game" value={game} />
 						<input type="hidden" name="idx" value={String(idx)} />
-						<input class="in" name="pnl" placeholder="PnL USDT" inputmode="decimal" autocomplete="off" required />
-						<button class="btn xs win" name="outcome" value="win">
-							Win
-						</button>
-						<button class="btn xs lose" name="outcome" value="lost">
-							Lost
-						</button>
+						<button class="btn xs o">Set</button>
 					</form>
 				</div>
 			);
@@ -97,14 +146,14 @@ const BtcCard = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	const done = btcDone(t.results);
 	const lost = btcLost(t.results);
 	return (
-		<Card title="Bitcoin · 5 minutes · up or down">
-			<div class="lb tbn">1 USDT. Up to {BTC_ROUNDS} predicts. Win goes to the next one. Lost means finished.</div>
+		<Card title="Crypto · up or down">
+			<div class="lb tbn">1 USDT. Up to {BTC_ROUNDS} predicts. Pick BTC or ETH and 5 or 15 minutes, then wait for the result. Win goes to the next one. Miss ends it.</div>
 			{Array.from({ length: BTC_ROUNDS }, (_, i) => i + 1).map((idx) => {
 				const r = list.find((x) => x.idx === idx);
-				const state: RowState = r ? "result" : done ? "skip" : idx === list.length + 1 ? "active" : "wait";
+				const state: RowState = r ? "result" : done ? "skip" : idx === list.length + 1 && list.every(isDone) ? "active" : "wait";
 				return <PredictRow key={idx} s={s} t={t} game="btc" idx={idx} r={r} state={state} canUndo={!!r && idx === list.length} />;
 			})}
-			{done ? <div class="lb tbn">{lost ? "Finished. You lost this one." : `Finished. You won all ${BTC_ROUNDS}.`}</div> : null}
+			{done ? <div class="lb tbn">{lost ? "Finished. This one missed." : `Finished. You won all ${BTC_ROUNDS}.`}</div> : null}
 		</Card>
 	);
 });
@@ -113,7 +162,7 @@ const PredCard = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	const list = predOf(t.results);
 	return (
 		<Card title="3 predicts · lol or sport">
-			<div class="lb tbn">3 USDT. Each predict is on its own. Pick Win or Lost and type the PnL.</div>
+			<div class="lb tbn">3 USDT. Each predict is on its own. Tap Set, then wait. Type the PnL and tap Win, or tap Miss.</div>
 			{Array.from({ length: PRED_COUNT }, (_, i) => i + 1).map((idx) => {
 				const r = list.find((x) => x.idx === idx);
 				return <PredictRow key={idx} s={s} t={t} game="pred" idx={idx} r={r} state={r ? "result" : "active"} canUndo={!!r} />;
@@ -130,8 +179,8 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	return (
 		<Card title="Open trade">
 			<div class="ow" style={{ margin: "0 0 8px" }}>
-				<b class={`big2 ${t.results.length ? tone(pnl) : ""}`}>
-					{t.results.length ? sg(pnl) : "0"} <small>USDT PnL</small>
+				<b class={`big2 ${t.results.some(isDone) ? tone(pnl) : ""}`}>
+					{t.results.some(isDone) ? sg(pnl) : "0"} <small>USDT PnL</small>
 				</b>
 				<span class="lb">{dayLabel(t.day)}</span>
 			</div>
@@ -147,7 +196,7 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 				<span class="mu">Net for your balance</span>
 				<b class={tone(net)}>{`${sg(net)} ${cur}`}</b>
 			</div>
-			{t.results.length && !allDone(t.results) ? (
+			{t.results.some(isDone) && !allDone(t.results) ? (
 				<form method="post" action="/trading/finish" data-confirm="Finish now and skip the predicts that are left?">
 					<SessionHid s={s} t={t} />
 					<button class="btn o full">Finish now</button>
@@ -175,7 +224,7 @@ const StartCard = view<{ s: State }>(({ s }) => {
 				<Back s={s} />
 				<button class="btn full">Deposit {fmt(DEPOSIT)} USDT</button>
 			</form>
-			<div class="lb tbn">Then you do 4 Bitcoin predicts (1 USDT) and 3 more predicts (3 USDT).</div>
+			<div class="lb tbn">Then you do 4 up or down predicts (1 USDT) and 3 more predicts (3 USDT).</div>
 		</Card>
 	);
 });

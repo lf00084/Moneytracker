@@ -11,6 +11,7 @@ type DocumentProps = {
 	theme?: string
 	desc?: string
 	path?: string
+	auth?: boolean
 	children?: RemixNode
 }
 
@@ -18,7 +19,7 @@ const THEME_BOOT = `try{var t=localStorage.getItem('mtheme');if(t)document.docum
 const REGISTER_SW = `if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))`
 const FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@500;600&display=swap"
 
-export const Document = view<DocumentProps>(({ title, user = true, theme, desc, path, children }) => {
+export const Document = view<DocumentProps>(({ title, user = true, theme, desc, path, auth, children }) => {
 	const description = desc ?? SITE.desc
 	const origin = env.APP_ORIGIN.replace(/\/$/, "")
 	const fullTitle = `${title} · ${SITE.name}`
@@ -65,7 +66,9 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
 				<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 				<link rel="stylesheet" href={FONTS} />
+				<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css" />
 				<link rel="stylesheet" href={`/assets/app.css?v=${V.css}`} />
+				{auth ? <link rel="stylesheet" href={`/assets/auth.css?v=${V.auth}`} /> : null}
 				{theme ? null : <script>{THEME_BOOT}</script>}
 			</head>
 			<body>
@@ -102,7 +105,7 @@ export const ClockWidget = view(() => {
 	)
 })
 
-export const TopBar = view<{ split?: boolean }>(({ split }) => {
+export const TopBar = view<{ split?: boolean; left?: RemixNode }>(({ split, left }) => {
 	if (!split) {
 		return (
 			<div class="top-status-bar">
@@ -113,6 +116,7 @@ export const TopBar = view<{ split?: boolean }>(({ split }) => {
 	const { numDate, arabicDay } = liveClockNow()
 	return (
 		<div class="top-status-bar tsplit">
+			{left}
 			<ClockWidget />
 			<div class="clock-subdate" dir="ltr">
 				<SubDate numDate={numDate} arabicDay={arabicDay} />
@@ -187,15 +191,16 @@ type AppLayoutProps = {
 	desktopTab?: DesktopTab
 	dock?: RemixNode
 	full?: boolean
+	topLeft?: RemixNode
 }
 
-export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, mobileTab = "", desktopTab = "", dock, full }) => (
+export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, mobileTab = "", desktopTab = "", dock, full, topLeft }) => (
 	<Document title={title} theme={theme}>
 		<div class="app">
 			<Sidebar active={desktopTab} />
 			<main>
 				<div class="m">
-					<TopBar split />
+					<TopBar split left={topLeft} />
 				</div>
 				<div class="m mm">{mobile}</div>
 				<div class="d">
@@ -214,15 +219,9 @@ export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, 
 type AuthLayoutProps = { title: string; path: string; desc: string; children?: RemixNode }
 
 export const AuthLayout = view<AuthLayoutProps>(({ title, path, desc, children }) => (
-	<Document title={title} path={path} desc={desc} user={false}>
+	<Document title={title} path={path} desc={desc} user={false} auth>
 		<div class="app">
-			<div class="tf-clock">
-				<ClockWidget />
-				<button type="button" class="ib" data-theme-toggle aria-label="Theme">
-					<ThemeIcons />
-				</button>
-			</div>
-			<main class="auth-viewport">{children}</main>
+			<main class="auth-main">{children}</main>
 		</div>
 	</Document>
 ))

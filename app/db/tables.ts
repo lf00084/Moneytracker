@@ -128,6 +128,8 @@ export const debts = table({
 		item_name: c.varchar(40),
 		item_qty: c.integer(),
 		amount_minor: c.integer(),
+		updated_at: c.integer(),
+		last_delta: c.integer(),
 		created_at: c.integer(),
 	},
 })

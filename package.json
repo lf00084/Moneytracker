@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@libsql/client": "^0.15.0",
+		"@picocss/pico": "^2.1.1",
 		"@remix-kbn/data-table-sqlite-turso": "npm:@jsr/remix-kbn__data-table-sqlite-turso@^0.6.0",
 		"remix": "3.0.0"
 	},

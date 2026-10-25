@@ -51,6 +51,7 @@ export const BuysExpand = view<{ s: State }>(({ s }) => (
 	<ExpandCard
 		storeKey="buys"
 		open
+		fixed
 		title="Today's buys"
 		label="Add a spend"
 		form={
@@ -77,20 +78,22 @@ export const BuysDesktop = view<{ s: State }>(({ s }) => (
 export const TodayCards = view<{ s: State }>(({ s }) => {
 	const c = calc(s)
 	return (
-		<div class="two">
-			<Card title="Earned today">
-				<div class="big2" style={{ whiteSpace: "nowrap" }}>
-					+{fmt(c.earned)} <small>{s.user.currency}</small>
-				</div>
-			</Card>
-			<Card title="Bought today">
-				<div class="big2" style={{ whiteSpace: "nowrap" }}>
-					−{fmt(c.bought)} <small>{s.user.currency}</small>
-				</div>
-			</Card>
-		</div>
+		<Card title="Bought today">
+			<div class="big2" style={{ whiteSpace: "nowrap" }}>
+				−{fmt(c.bought)} <small>{s.user.currency}</small>
+			</div>
+		</Card>
 	)
 })
+
+export const EarnedTop = view<{ s: State }>(({ s }) => (
+	<div class="earn-top">
+		<div class="lb">Earned today</div>
+		<b class="ea">
+			+{fmt(calc(s).earned)} <small>{s.user.currency}</small>
+		</b>
+	</div>
+))
 
 export const Hero = view<{ s: State }>(({ s }) => {
 	const c = calc(s)

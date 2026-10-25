@@ -78,5 +78,6 @@ export const routes = route({
 		sitemap: get("/sitemap.xml"),
 		css: get("/assets/app.css"),
 		js: get("/assets/app.js"),
+		authCss: get("/assets/auth.css"),
 	},
 })

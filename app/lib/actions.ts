@@ -60,7 +60,7 @@ export async function deleteBuy(uid: string, f: FormData): Result {
 			const pays = await tx.findMany(debtPayments, { where: { purchase_id: p.id, user_id: uid } })
 			const back = pays.reduce((a, x) => a + x.amount_minor, 0) || p.total_minor
 			const d = await tx.findOne(debts, { where: { id: p.debt_id, user_id: uid } })
-			if (d) await tx.update(debts, d.id, { amount_minor: d.amount_minor + back })
+			if (d) await tx.update(debts, d.id, { amount_minor: d.amount_minor + back, updated_at: Date.now(), last_delta: back })
 			await tx.exec(sql`delete from debt_payments where purchase_id = ${p.id} and user_id = ${uid}`)
 		}
 		await tx.exec(sql`delete from incomes where user_id = ${uid} and ext_key in (select 'trade:' || id from trade_sessions where purchase_id = ${p.id} and user_id = ${uid})`)
@@ -78,11 +78,11 @@ export async function addDebt(uid: string, f: FormData): Result {
 		if (d.kind === "item") {
 			const n = count(f.get("amount"))
 			if (!n) return "Enter an amount"
-			await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) + n })
+			await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) + n, updated_at: Date.now(), last_delta: n })
 		} else {
 			const m = toMinor(f.get("amount"))
 			if (!m) return "Enter an amount"
-			await db.update(debts, d.id, { amount_minor: d.amount_minor + m })
+			await db.update(debts, d.id, { amount_minor: d.amount_minor + m, updated_at: Date.now(), last_delta: m })
 		}
 		return
 	}
@@ -97,20 +97,20 @@ export async function addDebt(uid: string, f: FormData): Result {
 		const mine = await tx.findMany(debts, { where: { user_id: uid, person_id: person.id } })
 		if (money) {
 			const row = mine.find((d) => d.kind === "money")
-			if (row) await tx.update(debts, row.id, { amount_minor: row.amount_minor + money })
-			else await tx.create(debts, { id: id(), user_id: uid, person_id: person.id, kind: "money", amount_minor: money, created_at: Date.now() })
+			if (row) await tx.update(debts, row.id, { amount_minor: row.amount_minor + money, updated_at: Date.now(), last_delta: money })
+			else await tx.create(debts, { id: id(), user_id: uid, person_id: person.id, kind: "money", amount_minor: money, updated_at: Date.now(), last_delta: money, created_at: Date.now() })
 		}
 		if (cig) {
 			const row = mine.find((d) => d.kind === "item")
-			if (row) await tx.update(debts, row.id, { item_qty: (row.item_qty ?? 0) + cig })
-			else await tx.create(debts, { id: id(), user_id: uid, person_id: person.id, kind: "item", item_name: "cig", item_qty: cig, amount_minor: 0, created_at: Date.now() })
+			if (row) await tx.update(debts, row.id, { item_qty: (row.item_qty ?? 0) + cig, updated_at: Date.now(), last_delta: cig })
+			else await tx.create(debts, { id: id(), user_id: uid, person_id: person.id, kind: "item", item_name: "cig", item_qty: cig, amount_minor: 0, updated_at: Date.now(), last_delta: cig, created_at: Date.now() })
 		}
 	})
 }
 
 export async function clearDebt(uid: string, f: FormData) {
 	const d = await db.findOne(debts, { where: { id: own(f, "debt_id"), user_id: uid } })
-	if (d) await db.update(debts, d.id, d.kind === "item" ? { item_qty: 0 } : { amount_minor: 0 })
+	if (d) await db.update(debts, d.id, d.kind === "item" ? { item_qty: 0, updated_at: Date.now(), last_delta: -(d.item_qty ?? 0) } : { amount_minor: 0, updated_at: Date.now(), last_delta: -d.amount_minor })
 }
 
 export async function payDebt(uid: string, f: FormData): Result {
@@ -119,7 +119,7 @@ export async function payDebt(uid: string, f: FormData): Result {
 	if (d.kind === "item") {
 		const n = Math.min(count(f.get("amount")), d.item_qty ?? 0)
 		if (!n) return "Enter an amount"
-		await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) - n })
+		await db.update(debts, d.id, { item_qty: (d.item_qty ?? 0) - n, updated_at: Date.now(), last_delta: -n })
 		return
 	}
 	const pay = Math.min(toMinor(f.get("amount")), d.amount_minor)
@@ -130,7 +130,7 @@ export async function payDebt(uid: string, f: FormData): Result {
 	await db.transaction(async (tx) => {
 		await tx.create(purchases, { id: purchaseId, user_id: uid, name: `Paid ${person?.name ?? ""}`.trim(), qty: 1, unit_minor: pay, total_minor: pay, day: today(), debt_id: d.id, created_at: now })
 		await tx.create(debtPayments, { id: id(), debt_id: d.id, user_id: uid, amount_minor: pay, purchase_id: purchaseId, created_at: now })
-		await tx.update(debts, d.id, { amount_minor: d.amount_minor - pay })
+		await tx.update(debts, d.id, { amount_minor: d.amount_minor - pay, updated_at: now, last_delta: -pay })
 	})
 }
 

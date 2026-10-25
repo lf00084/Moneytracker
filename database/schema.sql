@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS debts (
   item_name     TEXT,
   item_qty      INTEGER,
   amount_minor  INTEGER NOT NULL DEFAULT 0,
+  updated_at    INTEGER NOT NULL DEFAULT 0,
+  last_delta    INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS debts_user_idx ON debts(user_id, person_id);

@@ -1,11 +1,20 @@
 import type { DebtView, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
+import { dayLabel, dayOf, hhmm } from "../lib/time.ts"
 import { calc, debtPct, peopleCount, pctOf } from "../lib/view.ts"
 import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, view } from "./ui.tsx"
 
-type DebtProps = { s: State; d: DebtView }
+type DebtProps = { s: State; d: DebtView; manage: boolean }
 
-const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind }) => {
+const lastLine = (s: State, d: DebtView) => {
+	const when = `${dayLabel(dayOf(d.at))} · ${hhmm(d.at)}`
+	if (!d.delta) return `Started ${when}`
+	const unit = d.kind === "money" ? s.user.currency : d.item
+	const n = d.kind === "money" ? fmt(Math.abs(d.delta)) : String(Math.abs(d.delta))
+	return `${d.delta > 0 ? "Added" : "Paid"} ${n} ${unit} · ${when}`
+}
+
+const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind, manage }) => {
 	const pay = kind === "pay"
 	const unit = d.kind === "money" ? s.user.currency : d.item
 	const all = d.kind === "money" ? plain(d.owed) : String(d.owed)
@@ -27,15 +36,17 @@ const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind }) => 
 					<span class="mu">{unit}</span>
 				</div>
 				<button class="btn xs">{pay ? "Pay" : "Add"}</button>
-				<button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn={`Remove ${d.person} from the list without marking it paid?`} aria-label="Remove without paying">
-					<Icon name="trash" />
-				</button>
+				{manage ? (
+					<button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn={`Remove ${d.person} from the list without marking it paid?`} aria-label="Remove without paying" title="Remove without paying">
+						<Icon name="trash" />
+					</button>
+				) : null}
 			</div>
 		</form>
 	)
 })
 
-const DebtRow = view<DebtProps>(({ s, d }) => {
+const DebtRow = view<DebtProps>(({ s, d, manage }) => {
 	const label = d.kind === "money" ? `${fmt(d.owed)} ${s.user.currency}` : `${d.owed} ${d.item}`
 	return (
 		<div class="dbw">
@@ -48,6 +59,7 @@ const DebtRow = view<DebtProps>(({ s, d }) => {
 						<b>{d.person}</b>
 						<span>{label}</span>
 					</div>
+					<div class="lb dl">{lastLine(s, d)}</div>
 					<div class="mt s n">
 						<i style={{ width: `${debtPct(d)}%` }}></i>
 					</div>
@@ -56,13 +68,13 @@ const DebtRow = view<DebtProps>(({ s, d }) => {
 					Pay
 				</button>
 			</div>
-			<DebtPanel s={s} d={d} kind="add" />
-			<DebtPanel s={s} d={d} kind="pay" />
+			<DebtPanel s={s} d={d} manage={manage} kind="add" />
+			<DebtPanel s={s} d={d} manage={manage} kind="pay" />
 		</div>
 	)
 })
 
-const DebtList = view<{ s: State }>(({ s }) => (s.debts.length ? <>{s.debts.map((d) => <DebtRow key={d.id} s={s} d={d} />)}</> : <Empty>Nobody to pay. All clear.</Empty>))
+const DebtList = view<{ s: State; manage: boolean }>(({ s, manage }) => (s.debts.length ? <>{s.debts.map((d) => <DebtRow key={d.id} s={s} d={d} manage={manage} />)}</> : <Empty>Nobody to pay. All clear.</Empty>))
 
 const AddDebtPanel = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/debts" class="sf adp" data-adp hidden>
@@ -77,9 +89,9 @@ const AddDebtPanel = view<{ s: State }>(({ s }) => (
 	</form>
 ))
 
-type OweProps = { s: State; open: boolean; storeKey: string }
+type OweProps = { s: State; open: boolean; storeKey: string; manage?: boolean }
 
-export const OweMobile = view<OweProps>(({ s, open, storeKey }) => {
+export const OweMobile = view<OweProps>(({ s, open, storeKey, manage = false }) => {
 	const c = calc(s)
 	const n = peopleCount(s)
 	return (
@@ -103,12 +115,12 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey }) => {
 			}
 			form={<AddDebtPanel s={s} />}
 		>
-			<DebtList s={s} />
+			<DebtList s={s} manage={manage} />
 		</ExpandCard>
 	)
 })
 
-export const OweDesktop = view<OweProps>(({ s, open, storeKey }) => {
+export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false }) => {
 	const c = calc(s)
 	return (
 		<div class="sc bgc">
@@ -124,7 +136,7 @@ export const OweDesktop = view<OweProps>(({ s, open, storeKey }) => {
 							</span>
 						</span>
 					</summary>
-					<DebtList s={s} />
+					<DebtList s={s} manage={manage} />
 				</details>
 				<AddDebtPanel s={s} />
 			</div>

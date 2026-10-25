@@ -30,6 +30,8 @@ const addColumns = [
 	"ALTER TABLE trade_results ADD COLUMN state TEXT NOT NULL DEFAULT 'done'",
 	"ALTER TABLE trade_results ADD COLUMN asset TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE trade_results ADD COLUMN tf INTEGER NOT NULL DEFAULT 0",
+	"ALTER TABLE debts ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0",
+	"ALTER TABLE debts ADD COLUMN last_delta INTEGER NOT NULL DEFAULT 0",
 ]
 for (const statement of addColumns) {
 	try {

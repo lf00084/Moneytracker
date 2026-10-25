@@ -56,6 +56,10 @@
 
 	d.addEventListener("click", function (e) {
 		var t = e.target
+		if (t.closest && t.closest("details[data-fixed] > summary")) {
+			e.preventDefault()
+			return
+		}
 		var q = t.closest("button[name][value]")
 		if (q && q.form) {
 			var sh = q.form.querySelector('input[type=hidden][data-sub="' + q.name + '"]')
@@ -75,6 +79,16 @@
 		}
 		if (t.closest("[data-theme-toggle]")) return setTheme(r.getAttribute("data-theme") === "dark" ? "light" : "dark")
 		if ((q = t.closest("[data-set-theme]"))) return setTheme(q.getAttribute("data-set-theme"))
+		if ((q = t.closest("[data-pw]"))) {
+			var pwi = q.parentNode.querySelector("input")
+			if (pwi) {
+				var pwShow = pwi.type === "password"
+				pwi.type = pwShow ? "text" : "password"
+				q.setAttribute("aria-pressed", pwShow ? "true" : "false")
+				q.setAttribute("aria-label", pwShow ? "Hide password" : "Show password")
+			}
+			return
+		}
 		if ((q = t.closest("[data-eye]"))) {
 			var v = q.parentNode.firstChild
 			var hide = q.getAttribute("data-s") !== "1"
@@ -119,7 +133,7 @@
 			var xd = xc.querySelector("details")
 			var xm = xc.querySelector("[data-adp]")
 			if (xm) {
-				if (!xd.open) {
+				if (xd && !xd.open) {
 					xd.open = true
 					xm.hidden = false
 				} else xm.hidden = !xm.hidden
@@ -200,6 +214,7 @@
 				if (!b.disabled) {
 					b.disabled = true
 					b.setAttribute("data-busy", "1")
+					if (b.type === "submit") b.setAttribute("aria-busy", "true")
 				}
 			})
 		}, 0)
@@ -209,6 +224,7 @@
 		all("button[data-busy]").forEach(function (b) {
 			b.disabled = false
 			b.removeAttribute("data-busy")
+			b.removeAttribute("aria-busy")
 		})
 	}
 	window.addEventListener("pageshow", function (e) {

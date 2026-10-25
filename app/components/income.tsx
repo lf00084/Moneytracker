@@ -24,8 +24,10 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 			{i.hours ? <div class="lb">{`incl. ${i.hours}h extra`}</div> : null}
 		</div>
 		<span class="rt">
-			<b class="ea">+{fmt(i.amount)}</b>
-			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} from ${i.source}?`}>
+			<b class="ea">
+				+{fmt(i.amount)} <small>{s.user.currency}</small>
+			</b>
+			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} ${s.user.currency} from ${i.source}?`}>
 				<Back s={s} />
 				<input type="hidden" name="id" value={i.id} />
 				<button class="ub" aria-label="Undo income">
@@ -39,12 +41,13 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) => {
 	const rate = rateOf(x)
 	const h = row.hours
+	const cur = s.user.currency
 	const opts = [1, 2, 3, 4]
 	return (
 		<details class="hx" data-keep-open={`hx-${x.id}-${row.day}`} open={h ? undefined : true}>
 			<summary>
 				<span>Extra hours</span>
-				<span>{h ? `+${h}h · +${fmt(Math.round(h * rate))}` : `${fmt(rate)} / hour`}</span>
+				<span>{h ? `+${h}h · +${fmt(Math.round(h * rate))} ${cur}` : `${fmt(rate)} ${cur} / hour`}</span>
 				<span class="chev">
 					<Icon name="chev" />
 				</span>
@@ -82,6 +85,7 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 	const got = gotToday(s, x)
 	const sum = got.reduce((a, i) => a + i.amount, 0)
 	const fixed = srcAmount(x)
+	const cur = s.user.currency
 	if (toggle && !x.active) {
 		return (
 			<form method="post" action="/income/toggle" style={contents}>
@@ -93,7 +97,9 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 	if (x.type === "exoclick") {
 		return (
 			<>
-				<b class="ea">+{fmt(sum)}</b>
+				<b class="ea">
+					+{fmt(sum)} <small>{cur}</small>
+				</b>
 				{s.exo[x.id] ? (
 					<a class="btn xs o" href="/income">
 						Fix
@@ -111,7 +117,9 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 	if (x.mode === "auto") {
 		return (
 			<>
-				<b class="ea">+{fmt(x.amount)}</b>
+				<b class="ea">
+					+{fmt(x.amount)} <small>{cur}</small>
+				</b>
 				{toggle ? (
 					<form method="post" action="/income/toggle" style={contents}>
 						<Hid s={s} id={x.id} />
@@ -124,8 +132,10 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 	if (got.length) {
 		return (
 			<>
-				<b class="ea">+{fmt(sum)}</b>
-				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} from ${x.name}?`}>
+				<b class="ea">
+					+{fmt(sum)} <small>{cur}</small>
+				</b>
+				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
 					<button class="ub" aria-label={`Undo ${x.name}`}>
 						<Icon name="undo" />
@@ -139,7 +149,9 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 			<form method="post" action="/income/add" style={contents}>
 				<Back s={s} />
 				<input type="hidden" name="source_id" value={x.id} />
-				<button class="btn xs o">Add {fmt(fixed)}</button>
+				<button class="btn xs o">
+					Add {fmt(fixed)} {cur}
+				</button>
 			</form>
 		)
 	}
@@ -165,7 +177,8 @@ const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const fixedSrc = isFixed(x.type)
 	const got = fixedSrc ? gotToday(s, x)[0] : undefined
-	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} + ${fmt(rateOf(x))} / hour`) : ""
+	const cur = s.user.currency
+	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))} ${cur}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} ${cur} + ${fmt(rateOf(x))} / hour`) : ""
 	return (
 		<div class="sw" data-exo={x.type === "exoclick" ? "1" : undefined}>
 			<div class="rw">
@@ -242,9 +255,42 @@ const SourceForm = view<{ s: State }>(({ s }) => (
 	</form>
 ))
 
-export const IncomeDesktop = view<{ s: State; title?: string; id?: string }>(({ s, title = "Income today", id = "f-inc-d" }) => {
+const TodayRows = view<{ s: State }>(({ s }) => {
 	const sources = s.sources.filter((x) => x.active)
 	const others = s.incomesToday.filter((i) => !i.sourceId)
+	return sources.length || others.length ? (
+		<>
+			{sources.map((x) => (
+				<HomeRow key={x.id} s={s} x={x} />
+			))}
+			{others.map((i) => (
+				<IncomeRow key={i.id} s={s} i={i} />
+			))}
+		</>
+	) : (
+		<Empty>No sources yet. Add one on the Income page.</Empty>
+	)
+})
+
+export const IncomeDesktop = view<{ s: State; title?: string; id?: string; bare?: boolean }>(({ s, title = "Income today", id = "f-inc-d", bare = false }) => {
+	const sources = s.sources.filter((x) => x.active)
+	const others = s.incomesToday.filter((i) => !i.sourceId)
+	if (bare) {
+		return (
+			<>
+				<form method="post" action="/income/named" id={id} class="sc spf" data-adp hidden>
+					<NamedFields s={s} />
+				</form>
+				<div class="sc incbare">
+					<TodayRows s={s} />
+					<button type="button" class="addrow" data-bigadd data-for={id}>
+						<Icon name="plus" />
+						<span>Add manual income</span>
+					</button>
+				</div>
+			</>
+		)
+	}
 	return (
 		<>
 			<form method="post" action="/income/named" id={id} class="sc spf" data-adp hidden>
@@ -332,42 +378,19 @@ export const IncomeExpand = view<{ s: State }>(({ s }) => (
 	</ExpandCard>
 ))
 
-export const HomeIncome = view<{ s: State }>(({ s }) => {
-	const c = calc(s)
-	const sources = s.sources.filter((x) => x.active)
-	const others = s.incomesToday.filter((i) => !i.sourceId)
-	return (
-		<ExpandCard
-			storeKey="inc"
-			open
-			title="Income today"
-			label="Add manual income"
-			head={
-				<>
-					<b class="big2">
-						+{fmt(c.earned)} <small>{s.user.currency}</small>
-					</b>
-					<span class="lb">{c.earnedLine}</span>
-				</>
-			}
-			form={
-				<form method="post" action="/income/named" class="sf xfm" data-adp hidden>
-					<NamedFields s={s} />
-				</form>
-			}
-		>
-			{sources.length || others.length ? (
-				<>
-					{sources.map((x) => (
-						<HomeRow key={x.id} s={s} x={x} />
-					))}
-					{others.map((i) => (
-						<IncomeRow key={i.id} s={s} i={i} />
-					))}
-				</>
-			) : (
-				<Empty>No sources yet. Add one on the Income page.</Empty>
-			)}
-		</ExpandCard>
-	)
-})
+export const HomeIncome = view<{ s: State }>(({ s }) => (
+	<div class="xc xbare">
+		<div class="xb">
+			<TodayRows s={s} />
+		</div>
+		<div class="xf">
+			<button type="button" class="addrow" data-xplus>
+				<Icon name="plus" />
+				<span>Add manual income</span>
+			</button>
+			<form method="post" action="/income/named" class="sf xfm" data-adp hidden>
+				<NamedFields s={s} />
+			</form>
+		</div>
+	</div>
+))

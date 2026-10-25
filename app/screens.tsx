@@ -1,4 +1,4 @@
-import { BuysDesktop, BuysExpand, Hero, TodayCards } from "./components/buys.tsx"
+import { BuysDesktop, BuysExpand, EarnedTop, Hero, TodayCards } from "./components/buys.tsx"
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
@@ -7,7 +7,7 @@ import { AppLayout, AuthLayout } from "./components/layout.tsx"
 import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
 import { BalanceCard, EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
-import { ErrorBanner, Field, GoogleMark, Logo, PageHeader, Section, view } from "./components/ui.tsx"
+import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, view } from "./components/ui.tsx"
 import type { State } from "./lib/data.ts"
 import { fmt } from "./lib/money.ts"
 import { calc } from "./lib/view.ts"
@@ -15,6 +15,7 @@ import { calc } from "./lib/view.ts"
 export const HomeScreen = view<{ s: State }>(({ s }) => (
 	<AppLayout
 		title="Home"
+		topLeft={<EarnedTop s={s} />}
 		theme={s.user.theme}
 		mobileTab="home"
 		desktopTab="home"
@@ -39,7 +40,7 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 					</div>
 					<div>
 						<OweDesktop s={s} open={false} storeKey="owe" />
-						<IncomeDesktop s={s} title="Income today" />
+						<IncomeDesktop s={s} bare />
 						<NoteCard s={s} />
 					</div>
 				</div>
@@ -61,7 +62,7 @@ export const DebtsScreen = view<{ s: State }>(({ s }) => {
 					<ErrorBanner s={s} />
 					<PageHeader title="Debts" right={s.debts.map((d) => d.person).slice(0, 2).join(" + ")} />
 					<RoadCard s={s} />
-					<OweMobile s={s} open storeKey="owe-page" />
+					<OweMobile s={s} open storeKey="owe-page" manage />
 				</>
 			}
 			desktop={
@@ -70,7 +71,7 @@ export const DebtsScreen = view<{ s: State }>(({ s }) => {
 					<PageHeader title="Debts" right={`${fmt(c.oweMoney)} ${s.user.currency} ${c.oweExtra}`} />
 					<div class="g3">
 						<div>
-							<OweDesktop s={s} open storeKey="owe-page" />
+							<OweDesktop s={s} open storeKey="owe-page" manage />
 						</div>
 						<div>
 							<Section title="How it works">
@@ -282,9 +283,9 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 						{error}
 					</div>
 				) : null}
-				{up ? <Field label="Name" name="name" placeholder="Your name" /> : null}
-				<Field label="Email" type="email" name="email" placeholder="you@email.com" />
-				<Field label="Password" type="password" name="password" placeholder="••••••••" />
+				{up ? <FloatField label="Name" name="name" auto="name" /> : null}
+				<FloatField label="Email" type="email" name="email" auto="email" />
+				<FloatField label="Password" type="password" name="password" auto={up ? "new-password" : "current-password"} />
 				<button class="btn full">{up ? "Create account" : "Sign in"}</button>
 				<div class="auth-switch-wrap">
 					<a class="lnk-switch" href={up ? "/login" : "/signup"}>

@@ -11,7 +11,7 @@ import { parseJson, rowsOf, type Json } from "./util.ts"
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number }
 export type Income = { id: string; sourceId: string; source: string; amount: number; day: string; hours: number; locked: boolean }
 export type Source = { id: string; name: string; mode: string; every: string; amount: number; created: number; type: string; config: Json; currency: string; active: boolean; sort: number }
-export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number }
+export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number; at: number; delta: number }
 export type GoalItem = { id: string; name: string; price: number; done: boolean }
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] }
 export type Note = { id: string; body: string; at: number; edited: boolean }
@@ -89,6 +89,8 @@ async function loadDebts(uid: string): Promise<DebtView[]> {
 				item: d.item_name || "cig",
 				owed: kind === "item" ? (d.item_qty ?? 0) : d.amount_minor,
 				paid: paid.get(d.id) ?? 0,
+				at: d.updated_at || d.created_at,
+				delta: d.last_delta || 0,
 			}
 		})
 		.filter((d) => d.owed > 0)

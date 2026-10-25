@@ -1,5 +1,7 @@
 import css from "../client/app.css?raw"
 import js from "../client/app.js?raw"
+import authCss from "../client/auth.css?raw"
+import pico from "@picocss/pico/css/pico.min.css?raw"
 
 export const hash = (s: string) => {
 	let h = 5381
@@ -7,6 +9,8 @@ export const hash = (s: string) => {
 	return (h >>> 0).toString(36)
 }
 
-export const files = { css, js }
+const auth = `${pico}\n${authCss}`
 
-export const V = { css: hash(css), js: hash(js) }
+export const files = { css, js, auth }
+
+export const V = { css: hash(css), js: hash(js), auth: hash(auth) }

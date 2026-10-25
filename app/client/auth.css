@@ -1,0 +1,224 @@
+/* Sign in / Create account. Loaded after Pico (@picocss/pico) on /login and /signup only. */
+/* Maps Pico's variables onto the app's own palette so light/dark follow html[data-theme]. */
+html:root[data-theme] {
+	--pico-font-family: var(--font-sys);
+	--pico-font-size: 100%;
+	--pico-border-radius: 12px;
+	--pico-background-color: var(--bg);
+	--pico-color: var(--ink);
+	--pico-muted-color: var(--mu);
+	--pico-muted-border-color: var(--ln);
+	--pico-primary: var(--ac);
+	--pico-primary-background: var(--ac);
+	--pico-primary-border: var(--ac);
+	--pico-primary-underline: var(--acl);
+	--pico-primary-hover: var(--ink);
+	--pico-primary-hover-background: var(--ac);
+	--pico-primary-hover-border: var(--ac);
+	--pico-primary-hover-underline: var(--ac);
+	--pico-primary-focus: var(--acs);
+	--pico-primary-inverse: var(--on);
+	--pico-form-element-background-color: var(--s1);
+	--pico-form-element-selected-background-color: var(--s2);
+	--pico-form-element-border-color: var(--ln);
+	--pico-form-element-color: var(--ink);
+	--pico-form-element-placeholder-color: var(--mu);
+	--pico-form-element-active-background-color: var(--s1);
+	--pico-form-element-active-border-color: var(--ac);
+	--pico-form-element-focus-color: var(--acs);
+	--pico-form-element-invalid-border-color: var(--neg);
+	--pico-form-element-invalid-active-border-color: var(--neg);
+	--pico-form-element-invalid-focus-color: rgba(255, 90, 77, 0.2);
+	--pico-form-element-spacing-vertical: 0.8rem;
+	--pico-form-element-spacing-horizontal: 1rem;
+	--pico-form-label-font-weight: 600;
+	--pico-box-shadow: none;
+	--pico-button-box-shadow: none;
+	--pico-button-hover-box-shadow: none;
+	--pico-text-selection-color: var(--acs);
+}
+
+body {
+	font-family: var(--pico-font-family);
+	font-size: 1rem;
+	line-height: 1.5;
+}
+
+/* Layout: no card, just a centered column with a max width. */
+.auth-main {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100dvh;
+	padding: clamp(1.5rem, 6vh, 3.5rem) 1rem;
+}
+.auth-wrap {
+	width: 100%;
+	max-width: 400px;
+}
+.auth-logo {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 1.75rem;
+}
+.auth-logo a {
+	color: var(--ink);
+	text-decoration: none;
+}
+.auth-wrap h1 {
+	margin: 0 0 0.4rem;
+	font-size: 1.75rem;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.2;
+	text-align: center;
+	color: var(--ink);
+}
+.auth-sub {
+	margin: 0 0 1.75rem;
+	text-align: center;
+	font-size: 0.9rem;
+	color: var(--mu);
+}
+
+/* Buttons */
+.auth-wrap button[type="submit"],
+.auth-wrap a[role="button"] {
+	width: 100%;
+	height: 3rem;
+	margin: 0;
+	padding: 0 1.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.6rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	text-decoration: none;
+	transition: filter 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.auth-wrap button[type="submit"]:hover {
+	filter: brightness(1.07);
+}
+.auth-wrap button[type="submit"][aria-busy="true"],
+.auth-wrap button[type="submit"][disabled] {
+	opacity: 0.85;
+	cursor: progress;
+}
+.auth-wrap a.auth-google[role="button"] {
+	--pico-background-color: var(--s1);
+	--pico-border-color: var(--ln);
+	--pico-color: var(--ink);
+	box-shadow: var(--sh1);
+}
+.auth-wrap a.auth-google[role="button"]:is(:hover, :active, :focus) {
+	--pico-background-color: var(--s2);
+	--pico-border-color: var(--ln);
+	--pico-color: var(--ink);
+}
+
+/* Divider */
+.auth-or {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 1.25rem 0;
+	font-size: 0.75rem;
+	color: var(--mu);
+}
+.auth-or::before,
+.auth-or::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--ln);
+}
+
+/* Fields */
+.auth-wrap form {
+	margin: 0;
+}
+.auth-wrap .fld {
+	position: relative;
+	margin-bottom: 1rem;
+}
+.auth-wrap .fld label {
+	margin: 0;
+	font-size: 0.85rem;
+	color: var(--ink);
+}
+.auth-wrap .fld input {
+	height: 3rem;
+	margin: 0.4rem 0 0;
+	font-size: 1rem;
+}
+.auth-wrap .fld input.pw {
+	padding-right: 3rem;
+}
+.auth-wrap .pw-toggle {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	width: 3rem;
+	height: 3rem;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: 0;
+	border-radius: 0 12px 12px 0;
+	color: var(--mu);
+	box-shadow: none;
+	cursor: pointer;
+}
+.auth-wrap .pw-toggle:hover {
+	color: var(--ink);
+}
+.auth-wrap .pw-toggle:focus-visible {
+	outline: 2px solid var(--ac);
+	outline-offset: -2px;
+}
+.auth-wrap .pw-toggle span {
+	display: flex;
+}
+.auth-wrap .pw-toggle .pw-off,
+.auth-wrap .pw-toggle[aria-pressed="true"] .pw-on {
+	display: none;
+}
+.auth-wrap .pw-toggle[aria-pressed="true"] .pw-off {
+	display: flex;
+}
+.auth-wrap .submit-row {
+	margin-top: 1.5rem;
+}
+
+/* Messages and footer link */
+.auth-error {
+	margin: 0 0 1.25rem;
+	padding: 0.7rem 1rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	text-align: center;
+	color: var(--neg);
+	background: rgba(255, 90, 77, 0.1);
+	border: 1px solid rgba(255, 90, 77, 0.3);
+	border-radius: 12px;
+}
+.auth-switch {
+	margin: 1.5rem 0 0;
+	text-align: center;
+	font-size: 0.9rem;
+	color: var(--mu);
+}
+.auth-switch a {
+	font-weight: 600;
+	color: var(--ac);
+	text-decoration: none;
+}
+.auth-switch a:hover {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}

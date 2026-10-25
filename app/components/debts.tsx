@@ -1,6 +1,6 @@
 import type { DebtView, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
-import { dayLabel, dayOf, hhmm } from "../lib/time.ts"
+import { dayLabel, dayOf, hhmm, timeAgo } from "../lib/time.ts"
 import { calc, debtPct, peopleCount, pctOf } from "../lib/view.ts"
 import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, view } from "./ui.tsx"
 
@@ -8,7 +8,7 @@ type DebtProps = { s: State; d: DebtView; manage: boolean }
 
 const lastLine = (s: State, d: DebtView) => {
 	const when = `${dayLabel(dayOf(d.at))} · ${hhmm(d.at)}`
-	if (!d.delta) return `Started ${when}`
+	if (!d.delta) return `Started ${timeAgo(d.at)}`
 	const unit = d.kind === "money" ? s.user.currency : d.item
 	const n = d.kind === "money" ? fmt(Math.abs(d.delta)) : String(Math.abs(d.delta))
 	return `${d.delta > 0 ? "Added" : "Paid"} ${n} ${unit} · ${when}`

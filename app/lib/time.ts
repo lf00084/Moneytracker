@@ -20,6 +20,21 @@ export function dayLabel(day: string) {
 	return new Date(`${day}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).replace(",", "")
 }
 
+export function timeAgo(ms: number) {
+	const s = Math.max(0, Math.floor((Date.now() - ms) / 1000))
+	if (s < 60) return "just now"
+	const m = Math.floor(s / 60)
+	if (m < 60) return `${m} min ago`
+	const h = Math.floor(m / 60)
+	if (h < 24) return `${h}h ago`
+	const d = Math.floor(h / 24)
+	if (d < 30) return d === 1 ? "1 day ago" : `${d} days ago`
+	const mo = Math.floor(d / 30)
+	if (mo < 12) return mo === 1 ? "1 month ago" : `${mo} months ago`
+	const y = Math.floor(d / 365)
+	return y === 1 ? "1 year ago" : `${y} years ago`
+}
+
 const part = (locale: string, options: Intl.DateTimeFormatOptions, now: Date) => new Intl.DateTimeFormat(locale, { timeZone: TZ, ...options }).format(now)
 
 export function liveClockNow() {

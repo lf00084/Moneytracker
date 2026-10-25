@@ -277,18 +277,9 @@ export const IncomeDesktop = view<{ s: State; title?: string; id?: string; bare?
 	const others = s.incomesToday.filter((i) => !i.sourceId)
 	if (bare) {
 		return (
-			<>
-				<form method="post" action="/income/named" id={id} class="sc spf" data-adp hidden>
-					<NamedFields s={s} />
-				</form>
-				<div class="sc incbare">
-					<TodayRows s={s} />
-					<button type="button" class="addrow" data-bigadd data-for={id}>
-						<Icon name="plus" />
-						<span>Add manual income</span>
-					</button>
-				</div>
-			</>
+			<div class="sc incbare">
+				<TodayRows s={s} />
+			</div>
 		)
 	}
 	return (
@@ -382,15 +373,6 @@ export const HomeIncome = view<{ s: State }>(({ s }) => (
 	<div class="xc xbare">
 		<div class="xb">
 			<TodayRows s={s} />
-		</div>
-		<div class="xf">
-			<button type="button" class="addrow" data-xplus>
-				<Icon name="plus" />
-				<span>Add manual income</span>
-			</button>
-			<form method="post" action="/income/named" class="sf xfm" data-adp hidden>
-				<NamedFields s={s} />
-			</form>
 		</div>
 	</div>
 ))

@@ -1,4 +1,4 @@
-import { BuysDesktop, BuysExpand, EarnedTop, Hero, TodayCards } from "./components/buys.tsx"
+import { BuysDesktop, BuysExpand, Hero, TodayCards } from "./components/buys.tsx"
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
@@ -15,7 +15,6 @@ import { calc } from "./lib/view.ts"
 export const HomeScreen = view<{ s: State }>(({ s }) => (
 	<AppLayout
 		title="Home"
-		topLeft={<EarnedTop s={s} />}
 		theme={s.user.theme}
 		mobileTab="home"
 		desktopTab="home"

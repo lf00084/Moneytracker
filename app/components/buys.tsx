@@ -78,11 +78,18 @@ export const BuysDesktop = view<{ s: State }>(({ s }) => (
 export const TodayCards = view<{ s: State }>(({ s }) => {
 	const c = calc(s)
 	return (
-		<Card title="Bought today">
-			<div class="big2" style={{ whiteSpace: "nowrap" }}>
-				−{fmt(c.bought)} <small>{s.user.currency}</small>
-			</div>
-		</Card>
+		<div class="two">
+			<Card title="Earned today">
+				<div class="big2" style={{ whiteSpace: "nowrap" }}>
+					+{fmt(c.earned)} <small>{s.user.currency}</small>
+				</div>
+			</Card>
+			<Card title="Bought today">
+				<div class="big2" style={{ whiteSpace: "nowrap" }}>
+					−{fmt(c.bought)} <small>{s.user.currency}</small>
+				</div>
+			</Card>
+		</div>
 	)
 })
 

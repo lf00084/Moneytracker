@@ -1,30 +1,22 @@
-/**
- * Every change the app can make, in one table. The form posts in `controllers/commands.ts` and
- * the JSON endpoint in `controllers/api.ts` both run these, so a command is written once.
- *
- * `run` returns an error message (a non-empty string) or nothing. `to` is where a form post goes
- * afterwards; unless `back` is false it goes to the page the form came from instead.
- */
-import * as act from "./lib/actions.ts";
-import * as inc from "./lib/income.ts";
-import { toMinor } from "./lib/money.ts";
-import * as trading from "./lib/trading.ts";
-import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts";
+import * as act from "./lib/actions.ts"
+import * as inc from "./lib/income.ts"
+import { toMinor } from "./lib/money.ts"
+import * as trading from "./lib/trading.ts"
+import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts"
 
 export type Command = {
-	run: (user: User, f: FormData) => Promise<unknown>;
-	to: string;
-	back?: boolean;
-	fail?: string;
-	empty?: boolean;
-};
+	run: (user: User, f: FormData) => Promise<unknown>
+	to: string
+	back?: boolean
+	fail?: string
+	empty?: boolean
+}
 
-const text = (f: FormData, key: string) => String(f.get(key) ?? "");
+const field = (f: FormData, key: string) => String(f.get(key) ?? "")
 
-/** For commands whose result is never shown as an error. */
 const quiet = (fn: (u: User, f: FormData) => Promise<unknown>) => async (u: User, f: FormData) => {
-	await fn(u, f);
-};
+	await fn(u, f)
+}
 
 export const commands = {
 	buy: { run: (u, f) => act.addBuy(u.id, f), to: "/home" },
@@ -57,17 +49,14 @@ export const commands = {
 	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
 	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
 	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },
-	addPlan: { run: async () => {}, to: "/plan" },
-	saveProfile: { run: (u, f) => updateProfile(u.id, { name: text(f, "name"), email: text(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
-	saveSettings: { run: quiet((u, f) => updatePrefs(u.id, { currency: text(f, "currency"), run_at: text(f, "run_at"), week_start: text(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")) })), to: "/settings" },
-	quickBuy: { run: quiet((u, f) => act.quickOp(u.id, f)), to: "/settings" },
-	setTheme: { run: quiet((u, f) => setTheme(u.id, text(f, "theme"))), to: "/settings", empty: true },
-	setBackground: { run: (u, f) => act.validateAndSetBackground(u.id, text(f, "url")), to: "/settings", back: false },
-	resetBackground: { run: quiet((u) => act.resetUserBackground(u.id)), to: "/settings", back: false },
-} satisfies Record<string, Command>;
+	saveProfile: { run: (u, f) => updateProfile(u.id, { name: field(f, "name"), email: field(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
+	saveSettings: {
+		run: quiet((u, f) => updatePrefs(u.id, { currency: field(f, "currency"), run_at: field(f, "run_at"), week_start: field(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")), usd_rate_minor: toMinor(f.get("usd_rate")) })),
+		to: "/settings",
+	},
+	setTheme: { run: quiet((u, f) => setTheme(u.id, field(f, "theme"))), to: "/settings", empty: true },
+} satisfies Record<string, Command>
 
-export type CommandName = keyof typeof commands;
+export type CommandName = keyof typeof commands
 
-export const isCommand = (name: string): name is CommandName => Object.hasOwn(commands, name);
-
-export const errorOf = (r: unknown) => (typeof r === "string" && r ? r : "");
+export const errorOf = (r: unknown) => (typeof r === "string" && r ? r : "")

@@ -1,17 +1,14 @@
-import type { DebtView, State } from "../lib/data.ts";
-import { fmt } from "../lib/money.ts";
-import { calc, debtPct, peopleCount, pctOf, plain } from "../lib/view.ts";
-import { Icon } from "./Icon.tsx";
-import { Back, BigAdd, Empty, ExpandCard, NameChips } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { DebtView, State } from "../lib/data.ts"
+import { fmt, plain } from "../lib/money.ts"
+import { calc, debtPct, peopleCount, pctOf } from "../lib/view.ts"
+import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, view } from "./ui.tsx"
 
-type DebtProps = { s: State; d: DebtView };
+type DebtProps = { s: State; d: DebtView }
 
-/** "Add to <person>" or "Pay <person>": the small form that slides open under a debt row. */
 const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind }) => {
-	const pay = kind === "pay";
-	const unit = d.kind === "money" ? s.user.currency : d.item;
-	const all = d.kind === "money" ? plain(d.owed) : String(d.owed);
+	const pay = kind === "pay"
+	const unit = d.kind === "money" ? s.user.currency : d.item
+	const all = d.kind === "money" ? plain(d.owed) : String(d.owed)
 	return (
 		<form method="post" action={pay ? "/debts/pay" : "/debts"} class="ad" data-addp={pay ? undefined : true} data-payp={pay ? true : undefined} hidden>
 			<input type="hidden" name="debt_id" value={d.id} />
@@ -35,12 +32,11 @@ const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind }) => 
 				</button>
 			</div>
 		</form>
-	);
-});
+	)
+})
 
-/** One person I owe: progress bar, "+" to add more, "Pay" to repay. */
-export const DebtRow = view<DebtProps>(({ s, d }) => {
-	const label = d.kind === "money" ? `${fmt(d.owed)} ${s.user.currency}` : `${d.owed} ${d.item}`;
+const DebtRow = view<DebtProps>(({ s, d }) => {
+	const label = d.kind === "money" ? `${fmt(d.owed)} ${s.user.currency}` : `${d.owed} ${d.item}`
 	return (
 		<div class="dbw">
 			<div class="db">
@@ -63,12 +59,11 @@ export const DebtRow = view<DebtProps>(({ s, d }) => {
 			<DebtPanel s={s} d={d} kind="add" />
 			<DebtPanel s={s} d={d} kind="pay" />
 		</div>
-	);
-});
+	)
+})
 
-export const DebtList = view<{ s: State }>(({ s }) => (s.debts.length ? <>{s.debts.map((d) => <DebtRow key={d.id} s={s} d={d} />)}</> : <Empty>Nobody to pay. All clear.</Empty>));
+const DebtList = view<{ s: State }>(({ s }) => (s.debts.length ? <>{s.debts.map((d) => <DebtRow key={d.id} s={s} d={d} />)}</> : <Empty>Nobody to pay. All clear.</Empty>))
 
-/** Form that adds a debt to an existing or a new person. */
 const AddDebtPanel = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/debts" class="sf adp" data-adp hidden>
 		<Back s={s} />
@@ -80,14 +75,13 @@ const AddDebtPanel = view<{ s: State }>(({ s }) => (
 		</div>
 		<button class="btn full">Add</button>
 	</form>
-));
+))
 
-type OweProps = { s: State; open: boolean; storeKey: string };
+type OweProps = { s: State; open: boolean; storeKey: string }
 
-/** "I owe" on phones. */
 export const OweMobile = view<OweProps>(({ s, open, storeKey }) => {
-	const c = calc(s);
-	const n = peopleCount(s);
+	const c = calc(s)
+	const n = peopleCount(s)
 	return (
 		<ExpandCard
 			storeKey={storeKey}
@@ -111,12 +105,11 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey }) => {
 		>
 			<DebtList s={s} />
 		</ExpandCard>
-	);
-});
+	)
+})
 
-/** "I owe" on desktop. */
 export const OweDesktop = view<OweProps>(({ s, open, storeKey }) => {
-	const c = calc(s);
+	const c = calc(s)
 	return (
 		<div class="sc bgc">
 			<BigAdd label="Add debt" />
@@ -136,16 +129,15 @@ export const OweDesktop = view<OweProps>(({ s, open, storeKey }) => {
 				<AddDebtPanel s={s} />
 			</div>
 		</div>
-	);
-});
+	)
+})
 
-/** "Road to goals": one progress bar for goals and debts together, with a chip per goal/debt. */
 export const RoadCard = view<{ s: State }>(({ s }) => {
-	const c = calc(s);
+	const c = calc(s)
 	const chips = [
 		...s.goals.map((g) => ({ key: `g${g.id}`, text: `${g.title} ${pctOf(s, g)}%` })),
 		...s.debts.filter((d) => d.kind === "money").map((d) => ({ key: `d${d.id}`, text: `${d.person} ${debtPct(d)}%` })),
-	];
+	]
 	return (
 		<div class="cd jarc">
 			<i class="jar" style={{ width: `${c.pct}%` }}></i>
@@ -171,5 +163,5 @@ export const RoadCard = view<{ s: State }>(({ s }) => {
 				</div>
 			</div>
 		</div>
-	);
-});
+	)
+})

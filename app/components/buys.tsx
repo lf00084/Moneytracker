@@ -1,14 +1,11 @@
-import type { Buy, State } from "../lib/data.ts";
-import { fmt } from "../lib/money.ts";
-import { hhmm } from "../lib/time.ts";
-import { calc } from "../lib/view.ts";
-import { Icon } from "./Icon.tsx";
-import { Back, Card, Empty, ExpandCard, ListCard, NameChips } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { Buy, State } from "../lib/data.ts"
+import { fmt } from "../lib/money.ts"
+import { hhmm } from "../lib/time.ts"
+import { calc } from "../lib/view.ts"
+import { Back, Card, Empty, ExpandCard, Icon, ListCard, NameChips, view } from "./ui.tsx"
 
-export const buyName = (b: Buy) => (b.qty > 1 ? `${b.name} ×${b.qty}` : b.name);
+export const buyName = (b: Buy) => (b.qty > 1 ? `${b.name} ×${b.qty}` : b.name)
 
-/** One spend with an undo button. */
 export const SpendRow = view<{ s: State; id: string; name: string; sub: string; amount: string }>(({ s, id, name, sub, amount }) => (
 	<div class="by">
 		<div>
@@ -26,7 +23,7 @@ export const SpendRow = view<{ s: State; id: string; name: string; sub: string; 
 			</form>
 		</span>
 	</div>
-));
+))
 
 const BuyRows = view<{ s: State }>(({ s }) => (
 	<div>
@@ -36,7 +33,7 @@ const BuyRows = view<{ s: State }>(({ s }) => (
 			<Empty>Nothing bought today.</Empty>
 		)}
 	</div>
-));
+))
 
 const SpendFields = view<{ s: State }>(({ s }) => (
 	<>
@@ -48,9 +45,8 @@ const SpendFields = view<{ s: State }>(({ s }) => (
 		</div>
 		<button class="btn full">Add a spend</button>
 	</>
-));
+))
 
-/** Phone "Today's buys" card. */
 export const BuysExpand = view<{ s: State }>(({ s }) => (
 	<ExpandCard
 		storeKey="buys"
@@ -65,9 +61,8 @@ export const BuysExpand = view<{ s: State }>(({ s }) => (
 	>
 		<BuyRows s={s} />
 	</ExpandCard>
-));
+))
 
-/** Desktop "Today's buys" card with its add form. */
 export const BuysDesktop = view<{ s: State }>(({ s }) => (
 	<>
 		<form method="post" action="/buy" id="f-buy-d" class="sc spf" data-sp data-adp hidden>
@@ -77,11 +72,10 @@ export const BuysDesktop = view<{ s: State }>(({ s }) => (
 			<BuyRows s={s} />
 		</ListCard>
 	</>
-));
+))
 
-/** Phone: the two "Earned today / Bought today" cards side by side. */
 export const TodayCards = view<{ s: State }>(({ s }) => {
-	const c = calc(s);
+	const c = calc(s)
 	return (
 		<div class="two">
 			<Card title="Earned today">
@@ -95,12 +89,11 @@ export const TodayCards = view<{ s: State }>(({ s }) => {
 				</div>
 			</Card>
 		</div>
-	);
-});
+	)
+})
 
-/** Desktop: the four headline numbers across the top of the dashboard. */
 export const Hero = view<{ s: State }>(({ s }) => {
-	const c = calc(s);
+	const c = calc(s)
 	return (
 		<div class="hero">
 			<div>
@@ -128,5 +121,5 @@ export const Hero = view<{ s: State }>(({ s }) => {
 				</div>
 			</div>
 		</div>
-	);
-});
+	)
+})

@@ -1,70 +1,62 @@
-import { sql } from "remix/data-table";
+import { sql } from "remix/data-table"
 
-import { db, incomes, incomeSources, users } from "../db/index.ts";
-import { extKey } from "./sources/index.ts";
-import { addDays, dayOf, hhmm, today } from "./time.ts";
+import { db, incomes, incomeSources, users } from "../db/index.ts"
+import { addDays, dayOf, hhmm, today } from "./time.ts"
+import { extKey, id, rowsOf } from "./util.ts"
 
 const hm = (v: string | null | undefined) => {
-	const m = /^(\d{1,2}):(\d{2})$/.exec(v ?? "");
-	return m ? `${m[1]!.padStart(2, "0")}:${m[2]}` : "06:00";
-};
+	const m = /^(\d{1,2}):(\d{2})$/.exec(v ?? "")
+	return m ? `${m[1]!.padStart(2, "0")}:${m[2]}` : "06:00"
+}
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const lastDayOf = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const pad = (n: number) => String(n).padStart(2, "0")
+const lastDayOf = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate()
 
-/**
- * Auto income (daily / monthly) has no background job, so it is settled whenever the user opens the app
- * or the balance is needed. It is safe to run many times: every payout has a key (source + day) and is
- * only created once. Catches up on days the app was not opened (up to 62 days).
- */
 export async function settleAuto(uid: string): Promise<void> {
-	const all = await db.findMany(incomeSources, { where: { user_id: uid, mode: "auto" } });
-	const srcs = all.filter((s) => s.active !== 0 && s.amount_minor > 0);
-	if (!srcs.length) return;
+	const all = await db.findMany(incomeSources, { where: { user_id: uid, mode: "auto" } })
+	const srcs = all.filter((s) => s.active !== 0 && s.amount_minor > 0)
+	if (!srcs.length) return
 
-	const u = await db.find(users, uid);
-	const runAt = hm(u?.run_at);
-	const now = Date.now();
-	const t = today();
-	const nowHm = hhmm(now);
+	const u = await db.find(users, uid)
+	const runAt = hm(u?.run_at)
+	const now = Date.now()
+	const t = today()
+	const nowHm = hhmm(now)
 
-	const res: any = await db.exec(sql`select ext_key as k from incomes where user_id = ${uid} and ext_key <> ''`);
-	const rows: any[] = Array.isArray(res) ? res : (res?.rows ?? []);
-	const have = new Set(rows.map((r) => String(r.k ?? r[0] ?? "")));
+	const res = await db.exec(sql`select ext_key as k from incomes where user_id = ${uid} and ext_key <> ''`)
+	const have = new Set(rowsOf(res).map((r) => String(r.k ?? r[0] ?? "")))
 
-	const due = (d: string) => d < t || (d === t && nowHm >= runAt);
+	const due = (d: string) => d < t || (d === t && nowHm >= runAt)
 
 	for (const s of srcs) {
-		const created = dayOf(s.created_at);
-		const createdHm = hhmm(s.created_at);
-		const started = (d: string) => d > created || (d === created && createdHm < runAt);
-		const days: string[] = [];
+		const created = dayOf(s.created_at)
+		const createdHm = hhmm(s.created_at)
+		const started = (d: string) => d > created || (d === created && createdHm < runAt)
+		const days: string[] = []
 
 		if (s.every === "month") {
-			const dom = Number(created.slice(8, 10));
-			let y = Number(created.slice(0, 4));
-			let m = Number(created.slice(5, 7));
-			const endY = Number(t.slice(0, 4));
-			const endM = Number(t.slice(5, 7));
+			const dom = Number(created.slice(8, 10))
+			let y = Number(created.slice(0, 4))
+			let m = Number(created.slice(5, 7))
+			const endY = Number(t.slice(0, 4))
+			const endM = Number(t.slice(5, 7))
 			for (let i = 0; i < 36 && (y < endY || (y === endY && m <= endM)); i++) {
-				days.push(`${y}-${pad(m)}-${pad(Math.min(dom, lastDayOf(y, m)))}`);
-				if (++m > 12) (m = 1), y++;
+				days.push(`${y}-${pad(m)}-${pad(Math.min(dom, lastDayOf(y, m)))}`)
+				if (++m > 12) (m = 1), y++
 			}
 		} else {
-			const from = created > addDays(t, -62) ? created : addDays(t, -62);
-			for (let d = from; d <= t; d = addDays(d, 1)) days.push(d);
+			const from = created > addDays(t, -62) ? created : addDays(t, -62)
+			for (let d = from; d <= t; d = addDays(d, 1)) days.push(d)
 		}
 
 		for (const d of days) {
-			if (!due(d) || !started(d)) continue;
-			const key = extKey(s.id, d);
-			if (have.has(key)) continue;
-			have.add(key);
+			if (!due(d) || !started(d)) continue
+			const key = extKey(s.id, d)
+			if (have.has(key)) continue
+			have.add(key)
 			try {
-				await db.create(incomes, { id: crypto.randomUUID(), user_id: uid, source_id: s.id, amount_minor: s.amount_minor, day: d, created_at: now, meta: '{"auto":1}', ext_key: key });
-			} catch {
-				// another request already paid this day (unique index) - fine
-			}
+				await db.create(incomes, { id: id(), user_id: uid, source_id: s.id, amount_minor: s.amount_minor, day: d, created_at: now, meta: '{"auto":1}', ext_key: key })
+			} catch {}
 		}
 	}
 }

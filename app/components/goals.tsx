@@ -1,28 +1,25 @@
-import type { Goal, GoalItem, State } from "../lib/data.ts";
-import { fmt } from "../lib/money.ts";
-import { canAfford, goalLeft, goalStat, pctOf, plain } from "../lib/view.ts";
-import { Icon } from "./Icon.tsx";
-import { Back, Empty, ExpandCard } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { Goal, GoalItem, State } from "../lib/data.ts"
+import { fmt, plain } from "../lib/money.ts"
+import { canAfford, goalLeft, goalStat, pctOf } from "../lib/view.ts"
+import { Back, Empty, ExpandCard, Icon, view } from "./ui.tsx"
 
-const contents = { display: "contents" };
+const contents = { display: "contents" }
 
-/** One thing to buy inside a goal. In manage mode it can be edited and removed. */
 const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, manage }) => {
-	const ok = canAfford(s, it);
-	const cls = it.done ? "gi gdone" : "gi";
+	const ok = canAfford(s, it)
+	const cls = it.done ? "gi gdone" : "gi"
 	const hid = () => (
 		<>
 			<Back s={s} />
 			<input type="hidden" name="id" value={it.id} />
 		</>
-	);
+	)
 	const name = (
 		<>
 			<span class="gn">{it.name}</span>
 			<span class="lb">{fmt(it.price)}</span>
 		</>
-	);
+	)
 
 	if (!manage) {
 		return (
@@ -39,7 +36,7 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					)}
 				</span>
 			</div>
-		);
+		)
 	}
 
 	return (
@@ -72,12 +69,11 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 				</form>
 			)}
 		</div>
-	);
-});
+	)
+})
 
-/** A goal with its progress bar and items. */
 const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) => {
-	const pct = pctOf(s, g);
+	const pct = pctOf(s, g)
 	const info = (
 		<div class="dn">
 			<div class="l1">
@@ -88,8 +84,8 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 				<i style={{ width: `${pct}%` }}></i>
 			</div>
 		</div>
-	);
-	const items = g.items.map((it) => <ItemRow key={it.id} s={s} it={it} manage={manage} />);
+	)
+	const items = g.items.map((it) => <ItemRow key={it.id} s={s} it={it} manage={manage} />)
 
 	if (!manage) {
 		return (
@@ -97,7 +93,7 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 				<div class="db">{info}</div>
 				{items}
 			</div>
-		);
+		)
 	}
 
 	return (
@@ -143,8 +139,8 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 			</div>
 			{items}
 		</div>
-	);
-});
+	)
+})
 
 const GoalList = view<{ s: State; manage: boolean }>(({ s, manage }) =>
 	s.goals.length ? (
@@ -152,7 +148,7 @@ const GoalList = view<{ s: State; manage: boolean }>(({ s, manage }) =>
 	) : (
 		<Empty>{manage ? "No goals yet. Tap + to add one." : "No goals yet. Add some in Manage."}</Empty>
 	),
-);
+)
 
 const GoalForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/goals" class="sf xfm" data-adp hidden>
@@ -160,12 +156,11 @@ const GoalForm = view<{ s: State }>(({ s }) => (
 		<input class="in" name="name" placeholder="Goal name" autocomplete="off" required />
 		<button class="btn full">Add goal</button>
 	</form>
-));
+))
 
-/** The "Goals" card on phones. `manage` adds the edit, remove and add controls. */
 export const GoalsExpand = view<{ s: State; open: boolean; storeKey: string; manage: boolean }>(({ s, open, storeKey, manage }) => {
-	const g = goalStat(s);
-	const sub = !g.target ? (g.pct === 100 ? "all bought" : "no items yet") : g.pct >= 100 ? "ready to buy" : `${fmt(g.toGo)} ${s.user.currency} to go`;
+	const g = goalStat(s)
+	const sub = !g.target ? (g.pct === 100 ? "all bought" : "no items yet") : g.pct >= 100 ? "ready to buy" : `${fmt(g.toGo)} ${s.user.currency} to go`
 	const head = (
 		<>
 			<b class="big2">
@@ -174,7 +169,7 @@ export const GoalsExpand = view<{ s: State; open: boolean; storeKey: string; man
 			</b>
 			<span class="lb">{sub}</span>
 		</>
-	);
+	)
 	if (manage) {
 		return (
 			<ExpandCard
@@ -193,7 +188,7 @@ export const GoalsExpand = view<{ s: State; open: boolean; storeKey: string; man
 			>
 				<GoalList s={s} manage />
 			</ExpandCard>
-		);
+		)
 	}
 	return (
 		<ExpandCard
@@ -213,5 +208,5 @@ export const GoalsExpand = view<{ s: State; open: boolean; storeKey: string; man
 		>
 			<GoalList s={s} manage={false} />
 		</ExpandCard>
-	);
-});
+	)
+})

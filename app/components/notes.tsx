@@ -1,17 +1,11 @@
-import type { RemixNode } from "remix/component";
-import type { State } from "../lib/data.ts";
-import { dayLabel, dayOf, hhmm } from "../lib/time.ts";
-import { Icon } from "./Icon.tsx";
-import { Back, Empty, Section } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { RemixNode } from "remix/component"
+import type { State } from "../lib/data.ts"
+import { dayLabel, dayOf, hhmm } from "../lib/time.ts"
+import { Back, Empty, Icon, Section, view } from "./ui.tsx"
 
-/**
- * The note-to-yourself chat. `listKey` tells the browser script which list/composer pair belongs
- * together: "m" on phones, "d" on the notes page, "dash" on the dashboard card.
- */
 export const NoteList = view<{ s: State; listKey: string }>(({ s, listKey }) => {
 	if (listKey === "dash") {
-		const latest = s.notes.slice(-2).reverse();
+		const latest = s.notes.slice(-2).reverse()
 		return (
 			<div data-list="dash">
 				{latest.length ? (
@@ -25,20 +19,20 @@ export const NoteList = view<{ s: State; listKey: string }>(({ s, listKey }) => 
 					<Empty>No notes yet.</Empty>
 				)}
 			</div>
-		);
+		)
 	}
 
-	const items: RemixNode[] = [];
-	let last = "";
+	const items: RemixNode[] = []
+	let last = ""
 	for (const n of s.notes) {
-		const label = dayLabel(dayOf(n.at));
+		const label = dayLabel(dayOf(n.at))
 		if (label !== last) {
 			items.push(
 				<div key={`day-${n.id}`} class="day">
 					<span>{label}</span>
 				</div>,
-			);
-			last = label;
+			)
+			last = label
 		}
 		items.push(
 			<div key={n.id} class="msg" data-id={n.id}>
@@ -61,10 +55,10 @@ export const NoteList = view<{ s: State; listKey: string }>(({ s, listKey }) => 
 					</form>
 				</div>
 			</div>,
-		);
+		)
 	}
-	return <div data-list={listKey}>{items}</div>;
-});
+	return <div data-list={listKey}>{items}</div>
+})
 
 export const ChatHead = view(() => (
 	<div class="ch">
@@ -74,9 +68,8 @@ export const ChatHead = view(() => (
 			<div class="lb">only you can see this</div>
 		</div>
 	</div>
-));
+))
 
-/** Message box. Editing a note re-uses it (the script fills the hidden id). */
 export const Composer = view<{ s: State; listKey: string }>(({ s, listKey }) => (
 	<form class="cm" data-comp={listKey} method="post" action="/notes">
 		<Back s={s} />
@@ -96,9 +89,8 @@ export const Composer = view<{ s: State; listKey: string }>(({ s, listKey }) => 
 			</button>
 		</div>
 	</form>
-));
+))
 
-/** Desktop dashboard card: quick composer plus the two latest notes. */
 export const NoteCard = view<{ s: State }>(({ s }) => (
 	<Section title="Note to yourself" right={`${s.notes.length} saved`}>
 		<form class="cin" data-comp="dash" method="post" action="/notes" style={{ margin: "14px 0" }}>
@@ -111,4 +103,4 @@ export const NoteCard = view<{ s: State }>(({ s }) => (
 		</form>
 		<NoteList s={s} listKey="dash" />
 	</Section>
-));
+))

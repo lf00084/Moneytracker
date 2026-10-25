@@ -1,13 +1,11 @@
-import type { DayRow, State } from "../lib/data.ts";
-import { fmt } from "../lib/money.ts";
-import { today } from "../lib/time.ts";
-import { dayNet } from "../lib/view.ts";
-import { buyName, SpendRow } from "./buys.tsx";
-import { IncomeRow } from "./income.tsx";
-import { Back, Card, ErrorBanner, PageHeader, Section } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { DayRow, State } from "../lib/data.ts"
+import { fmt } from "../lib/money.ts"
+import { today } from "../lib/time.ts"
+import { dayNet } from "../lib/view.ts"
+import { buyName, SpendRow } from "./buys.tsx"
+import { IncomeRow } from "./income.tsx"
+import { Back, Card, ErrorBanner, PageHeader, Section, view } from "./ui.tsx"
 
-/** Everything that happened on one day: incomes first, then buys. */
 const DayItems = view<{ s: State; d: DayRow }>(({ s, d }) => (
 	<>
 		{d.incomes.map((i) => (
@@ -17,11 +15,10 @@ const DayItems = view<{ s: State; d: DayRow }>(({ s, d }) => (
 			<SpendRow key={b.id} s={s} id={b.id} name={buyName(b)} sub={b.qty > 1 ? `${b.qty} × ${fmt(b.unit)}` : ""} amount={`−${fmt(b.total)}`} />
 		))}
 	</>
-));
+))
 
-/** Forms that add a buy or an income to any past day. */
 const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
-	const t = today();
+	const t = today()
 	const body = (
 		<>
 			<form method="post" action="/buy">
@@ -47,11 +44,10 @@ const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
 				</div>
 			</form>
 		</>
-	);
-	return wide ? <Section title="Add to any day">{body}</Section> : <Card title="Add to any day">{body}</Card>;
-});
+	)
+	return wide ? <Section title="Add to any day">{body}</Section> : <Card title="Add to any day">{body}</Card>
+})
 
-/** Phone history: one card per day. */
 export const HistoryMobile = view<{ s: State }>(({ s }) => (
 	<>
 		<ErrorBanner s={s} />
@@ -71,12 +67,11 @@ export const HistoryMobile = view<{ s: State }>(({ s }) => (
 			</Card>
 		))}
 	</>
-));
+))
 
-/** Desktop history: a table of the last 30 days. */
 export const HistoryDesktop = view<{ s: State }>(({ s }) => {
-	const earned = s.days.reduce((a, d) => a + d.earned, 0);
-	const bought = s.days.reduce((a, d) => a + d.bought, 0);
+	const earned = s.days.reduce((a, d) => a + d.earned, 0)
+	const bought = s.days.reduce((a, d) => a + d.bought, 0)
 	return (
 		<>
 			<PageHeader title="History" right="last 30 days" />
@@ -103,5 +98,5 @@ export const HistoryDesktop = view<{ s: State }>(({ s }) => {
 				))}
 			</Section>
 		</>
-	);
-});
+	)
+})

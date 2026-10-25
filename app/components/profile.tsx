@@ -1,9 +1,7 @@
-import type { State } from "../lib/data.ts";
-import { fmt } from "../lib/money.ts";
-import { LANG, plain } from "../lib/view.ts";
-import { Icon } from "./Icon.tsx";
-import { Avatar, Back, Card, ErrorBanner, Field, PageHeader, Section, ThemeSwitch } from "./ui.tsx";
-import { view } from "./view.ts";
+import type { State } from "../lib/data.ts"
+import { fmt, plain } from "../lib/money.ts"
+import { LANG } from "../lib/view.ts"
+import { Avatar, Back, Card, ErrorBanner, Field, Icon, PageHeader, Section, ThemeSwitch, view } from "./ui.tsx"
 
 const BalanceForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/profile/balance">
@@ -16,9 +14,8 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 			Update balance
 		</button>
 	</form>
-));
+))
 
-/** Total balance, hidden behind dots until the eye is tapped. `edit` adds "Edit balance". */
 export const BalanceCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
 	<div class="cd">
 		<div class="tg">Total balance</div>
@@ -45,7 +42,7 @@ export const BalanceCard = view<{ s: State; edit?: boolean }>(({ s, edit = false
 			) : null}
 		</div>
 	</div>
-));
+))
 
 const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s, cancel, showError = false }) => (
 	<form method="post" action="/profile/edit">
@@ -61,7 +58,7 @@ const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s
 			</a>
 		</div>
 	</form>
-));
+))
 
 const PrefsForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/settings">
@@ -74,29 +71,28 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 			Save
 		</button>
 	</form>
-));
+))
 
 const DataButtons = view(() => (
 	<div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-		<a class="btn o" style={{ flex: "1" }} href="/export.csv" data-rmx-document>
+		<a class="btn o" style={{ flex: "1" }} href="/export.csv">
 			Export CSV
 		</a>
-		<form method="post" action="/account/delete" data-rmx-document style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
+		<form method="post" action="/account/delete" style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
 			<button class="btn dng" style={{ flex: "1" }}>
 				Delete account
 			</button>
 		</form>
 	</div>
-));
+))
 
 const LinkRow = view<{ href: string; label: string }>(({ href, label }) => (
 	<a class="li" href={href}>
 		<span>{label}</span>
 		<span class="mu">›</span>
 	</a>
-));
+))
 
-/** Phone profile tab. */
 export const ProfileMobile = view<{ s: State }>(({ s }) => (
 	<>
 		<ErrorBanner s={s} />
@@ -123,7 +119,7 @@ export const ProfileMobile = view<{ s: State }>(({ s }) => (
 			<LinkRow href="/profile/edit" label="Edit profile" />
 			<LinkRow href="/settings" label="Settings" />
 			<LinkRow href="/history" label="History" />
-			<form method="post" action="/logout" data-rmx-document>
+			<form method="post" action="/logout">
 				<button class="li">
 					<span class="neg">Log out</span>
 					<span class="mu">›</span>
@@ -131,9 +127,8 @@ export const ProfileMobile = view<{ s: State }>(({ s }) => (
 			</form>
 		</Card>
 	</>
-));
+))
 
-/** Phone "Edit profile" page. */
 export const EditProfileMobile = view<{ s: State }>(({ s }) => (
 	<>
 		<div style={{ display: "flex", justifyContent: "center", margin: "14px 0 0" }}>
@@ -143,9 +138,8 @@ export const EditProfileMobile = view<{ s: State }>(({ s }) => (
 			<ProfileForm s={s} cancel="/profile" showError />
 		</Card>
 	</>
-));
+))
 
-/** Phone settings page. */
 export const SettingsMobile = view<{ s: State }>(({ s }) => (
 	<>
 		<ErrorBanner s={s} />
@@ -159,9 +153,8 @@ export const SettingsMobile = view<{ s: State }>(({ s }) => (
 			Moneytracker v1.0 · stable
 		</div>
 	</>
-));
+))
 
-/** Desktop settings: used by the profile, edit-profile and settings routes. */
 export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 	<>
 		<PageHeader title="Settings" right={`${s.user.currency} · ${LANG}`} />
@@ -173,7 +166,7 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 					<ProfileForm s={s} cancel="/home" />
 				</Section>
 				<Section title="Account">
-					<form method="post" action="/logout" data-rmx-document>
+					<form method="post" action="/logout">
 						<button class="btn o">Log out</button>
 					</form>
 				</Section>
@@ -191,4 +184,4 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 			</div>
 		</div>
 	</>
-));
+))

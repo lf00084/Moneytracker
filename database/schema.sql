@@ -1,18 +1,12 @@
--- moneytracker schema (SQLite / Turso). Safe to run many times.
--- Run with: npm run db:migrate
--- Money is stored as integer minor units (MAD * 100). Times are unix ms.
-
 PRAGMA foreign_keys = ON;
-
--- ---------- auth ----------
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
-  email         TEXT NOT NULL UNIQUE,          -- always lowercase
+  email         TEXT NOT NULL UNIQUE,
   name          TEXT NOT NULL DEFAULT '',
   email_verified INTEGER NOT NULL DEFAULT 0,
   currency      TEXT NOT NULL DEFAULT 'MAD',
-  theme         TEXT NOT NULL DEFAULT 'dark',  -- dark | light
+  theme         TEXT NOT NULL DEFAULT 'dark',
   phone         TEXT NOT NULL DEFAULT '',
   bio           TEXT NOT NULL DEFAULT '',
   run_at        TEXT NOT NULL DEFAULT '06:00',
@@ -25,24 +19,22 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at    INTEGER NOT NULL
 );
 
--- Password hashes live apart from users. Google-only users have no row here.
 CREATE TABLE IF NOT EXISTS passwords (
   user_id       TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  hash          TEXT NOT NULL,                 -- pbkdf2$iterations$salt$hash
+  hash          TEXT NOT NULL,
   updated_at    INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
   id            TEXT PRIMARY KEY,
-  user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,  -- null until signed in
-  data          TEXT NOT NULL,                 -- JSON from remix session
+  user_id       TEXT REFERENCES users(id) ON DELETE CASCADE,
+  data          TEXT NOT NULL,
   created_at    INTEGER NOT NULL,
   expires_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS sessions_user_idx    ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at);
 
--- Linked login providers (Google today).
 CREATE TABLE IF NOT EXISTS oauth_accounts (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -53,22 +45,18 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 );
 CREATE INDEX IF NOT EXISTS oauth_user_idx ON oauth_accounts(user_id);
 
--- ---------- images ----------
-
 CREATE TABLE IF NOT EXISTS user_images (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  kind          TEXT NOT NULL DEFAULT 'avatar',   -- avatar | cover | other
-  source        TEXT NOT NULL DEFAULT 'upload',   -- upload | google
-  url           TEXT NOT NULL,                    -- remote url or your storage key
+  kind          TEXT NOT NULL DEFAULT 'avatar',
+  source        TEXT NOT NULL DEFAULT 'upload',
+  url           TEXT NOT NULL,
   mime          TEXT,
   size_bytes    INTEGER,
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS user_images_user_idx ON user_images(user_id, kind, is_active);
-
--- ---------- app data ----------
 
 CREATE TABLE IF NOT EXISTS quick_buys (
   id            TEXT PRIMARY KEY,
@@ -84,9 +72,9 @@ CREATE TABLE IF NOT EXISTS income_sources (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
-  mode          TEXT NOT NULL DEFAULT 'manual',   -- auto | manual
-  amount_minor  INTEGER NOT NULL DEFAULT 0,       -- for auto sources
-  every         TEXT,                             -- day | week | month (auto)
+  mode          TEXT NOT NULL DEFAULT 'manual',
+  amount_minor  INTEGER NOT NULL DEFAULT 0,
+  every         TEXT,
   created_at    INTEGER NOT NULL,
   type          TEXT NOT NULL DEFAULT 'manual',
   config        TEXT NOT NULL DEFAULT '{}',
@@ -101,14 +89,14 @@ CREATE TABLE IF NOT EXISTS incomes (
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source_id     TEXT REFERENCES income_sources(id) ON DELETE SET NULL,
   amount_minor  INTEGER NOT NULL,
-  day           TEXT NOT NULL,                    -- YYYY-MM-DD
+  day           TEXT NOT NULL,
   created_at    INTEGER NOT NULL,
   meta          TEXT NOT NULL DEFAULT '{}',
   ext_key       TEXT NOT NULL DEFAULT '',
   usd_minor     INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS incomes_day_idx ON incomes(user_id, day);
--- one payout per source per day (auto income and once-a-day manual sources)
+
 CREATE UNIQUE INDEX IF NOT EXISTS incomes_ext_uq ON incomes(user_id, ext_key) WHERE ext_key <> '';
 
 CREATE TABLE IF NOT EXISTS purchases (
@@ -116,15 +104,14 @@ CREATE TABLE IF NOT EXISTS purchases (
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   qty           INTEGER NOT NULL DEFAULT 1,
-  unit_minor    INTEGER NOT NULL,                 -- price each
+  unit_minor    INTEGER NOT NULL,
   total_minor   INTEGER NOT NULL,
-  day           TEXT NOT NULL,                    -- YYYY-MM-DD
-  debt_id       TEXT,                             -- set when it is a debt payment
+  day           TEXT NOT NULL,
+  debt_id       TEXT,
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS purchases_day_idx ON purchases(user_id, day);
 
--- People are never deleted; paid ones are just hidden from the picker.
 CREATE TABLE IF NOT EXISTS people (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -136,10 +123,10 @@ CREATE TABLE IF NOT EXISTS debts (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   person_id     TEXT NOT NULL REFERENCES people(id),
-  kind          TEXT NOT NULL DEFAULT 'money',    -- money | item
-  item_name     TEXT,                             -- e.g. cigarette
+  kind          TEXT NOT NULL DEFAULT 'money',
+  item_name     TEXT,
   item_qty      INTEGER,
-  amount_minor  INTEGER NOT NULL DEFAULT 0,       -- owed now
+  amount_minor  INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS debts_user_idx ON debts(user_id, person_id);
@@ -185,8 +172,6 @@ CREATE TABLE IF NOT EXISTS notes (
   updated_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS notes_user_idx ON notes(user_id, created_at);
-
--- ---------- trading ----------
 
 CREATE TABLE IF NOT EXISTS trade_sessions (
   id            TEXT PRIMARY KEY,

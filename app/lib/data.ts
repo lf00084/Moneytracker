@@ -1,7 +1,7 @@
 import { sql } from "remix/data-table"
 import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases } from "../db/index.ts"
 import { settleAuto } from "./auto.ts"
-import { exoStatus, liveExo, settleExo } from "./exoclick.ts"
+import { exoStatus, latestInvoice, liveExo, settleExo, type Invoice } from "./exoclick.ts"
 import type { TradeSession } from "./trade-math.ts"
 import { loadTrades } from "./trading.ts"
 import { addDays, dayLabel, today } from "./time.ts"
@@ -16,7 +16,7 @@ export type GoalItem = { id: string; name: string; price: number; done: boolean 
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] }
 export type Note = { id: string; body: string; at: number; edited: boolean }
 export type DayRow = { day: string; label: string; earned: number; bought: number; buys: Buy[]; incomes: Income[] }
-export type Part = "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "names" | "incnames" | "trading"
+export type Part = "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "invoice" | "names" | "incnames" | "trading"
 
 export type State = {
 	user: User
@@ -36,6 +36,7 @@ export type State = {
 	notes: Note[]
 	days: DayRow[]
 	balance: number
+	invoice: Invoice | null
 }
 
 const settleAll = async (uid: string) => void (await Promise.all([settleAuto(uid), settleExo(uid)]))
@@ -119,12 +120,14 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 		notes: [],
 		days: [],
 		balance: 0,
+		invoice: null,
 	}
 
 	const needSources = need.has("sources") || need.has("today") || need.has("history")
 	if (needSources || need.has("balance")) await settleAll(uid)
 
 	const jobs: Promise<void>[] = []
+	if (need.has("invoice")) jobs.push(latestInvoice(uid).then((v) => void (s.invoice = v)))
 	if (need.has("avatar")) jobs.push(getActiveAvatar(uid).then((a) => void (s.avatar = a)))
 
 	let sourceRows: Source[] = []

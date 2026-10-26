@@ -30,7 +30,7 @@ export default createController(routes.pages, {
 		notes: page("/notes", ["notes"], (s) => <NotesScreen s={s} />),
 		goals: page("/goals", ["goals", "debts", "balance"], (s) => <GoalsScreen s={s} />),
 		plan: page("/plan", ["goals", "debts", "sources", "today", "balance"], (s) => <GoalsScreen s={s} />),
-		income: page("/income", ["sources", "today"], (s) => <IncomeScreen s={s} />),
+		income: page("/income", ["sources", "today", "invoice"], (s) => <IncomeScreen s={s} />),
 		history: page("/history", ["history"], (s) => <HistoryScreen s={s} />),
 		profile: page("/profile", ["avatar", "balance"], (s) => <ProfileScreen s={s} />),
 		profileEdit: page("/profile/edit", ["avatar", "balance"], (s) => <ProfileEditScreen s={s} />),

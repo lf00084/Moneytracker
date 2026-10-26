@@ -48,11 +48,26 @@ const Hid = view<{ id: string; back: string }>(({ id, back }) => (
 	</>
 ))
 
+const EditForm = view<{ e: Entry; back: string }>(({ e, back }) => (
+	<form method="post" action="/pad/edit" class="nt-edit" data-edit hidden>
+		<Hid id={e.id} back={back} />
+		<textarea name="body" rows="2" maxlength="2000" aria-label="Edit">
+			{e.body}
+		</textarea>
+		<div class="nt-eb">
+			<button type="button" class="btn xs o" data-edit-x>
+				Cancel
+			</button>
+			<button class="btn xs">Save</button>
+		</div>
+	</form>
+))
+
 const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
 	const note = e.kind === "note"
 	const done = e.kind === "done"
 	return (
-		<div class={done ? "nt-it dn" : note ? "nt-it nt" : "nt-it"}>
+		<div class={done ? "nt-it dn" : note ? "nt-it nt" : "nt-it"} data-pad-item>
 			{note ? null : (
 				<form method="post" action="/pad/toggle" class="nt-f">
 					<Hid id={e.id} back={back} />
@@ -61,10 +76,11 @@ const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
 					</button>
 				</form>
 			)}
-			<div class="nt-b">
+			<div class="nt-b" data-copy>
 				<p>{e.body}</p>
 				{note ? <div class="nt-m">{`note · ${timeAgo(e.at)}`}</div> : null}
 			</div>
+			<EditForm e={e} back={back} />
 			<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
 				<Hid id={e.id} back={back} />
 				<button class="nt-x" aria-label="Delete">
@@ -138,8 +154,11 @@ const Said = view<Props>(({ d, f }) => {
 			<div class="nt-c nt-list">
 				{list.length ? (
 					list.map((e) => (
-						<div key={e.id} class="nt-q">
-							<p>{e.body}</p>
+						<div key={e.id} class="nt-q" data-pad-item>
+							<div class="nt-b" data-copy>
+								<p>{e.body}</p>
+							</div>
+							<EditForm e={e} back={back} />
 							<div class="nt-who">
 								<span class="nt-av">{(e.who[0] ?? "?").toUpperCase()}</span>
 								<div>

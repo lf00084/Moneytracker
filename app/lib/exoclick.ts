@@ -163,3 +163,53 @@ export async function liveExo(uid: string, ids: string[], rate: number): Promise
 	}
 	return out
 }
+
+export type Invoice = { id: string; status: "pending" | "processing" | "paid"; usd: number; period: string; date: string; due: string; paid: string }
+const invCache = new Map<string, { at: number; v: Invoice | null }>()
+const INVOICE_PATHS = ["/payments", "/publisher/payments", "/payments/p", "/invoices"]
+const ymd = (v: unknown) => {
+	const d = String(v ?? "")
+	return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : ""
+}
+const toInvoice = (r: any): Invoice | null => {
+	if (!r || typeof r !== "object") return null
+	const raw = String(r.status ?? r.state ?? r.payment_status ?? "").toLowerCase()
+	const paid = ymd(r.payment_date ?? r.paid_at ?? r.date_paid ?? r.paid_date)
+	const status = (raw.includes("paid") && !raw.includes("unpaid")) || (!raw && paid) ? "paid" : raw.includes("process") ? "processing" : "pending"
+	const usd = Number(r.total ?? r.amount ?? r.revenue ?? r.sum ?? 0) || 0
+	const date = ymd(r.date ?? r.invoice_date ?? r.created_at ?? r.created ?? r.generated)
+	const from = ymd(r.period_from ?? r.date_from ?? r.from ?? r.period_start)
+	const to = ymd(r.period_to ?? r.date_to ?? r.to ?? r.period_end)
+	const period = typeof r.period === "string" ? r.period : from && to ? `${from} to ${to}` : ""
+	return { id: String(r.id ?? r.invoice_id ?? r.invoice_number ?? `${date}${usd}`), status, usd, period, date, due: ymd(r.due_date ?? r.due), paid }
+}
+
+export async function latestInvoice(uid: string): Promise<Invoice | null> {
+	try {
+		const all = await db.findMany(incomeSources, { where: { user_id: uid, type: "exoclick" } })
+		const src = all.find((s) => s.active !== 0 && String(parseJson(s.config).key_enc ?? ""))
+		if (!src) return null
+		const hit = invCache.get(src.id)
+		if (hit && Date.now() - hit.at < 15 * 60000) return hit.v
+		const apiKey = await decryptSecret(String(parseJson(src.config).key_enc))
+		const token = apiKey ? await login(apiKey) : null
+		if (!token) return null
+		let v: Invoice | null = null
+		for (const p of INVOICE_PATHS) {
+			const r = await jf(`${BASE}${p}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } }).catch(() => null)
+			if (!r || !r.ok) continue
+			const rows = listOf(await r.json().catch(() => null))
+				.map(toInvoice)
+				.filter((x): x is Invoice => !!x)
+				.sort((a, b) => b.date.localeCompare(a.date))
+			if (rows.length) {
+				v = rows[0]!
+				break
+			}
+		}
+		invCache.set(src.id, { at: Date.now(), v })
+		return v
+	} catch {
+		return null
+	}
+}

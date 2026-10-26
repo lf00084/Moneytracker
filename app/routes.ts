@@ -71,6 +71,7 @@ export const routes = route({
 		padAdd: post("/pad/add"),
 		padToggle: post("/pad/toggle"),
 		padDel: post("/pad/delete"),
+		padEdit: post("/pad/edit"),
 	},
 
 	assets: {

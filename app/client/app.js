@@ -56,7 +56,7 @@
 
 	d.addEventListener("click", function (e) {
 		var t = e.target
-		if (t.closest && t.closest("details[data-fixed] > summary")) {
+		if (t.closest && !t.closest("[data-xplus]") && t.closest("details[data-fixed] > summary")) {
 			e.preventDefault()
 			return
 		}
@@ -129,6 +129,7 @@
 			return
 		}
 		if ((q = t.closest("[data-xplus]"))) {
+			e.preventDefault()
 			var xc = q.closest(".xc")
 			var xd = xc.querySelector("details")
 			var xm = xc.querySelector("[data-adp]")
@@ -473,4 +474,125 @@
 	})
 	load()
 	paint()
+})()
+
+/* file20 */
+;(function () {
+	var d = document
+	var hold = 0
+	var fired = false
+	var sx = 0
+	var sy = 0
+	var toast = function (t) {
+		var x = d.createElement("div")
+		x.className = "nt-toast"
+		x.textContent = t
+		d.body.appendChild(x)
+		setTimeout(function () {
+			x.remove()
+		}, 1100)
+	}
+	var copy = function (t) {
+		try {
+			if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t)
+		} catch (e) {}
+		var a = d.createElement("textarea")
+		a.value = t
+		a.style.cssText = "position:fixed;opacity:0"
+		d.body.appendChild(a)
+		a.select()
+		try {
+			d.execCommand("copy")
+		} catch (e) {}
+		a.remove()
+		return Promise.resolve()
+	}
+	var edit = function (it) {
+		var f = it && it.querySelector("[data-edit]")
+		var b = it && it.querySelector("[data-copy]")
+		if (!f || !b) return
+		f.hidden = false
+		b.hidden = true
+		var ta = f.querySelector("textarea")
+		ta.focus()
+		ta.setSelectionRange(ta.value.length, ta.value.length)
+		it.scrollIntoView({ block: "center", behavior: "smooth" })
+	}
+	d.addEventListener("pointerdown", function (e) {
+		var b = e.target.closest && e.target.closest("[data-copy]")
+		if (!b) return
+		fired = false
+		sx = e.clientX
+		sy = e.clientY
+		clearTimeout(hold)
+		hold = setTimeout(function () {
+			fired = true
+			if (navigator.vibrate) navigator.vibrate(15)
+			edit(b.closest("[data-pad-item]"))
+		}, 450)
+	})
+	d.addEventListener("pointermove", function (e) {
+		if (hold && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) clearTimeout(hold)
+	})
+	;["pointerup", "pointercancel", "pointerleave"].forEach(function (n) {
+		d.addEventListener(n, function () {
+			clearTimeout(hold)
+		}, true)
+	})
+	d.addEventListener("contextmenu", function (e) {
+		if (e.target.closest && e.target.closest("[data-copy]")) e.preventDefault()
+	})
+	d.addEventListener("click", function (e) {
+		var t = e.target
+		var b = t.closest && t.closest("[data-copy]")
+		if (b) {
+			if (fired) {
+				fired = false
+				return
+			}
+			var p = b.querySelector("p")
+			copy((p || b).textContent.trim()).then(function () {
+				toast("Copied")
+			})
+			return
+		}
+		var x = t.closest && t.closest("[data-edit-x]")
+		if (x) {
+			var it = x.closest("[data-pad-item]")
+			it.querySelector("[data-edit]").hidden = true
+			it.querySelector("[data-copy]").hidden = false
+			return
+		}
+		var a = t.closest && t.closest("[data-xplus],[data-tg],[data-pay],[data-bigadd]")
+		if (a) {
+			setTimeout(function () {
+				var box = a.closest(".xc,.dbw,.sc,.cd") || d
+				var f = [].slice.call(box.querySelectorAll("[data-adp],[data-addp],[data-payp]")).filter(function (n) {
+					return !n.hidden && n.offsetParent
+				})[0]
+				if (!f) return
+				var i = f.querySelector("input:not([type=hidden]),textarea")
+				if (i) i.focus({ preventScroll: true })
+				f.scrollIntoView({ block: "center", behavior: "smooth" })
+			}, 60)
+		}
+	})
+
+	var dis = {}
+	try {
+		dis = JSON.parse(localStorage.getItem("mt:inv") || "{}")
+	} catch (e) {}
+	;[].slice.call(d.querySelectorAll("[data-inv]")).forEach(function (n) {
+		if (dis[n.getAttribute("data-inv")]) n.hidden = true
+	})
+	d.addEventListener("click", function (e) {
+		var x = e.target.closest && e.target.closest("[data-inv-x]")
+		if (!x) return
+		var n = x.closest("[data-inv]")
+		dis[n.getAttribute("data-inv")] = 1
+		try {
+			localStorage.setItem("mt:inv", JSON.stringify(dis))
+		} catch (err) {}
+		n.hidden = true
+	})
 })()

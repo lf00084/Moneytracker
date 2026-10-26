@@ -17,30 +17,26 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 ))
 
 export const BalanceCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
-	<div class="cd">
-		<div class="tg">Total balance</div>
-		<div class="cb">
-			<div class="ow" style={{ margin: "0" }}>
-				<span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-					<b class="big2" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
-						••••••
-					</b>
-					<button type="button" class="ib sm" data-eye aria-label="Show balance">
-						<Icon name="eye" />
-					</button>
-				</span>
-				{edit ? (
-					<button type="button" class="lnk" data-edit-bal>
-						Edit balance
-					</button>
-				) : null}
-			</div>
+	<div class="cd hm-balc">
+		<div class="hm-bal">
+			<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
+				••••••
+			</b>
+			<button type="button" class="ib" data-eye aria-label="Show balance">
+				<Icon name="eye" />
+			</button>
 			{edit ? (
-				<div data-balf hidden>
-					<BalanceForm s={s} />
-				</div>
+				<button type="button" class="lnk" data-edit-bal>
+					Edit balance
+				</button>
 			) : null}
+			<div class="hm-m">Total balance</div>
 		</div>
+		{edit ? (
+			<div class="hm-bedit" data-balf hidden>
+				<BalanceForm s={s} />
+			</div>
+		) : null}
 	</div>
 ))
 

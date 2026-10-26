@@ -98,3 +98,9 @@ export async function toggleEntry(uid: string, f: FormData) {
 export async function deleteEntry(uid: string, f: FormData) {
 	await db.deleteMany(padEntries, { where: { id: text(f.get("id"), 36), user_id: uid } })
 }
+
+export async function editEntry(uid: string, f: FormData): Result {
+	const body = text(f.get("body"), 2000)
+	if (!body) return "Write something first"
+	await db.updateMany(padEntries, { body, updated_at: Date.now() }, { where: { id: text(f.get("id"), 36), user_id: uid } })
+}

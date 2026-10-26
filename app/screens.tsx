@@ -3,7 +3,7 @@ import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
 import { HomeBalance, HomeToday } from "./components/home.tsx"
-import { HomeIncome, IncomeDesktop, IncomeExpand } from "./components/income.tsx"
+import { HomeIncome, IncomeDesktop, IncomeExpand, InvoiceCard } from "./components/income.tsx"
 import { AppLayout, AuthLayout } from "./components/layout.tsx"
 import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
 import { PadBody, PadComposer, type PadTab } from "./components/pad.tsx"
@@ -161,7 +161,8 @@ export const IncomeScreen = view<{ s: State }>(({ s }) => {
 				<>
 					<ErrorBanner s={s} />
 					<PageHeader title="Income" right={earned ? `+${fmt(earned)} today` : ""} />
-					<IncomeExpand s={s} />
+					<InvoiceCard s={s} />
+<IncomeExpand s={s} />
 				</>
 			}
 			desktop={
@@ -171,7 +172,8 @@ export const IncomeScreen = view<{ s: State }>(({ s }) => {
 						<h1 class="t">Income</h1>
 						<span></span>
 					</div>
-					<IncomeExpand s={s} />
+					<InvoiceCard s={s} />
+<IncomeExpand s={s} />
 				</>
 			}
 		/>

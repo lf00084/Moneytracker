@@ -218,6 +218,11 @@ export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot
 						<Icon name="chev" />
 					</span>
 				)}
+				{label ? (
+					<button type="button" class="xp" data-xplus aria-label={label}>
+						<Icon name="plus" />
+					</button>
+				) : null}
 			</summary>
 			<div class="xb">{children}</div>
 			<div class={foot ? "xf" : "xf xo"}>
@@ -225,10 +230,5 @@ export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot
 				{form}
 			</div>
 		</details>
-		{label ? (
-			<button type="button" class="xp" data-xplus aria-label={label}>
-				<Icon name="plus" />
-			</button>
-		) : null}
 	</div>
 ))

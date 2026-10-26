@@ -685,3 +685,46 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .hm-dots:has(small){font-size:18px;line-height:1.15;letter-spacing:0}
 .hm-two .hm-c{flex:1 1 0}
 .hm .gw .db{gap:10px}
+
+/* file20: spacing, shadow, centered icons, invoice, pad edit */
+.hm-f{gap:12px}
+.hm-two{gap:10px}
+.hm .cd{margin-top:12px}
+.nt-page{gap:12px}
+.hm-c,.hm .xc,.hm .cd,.hm .sc,.hm .hero,.nt-c{box-shadow:var(--sh1)}
+.bt{box-shadow:var(--sh1)}
+
+/* header icons centered inside the summary */
+.hm .xp{top:50%;margin-top:-19px;right:14px}
+.hm .xc:has(details[data-fixed]) .xp{top:50%}
+.hm .xc .chev{top:50%;margin-top:-11px}
+.hm .xc:has(.xp.on) .chev{display:none}
+.hm details[data-fixed]>.xh{padding:9px 70px 9px 16px}
+.hm .xb:empty{display:none}
+.hm .osum .ow .em{font:400 14px/1.4 var(--h-sans);color:var(--h-mu)}
+
+/* balance card (home + profile) */
+.hm-bal{column-gap:0;grid-template-columns:1fr auto auto;grid-template-areas:"l e b" "v e b"}
+.hm-bal .ib{margin-left:10px}
+.hm-bal .lnk{grid-area:e;align-self:center;margin-left:10px}
+.hm-balc{padding:0;overflow:hidden}
+.hm-bedit{padding:0 14px 14px}
+
+/* exoclick invoice */
+.inv{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;margin-bottom:12px}
+.inv>div:first-child{flex:1;min-width:0}
+.inv-a{font-size:20px;font-weight:700;line-height:1.2}
+.inv-st{font:600 12px/1 var(--h-mono);padding:5px 10px;border-radius:12px;background:var(--h-chip);color:var(--h-mu);flex:none}
+.inv-st.pending{background:rgba(166,106,0,.14);color:var(--h-earn)}
+.inv-st.processing{background:rgba(109,79,214,.14);color:var(--h-pur)}
+.inv-st.paid{background:rgba(18,161,80,.14);color:var(--pos)}
+.inv .ub svg.ic{transform:rotate(45deg)}
+
+/* pad: tap copies, long press edits */
+.nt-b{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer}
+.nt-it,.nt-q{flex-wrap:wrap}
+.nt-q .nt-b p{margin:0 0 10px}
+.nt-edit{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;margin:0}
+.nt-edit textarea{width:100%;margin:0;padding:8px 12px;border:1px solid var(--h-ln2);border-radius:14px;background:var(--h-card);color:var(--h-ink);font:15px/1.35 var(--h-sans);resize:none}
+.nt-eb{display:flex;gap:8px;justify-content:flex-end}
+.nt-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--h-ink);color:var(--h-card);padding:8px 16px;border-radius:18px;font-size:13px;z-index:60}

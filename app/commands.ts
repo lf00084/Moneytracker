@@ -60,6 +60,7 @@ export const commands = {
 	padDelSpace: { run: quiet((u, f) => pad.deleteSpace(u.id, f)), to: "/pad" },
 	padAdd: { run: (u, f) => pad.addEntry(u.id, f), to: "/pad" },
 	padToggle: { run: quiet((u, f) => pad.toggleEntry(u.id, f)), to: "/pad" },
+	padEdit: { run: (u, f) => pad.editEntry(u.id, f), to: "/pad" },
 	padDel: { run: quiet((u, f) => pad.deleteEntry(u.id, f)), to: "/pad" },
 } satisfies Record<string, Command>
 

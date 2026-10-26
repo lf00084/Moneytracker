@@ -340,6 +340,26 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	)
 })
 
+export const InvoiceCard = view<{ s: State }>(({ s }) => {
+	const v = s.invoice
+	if (!v) return null
+	const label = v.status === "paid" ? "Paid" : v.status === "processing" ? "Processing" : "Pending"
+	const sub = v.status === "paid" ? (v.paid ? `paid ${v.paid}` : "paid") : v.due ? `due ${v.due}` : v.date ? `issued ${v.date}` : ""
+	return (
+		<div class="hm-c inv" data-inv={`${v.id}:${v.status}`}>
+			<div>
+				<div class="hm-m">{`ExoClick invoice${v.period ? ` · ${v.period}` : ""}`}</div>
+				<div class="inv-a">{`$${v.usd.toFixed(2)}`}</div>
+				{sub ? <div class="hm-m">{sub}</div> : null}
+			</div>
+			<span class={`inv-st ${v.status}`}>{label}</span>
+			<button type="button" class="ub" data-inv-x aria-label="Close">
+				<Icon name="plus" />
+			</button>
+		</div>
+	)
+})
+
 export const IncomeExpand = view<{ s: State }>(({ s }) => (
 	<ExpandCard
 		storeKey="income"

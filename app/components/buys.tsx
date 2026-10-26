@@ -54,13 +54,14 @@ export const BuysExpand = view<{ s: State }>(({ s }) => (
 		fixed
 		title="Today's buys"
 		label="Add a spend"
+		head={s.buys.length ? undefined : <span class="em">Nothing bought today.</span>}
 		form={
 			<form method="post" action="/buy" class="sf xfm" data-sp data-adp hidden>
 				<SpendFields s={s} />
 			</form>
 		}
 	>
-		<BuyRows s={s} />
+		{s.buys.length ? <BuyRows s={s} /> : null}
 	</ExpandCard>
 ))
 

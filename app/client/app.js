@@ -553,7 +553,7 @@
 		if (e.target.closest && e.target.closest("[data-copy]")) e.preventDefault()
 	})
 	var closeMenus = function () {
-		all(".nt-dd:not([hidden])").forEach(function (m) {
+		[].slice.call(d.querySelectorAll(".nt-dd:not([hidden])")).forEach(function (m) {
 			m.hidden = true
 			var o = m.parentNode.querySelector("[data-menu]")
 			if (o) o.setAttribute("aria-expanded", "false")

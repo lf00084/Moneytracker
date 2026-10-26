@@ -180,6 +180,3 @@ export async function saveTab(userId: string, path: string) {
 await db.update(users, userId, { last_tab: path })
 }
 
-export async function saveTab(userId: string, path: string) {
-await db.update(users, userId, { last_tab: path })
-}

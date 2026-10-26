@@ -57,6 +57,7 @@ export const commands = {
 	},
 	setTheme: { run: quiet((u, f) => setTheme(u.id, field(f, "theme"))), to: "/settings", empty: true },
 	padAddSpace: { run: (u, f) => pad.addSpace(u.id, f), to: "/pad", fail: "/pad/new" },
+	padEditSpace: { run: (u, f) => pad.editSpace(u.id, f), to: "/pad", fail: "/pad" },
 	padDelSpace: { run: quiet((u, f) => pad.deleteSpace(u.id, f)), to: "/pad" },
 	padAdd: { run: (u, f) => pad.addEntry(u.id, f), to: "/pad" },
 	padToggle: { run: quiet((u, f) => pad.toggleEntry(u.id, f)), to: "/pad" },

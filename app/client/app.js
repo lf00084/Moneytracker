@@ -570,8 +570,15 @@
 			var was = !dd.hidden
 			closeMenus()
 			if (!was) {
+				dd.classList.remove("up")
 				dd.hidden = false
 				mb.setAttribute("aria-expanded", "true")
+				var box = mb.closest(".nt-scr")
+				if (box) {
+					var br = box.getBoundingClientRect()
+					var dr = dd.getBoundingClientRect()
+					if (dr.bottom > br.bottom) dd.classList.add("up")
+				}
 			}
 			return
 		}
@@ -635,4 +642,16 @@
 		} catch (err) {}
 		n.hidden = true
 	})
+})()
+
+// Notes list: scroll to the newest (bottom) on load.
+;(function () {
+	var run = function () {
+		;[].slice.call(document.querySelectorAll("[data-bottom]")).forEach(function (l) {
+			l.scrollTop = l.scrollHeight
+		})
+	}
+	run()
+	window.addEventListener("load", run)
+	window.addEventListener("pageshow", run)
 })()

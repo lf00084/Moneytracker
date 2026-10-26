@@ -55,6 +55,20 @@ export async function addSpace(uid: string, f: FormData): Result {
 	}
 }
 
+export async function editSpace(uid: string, f: FormData): Result {
+	const s = await mine(uid, f.get("id"))
+	if (!s) return "Project not found"
+	const title = text(f.get("title"), 60)
+	if (!title) return "Give the project a name"
+	const color = COLORS.includes(text(f.get("color"), 9)) ? text(f.get("color"), 9) : COLORS[0]!
+	const type = (TYPES as readonly string[]).includes(text(f.get("type"), 8)) ? text(f.get("type"), 8) : "mix"
+	try {
+		await db.update(padSpaces, s.id, { title, sub: JSON.stringify({ c: color, t: type, b: f.get("bar") ? 1 : 0 }), updated_at: Date.now() })
+	} catch {
+		return "You already have a project with that name"
+	}
+}
+
 export async function deleteSpace(uid: string, f: FormData) {
 	const s = await mine(uid, f.get("id"))
 	if (!s) return

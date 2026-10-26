@@ -71,7 +71,7 @@ const PredictRow = view<{ s: State; t: TradeSession; game: Game; idx: number; r:
 						<b>Predict {idx}</b>
 						<div class="lb">{meta ? `${meta} · waiting` : "waiting"}</div>
 					</div>
-					<form method="post" action="/trading/result" class="tbf">
+					<form method="post" action="/trading/result" class="tbf tbp">
 						<SessionHid s={s} t={t} />
 						<input type="hidden" name="game" value={game} />
 						<input type="hidden" name="idx" value={String(idx)} />
@@ -278,13 +278,35 @@ const PastCard = view<{ s: State; list: TradeSession[]; canReopen: boolean }>(({
 	)
 })
 
+const Status = view<{ ok: boolean; title: string; sub: string }>(({ ok, title, sub }) => (
+	<div class={ok ? "tst ok" : "tst no"} role="status">
+		<span class="tsi">
+			<Icon name={ok ? "check" : "plus"} />
+		</span>
+		<div>
+			<b>{title}</b>
+			<div class="lb">{sub}</div>
+		</div>
+	</div>
+))
+
 export const TradingBody = view<{ s: State }>(({ s }) => {
 	const open = s.trades.find((t) => t.status === "open")
 	const settled = s.trades.filter((t) => t.status === "settled").slice(0, 10)
 	const day = today(s.user.day_start)
 	const tradedToday = s.trades.some((t) => t.day === day)
+	const at = `${String(s.user.day_start).padStart(2, "0")}:00`
+	const ok = !!open || !tradedToday
+	const sub = open
+		? btcDone(open.results)
+			? "Crypto is done for today. Finish your match predicts."
+			: "Your trade is open. Follow the steps below."
+		: tradedToday
+			? `One trade a day. You can trade again at ${at}.`
+			: `Deposit ${fmt(DEPOSIT)} USDT to start today's trade.`
 	return (
 		<div class="trd">
+			<Status ok={ok} title={ok ? "You can trade" : "You cannot trade"} sub={sub} />
 			{open ? (
 				<>
 					<OpenSummary s={s} t={open} />

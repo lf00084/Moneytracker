@@ -1,8 +1,8 @@
-import { COLORS, type Entry, type PadData } from "../lib/padmeta.ts"
+import { COLORS, type Entry, type PadData, type Space } from "../lib/padmeta.ts"
 import { timeAgo } from "../lib/time.ts"
 import { Icon, Submit, view } from "./ui.tsx"
 
-export type PadTab = "projects" | "said" | "home" | "new"
+export type PadTab = "projects" | "said" | "home" | "new" | "edit"
 
 type Props = { d: PadData; tab: PadTab; f: string }
 
@@ -18,7 +18,7 @@ export const padBack = (d: PadData, tab: PadTab, f: string) =>
 const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	<div class="nt-seg">
 		{SEG.map((x) => (
-			<a key={x.key} href={x.href} class={x.key === tab || (tab === "new" && x.key === "projects") ? "on" : ""}>
+			<a key={x.key} href={x.href} class={x.key === tab || ((tab === "new" || tab === "edit") && x.key === "projects") ? "on" : ""}>
 				{x.label}
 			</a>
 		))}
@@ -144,19 +144,16 @@ const Projects = view<Props>(({ d, f }) => {
 					+ New
 				</a>
 			</div>
-			<div class="nt-c nt-ph">
-				<div class="nt-spread">
-					<b>{sp.title}</b>
-					<span class="nt-m">{`${open} open · ${done} done`}</span>
-				</div>
-				{sp.bar && sp.type !== "notes" ? <Bar pct={open + done ? Math.round((done / (open + done)) * 100) : 0} /> : null}
+			<div class="nt-c nt-ph nt-pg">
+				{sp.bar && sp.type !== "notes" ? <i class={open + done > 0 && done === open + done ? "nt-pgf full" : "nt-pgf"} style={{ width: `${open + done ? Math.round((done / (open + done)) * 100) : 0}%` }}></i> : null}
+				<b>{sp.title}</b>
+				<span class="nt-m">{`${open} open · ${done} done`}</span>
+				<a class="nt-gs" href={`/pad/project?p=${sp.id}`} aria-label="Project settings">
+					<Icon name="gear" />
+				</a>
 			</div>
 			{sp.type === "mix" ? <Filters base={`/pad?p=${sp.id}`} f={f} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]} /> : null}
-			<div class="nt-c nt-list">{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
-			<form method="post" action="/pad/space/delete" class="nt-del" data-confirm={`Delete ${sp.title} and everything in it?`}>
-				<Hid id={sp.id} back="/pad" />
-				<Submit type="submit">Delete this project</Submit>
-			</form>
+			<div class="nt-c nt-list nt-scr" data-bottom>{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
 		</>
 	)
 })
@@ -230,29 +227,30 @@ const TYPE_OPTS = [
 	{ key: "tasks", title: "Tasks only", sub: "A clean checklist with progress, like Home", rows: ["o", "o"] },
 ]
 
-const Sheet = view(() => {
-	const nid = crypto.randomUUID()
+const Sheet = view<{ sp?: Space | null }>(({ sp }) => {
+	const nid = sp ? sp.id : crypto.randomUUID()
+	const close = sp ? `/pad?p=${sp.id}` : "/pad"
 	return (
 		<>
-			<a class="nt-ov" href="/pad" aria-label="Close"></a>
-			<form class="nt-sht" method="post" action="/pad/space">
-				<input type="hidden" name="nid" value={nid} />
+			<a class="nt-ov" href={close} aria-label="Close"></a>
+			<form class="nt-sht" method="post" action={sp ? "/pad/space/edit" : "/pad/space"}>
+				{sp ? <input type="hidden" name="id" value={sp.id} /> : <input type="hidden" name="nid" value={nid} />}
 				<input type="hidden" name="back" value={`/pad?p=${nid}`} />
 				<span class="nt-gr"></span>
 				<div class="nt-shh">
-					<b>New project</b>
-					<a class="nt-m" href="/pad">
+					<b>{sp ? "Edit project" : "New project"}</b>
+					<a class="nt-m" href={close}>
 						Cancel
 					</a>
 				</div>
 				<label class="nt-fi">
 					<span class="nt-m">Name</span>
-					<input name="title" placeholder="Library website" maxlength="60" autocomplete="off" required />
+					<input name="title" value={sp?.title} placeholder="Library website" maxlength="60" autocomplete="off" required />
 				</label>
 				<div class="nt-cl">
 					{COLORS.map((c, i) => (
 						<label key={c}>
-							<input type="radio" name="color" value={c} checked={i === 0 ? true : undefined} />
+							<input type="radio" name="color" value={c} checked={(sp ? sp.color === c : i === 0) ? true : undefined} />
 							<i style={{ background: c }}></i>
 						</label>
 					))}
@@ -260,7 +258,7 @@ const Sheet = view(() => {
 				<div class="nt-m">What is it for?</div>
 				{TYPE_OPTS.map((o, i) => (
 					<label key={o.key} class="nt-op">
-						<input type="radio" name="type" value={o.key} checked={i === 0 ? true : undefined} />
+						<input type="radio" name="type" value={o.key} checked={(sp ? sp.type === o.key : i === 0) ? true : undefined} />
 						<span class="nt-pv">
 							{o.rows.map((r, j) => (
 								<div key={j} class="nt-pr2">
@@ -278,12 +276,18 @@ const Sheet = view(() => {
 				))}
 				<label class="nt-tr2">
 					<span>Progress bar</span>
-					<input type="checkbox" name="bar" value="1" checked class="nt-tgl" />
+					<input type="checkbox" name="bar" value="1" checked={!sp || sp.bar ? true : undefined} class="nt-tgl" />
 				</label>
-				<Submit class="nt-go">Create project</Submit>
-				<div class="nt-m" style={{ textAlign: "center" }}>
-					You can delete it any time
-				</div>
+				<Submit class="nt-go">{sp ? "Save project" : "Create project"}</Submit>
+				{sp ? (
+					<Submit class="nt-go dg" formaction="/pad/space/delete" formnovalidate data-confirm-btn={`Delete ${sp.title} and everything in it?`}>
+						Delete project
+					</Submit>
+				) : (
+					<div class="nt-m" style={{ textAlign: "center" }}>
+						You can delete it any time
+					</div>
+				)}
 			</form>
 		</>
 	)
@@ -298,7 +302,7 @@ export const PadBody = view<Props & { error?: string }>(({ d, tab, f, error }) =
 			</div>
 		) : null}
 		{tab === "said" ? <Said d={d} tab={tab} f={f} /> : tab === "home" ? <HomeTasks d={d} tab={tab} f={f} /> : <Projects d={d} tab={tab} f={f} />}
-		{tab === "new" ? <Sheet /> : null}
+		{tab === "new" ? <Sheet /> : tab === "edit" && d.space ? <Sheet sp={d.space} /> : null}
 	</div>
 ))
 
@@ -314,7 +318,7 @@ const Mode = view<{ opts: [string, string][] }>(({ opts }) => (
 ))
 
 export const PadComposer = view<Props>(({ d, tab, f }) => {
-	if ((tab === "projects" || tab === "new") && !d.space) return null
+	if ((tab === "projects" || tab === "new" || tab === "edit") && !d.space) return null
 	const said = tab === "said"
 	const home = tab === "home"
 	const type = d.space?.type

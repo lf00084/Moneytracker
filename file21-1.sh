@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# file21.sh - trading plan, day reset at 5, pad order, balance icons, pad edit/menu, shared Submit spinner.
+# file21.sh - trading plan + status banner, day reset at 5, pad (order, edit, menu, project card/scroll/settings), balance icons, shared Submit spinner, source buttons.
 # Run from the Moneytracker project root. Installs nothing.
 set -e
 [ -f app/lib/trading.ts ] || { echo "Run this inside the Moneytracker folder"; exit 1; }
@@ -537,6 +537,363 @@ export async function settleAuto(uid: string): Promise<void> {
 }
 GOAT_EOF
 echo "updated app/lib/auto.ts"
+
+mkdir -p "$(dirname app/lib/pad.ts)"
+cat > app/lib/pad.ts <<'GOAT_EOF'
+import { sql } from "remix/data-table"
+import { db, padEntries, padSpaces } from "../db/index.ts"
+import { id, parseJson, text } from "./util.ts"
+
+import { COLORS, TYPES, type Entry, type PadData, type Space } from "./padmeta.ts"
+
+export type { Entry, PadData, Space }
+
+type Result = Promise<string | void>
+
+export async function loadPad(uid: string, pick: string): Promise<PadData> {
+	const [sp, en] = await Promise.all([
+		db.findMany(padSpaces, { where: { user_id: uid, kind: "project" }, orderBy: ["sort", "asc"] }),
+		db.findMany(padEntries, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 3000 }),
+	])
+	const spaces = sp
+		.filter((x) => !x.archived_at)
+		.map((x): Space => {
+			const j = parseJson(x.sub)
+			return { id: x.id, title: x.title, color: String(j.c || COLORS[0]), type: String(j.t || "mix"), bar: j.b !== 0 }
+		})
+	const entries = en.map((x): Entry => {
+		const j = parseJson(x.ref)
+		return { id: x.id, space: x.space_id ?? "", kind: x.kind, body: x.body, who: String(j.n || ""), tag: String(j.t || ""), today: !!x.on_home, at: x.created_at }
+	})
+	return { spaces, space: spaces.find((x) => x.id === pick) ?? spaces[0] ?? null, entries }
+}
+
+const mine = async (uid: string, v: unknown) => {
+	const i = text(v, 36)
+	return i ? ((await db.findOne(padSpaces, { where: { id: i, user_id: uid } })) ?? null) : null
+}
+
+export async function addSpace(uid: string, f: FormData): Result {
+	const title = text(f.get("title"), 60)
+	if (!title) return "Give the project a name"
+	const color = COLORS.includes(text(f.get("color"), 9)) ? text(f.get("color"), 9) : COLORS[0]!
+	const type = (TYPES as readonly string[]).includes(text(f.get("type"), 8)) ? text(f.get("type"), 8) : "mix"
+	const nid = text(f.get("nid"), 36)
+	const now = Date.now()
+	try {
+		await db.create(padSpaces, {
+			id: /^[0-9a-f-]{36}$/.test(nid) ? nid : id(),
+			user_id: uid,
+			kind: "project",
+			title,
+			sub: JSON.stringify({ c: color, t: type, b: f.get("bar") ? 1 : 0 }),
+			sort: now,
+			archived_at: null as never,
+			created_at: now,
+			updated_at: now,
+		})
+	} catch {
+		return "You already have a project with that name"
+	}
+}
+
+export async function editSpace(uid: string, f: FormData): Result {
+	const s = await mine(uid, f.get("id"))
+	if (!s) return "Project not found"
+	const title = text(f.get("title"), 60)
+	if (!title) return "Give the project a name"
+	const color = COLORS.includes(text(f.get("color"), 9)) ? text(f.get("color"), 9) : COLORS[0]!
+	const type = (TYPES as readonly string[]).includes(text(f.get("type"), 8)) ? text(f.get("type"), 8) : "mix"
+	try {
+		await db.update(padSpaces, s.id, { title, sub: JSON.stringify({ c: color, t: type, b: f.get("bar") ? 1 : 0 }), updated_at: Date.now() })
+	} catch {
+		return "You already have a project with that name"
+	}
+}
+
+export async function deleteSpace(uid: string, f: FormData) {
+	const s = await mine(uid, f.get("id"))
+	if (!s) return
+	await db.transaction(async (tx) => {
+		await tx.exec(sql`delete from pad_entries where space_id = ${s.id} and user_id = ${uid}`)
+		await tx.exec(sql`delete from pad_spaces where id = ${s.id} and user_id = ${uid}`)
+	})
+}
+
+export async function addEntry(uid: string, f: FormData): Result {
+	const body = text(f.get("body"), 2000)
+	if (!body) return "Write something first"
+	const tab = text(f.get("tab"), 8)
+	const mode = text(f.get("mode"), 8)
+	const now = Date.now()
+	let space: string | null = null
+	let kind = "task"
+	let ref = "{}"
+	let home = 0
+	if (tab === "said") {
+		kind = "said"
+		ref = JSON.stringify({ n: text(f.get("who"), 40) || "Someone", t: mode === "info" ? "Info" : "Tip" })
+		space = (await mine(uid, f.get("space")))?.id ?? null
+	} else if (tab === "home") {
+		home = mode === "later" ? 0 : 1
+	} else {
+		const s = await mine(uid, f.get("space"))
+		if (!s) return "Create a project first"
+		space = s.id
+		const t = parseJson(s.sub).t
+		kind = t === "notes" ? "note" : t === "tasks" ? "task" : mode === "note" ? "note" : "task"
+	}
+	await db.create(padEntries, { id: id(), user_id: uid, space_id: space as never, kind, body, ref, on_home: home, created_at: now, updated_at: now })
+}
+
+export async function toggleEntry(uid: string, f: FormData) {
+	const e = await db.findOne(padEntries, { where: { id: text(f.get("id"), 36), user_id: uid } })
+	if (e && (e.kind === "task" || e.kind === "done")) await db.update(padEntries, e.id, { kind: e.kind === "task" ? "done" : "task", updated_at: Date.now() })
+}
+
+export async function deleteEntry(uid: string, f: FormData) {
+	await db.deleteMany(padEntries, { where: { id: text(f.get("id"), 36), user_id: uid } })
+}
+
+export async function editEntry(uid: string, f: FormData): Result {
+	const body = text(f.get("body"), 2000)
+	if (!body) return "Write something first"
+	await db.updateMany(padEntries, { body, updated_at: Date.now() }, { where: { id: text(f.get("id"), 36), user_id: uid } })
+}
+GOAT_EOF
+echo "updated app/lib/pad.ts"
+
+mkdir -p "$(dirname app/routes.ts)"
+cat > app/routes.ts <<'GOAT_EOF'
+import { get, post, route } from "remix/routes"
+
+export const routes = route({
+	pages: {
+		root: get("/"),
+		home: get("/home"),
+		debts: get("/debts"),
+		notes: get("/notes"),
+		goals: get("/goals"),
+		pad: get("/pad"),
+		padSaid: get("/pad/said"),
+		padHome: get("/pad/home"),
+		padNew: get("/pad/new"),
+		padProject: get("/pad/project"),
+		trading: get("/trading"),
+		income: get("/income"),
+		plan: get("/plan"),
+		history: get("/history"),
+		profile: get("/profile"),
+		profileEdit: get("/profile/edit"),
+		settings: get("/settings"),
+		exportCsv: get("/export.csv"),
+	},
+
+	auth: {
+		login: get("/login"),
+		signIn: post("/login"),
+		signup: get("/signup"),
+		signUp: post("/signup"),
+		logout: post("/logout"),
+		googleLogin: get("/login/google"),
+		googleCallback: get("/auth/google/callback"),
+		deleteAccount: post("/account/delete"),
+	},
+
+	commands: {
+		buy: post("/buy"),
+		deleteBuy: post("/buy/delete"),
+		setBalance: post("/profile/balance"),
+		historyIncome: post("/history/income"),
+		addDebt: post("/debts"),
+		payDebt: post("/debts/pay"),
+		clearDebt: post("/debts/clear"),
+		addNote: post("/notes"),
+		deleteNote: post("/notes/delete"),
+		addWish: post("/goals"),
+		buyWish: post("/goals/buy"),
+		deleteWish: post("/goals/delete"),
+		editGoal: post("/goals/edit"),
+		editGoalItem: post("/goals/item/edit"),
+		addGoalItem: post("/goals/item"),
+		deleteGoalItem: post("/goals/item/delete"),
+		addSource: post("/income"),
+		addIncome: post("/income/add"),
+		setHours: post("/income/hours"),
+		addNamed: post("/income/named"),
+		deleteIncome: post("/income/delete"),
+		toggleSource: post("/income/toggle"),
+		editSource: post("/income/edit"),
+		deleteSource: post("/income/source/delete"),
+		tradeDeposit: post("/trading/deposit"),
+		tradeSet: post("/trading/set"),
+		tradeResult: post("/trading/result"),
+		tradeUndo: post("/trading/undo"),
+		tradeFinish: post("/trading/finish"),
+		tradeReopen: post("/trading/reopen"),
+		saveProfile: post("/profile/edit"),
+		saveSettings: post("/settings"),
+		setTheme: post("/settings/theme"),
+		padAddSpace: post("/pad/space"),
+		padDelSpace: post("/pad/space/delete"),
+		padEditSpace: post("/pad/space/edit"),
+		padAdd: post("/pad/add"),
+		padToggle: post("/pad/toggle"),
+		padDel: post("/pad/delete"),
+		padEdit: post("/pad/edit"),
+	},
+
+	assets: {
+		manifest: get("/manifest.webmanifest"),
+		favicon: get("/favicon.svg"),
+		faviconIco: get("/favicon.ico"),
+		icon192: get("/icon-192.png"),
+		icon512: get("/icon-512.png"),
+		iconMaskable: get("/icon-maskable.png"),
+		appleIcon: get("/apple-touch-icon.png"),
+		sw: get("/sw.js"),
+		robots: get("/robots.txt"),
+		sitemap: get("/sitemap.xml"),
+		css: get("/assets/app.css"),
+		js: get("/assets/app.js"),
+		authCss: get("/assets/auth.css"),
+	},
+})
+GOAT_EOF
+echo "updated app/routes.ts"
+
+mkdir -p "$(dirname app/commands.ts)"
+cat > app/commands.ts <<'GOAT_EOF'
+import * as act from "./lib/actions.ts"
+import * as inc from "./lib/income.ts"
+import { toMinor } from "./lib/money.ts"
+import * as pad from "./lib/pad.ts"
+import * as trading from "./lib/trading.ts"
+import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts"
+
+export type Command = {
+	run: (user: User, f: FormData) => Promise<unknown>
+	to: string
+	back?: boolean
+	fail?: string
+	empty?: boolean
+}
+
+const field = (f: FormData, key: string) => String(f.get(key) ?? "")
+
+const quiet = (fn: (u: User, f: FormData) => Promise<unknown>) => async (u: User, f: FormData) => {
+	await fn(u, f)
+}
+
+export const commands = {
+	buy: { run: (u, f) => act.addBuy(u.id, f), to: "/home" },
+	deleteBuy: { run: (u, f) => act.deleteBuy(u.id, f), to: "/home" },
+	setBalance: { run: (u, f) => act.setBalance(u.id, f), to: "/profile" },
+	historyIncome: { run: (u, f) => act.addDayIncome(u.id, f), to: "/history" },
+	addDebt: { run: (u, f) => act.addDebt(u.id, f), to: "/debts" },
+	payDebt: { run: (u, f) => act.payDebt(u.id, f), to: "/debts" },
+	clearDebt: { run: (u, f) => act.clearDebt(u.id, f), to: "/debts" },
+	addNote: { run: quiet((u, f) => act.saveNote(u.id, f)), to: "/notes" },
+	deleteNote: { run: quiet((u, f) => act.deleteNote(u.id, f)), to: "/notes" },
+	addWish: { run: (u, f) => act.addGoal(u.id, f), to: "/goals" },
+	buyWish: { run: (u, f) => act.buyWish(u.id, f), to: "/goals" },
+	deleteWish: { run: (u, f) => act.deleteWish(u.id, f), to: "/goals" },
+	editGoal: { run: (u, f) => act.editGoal(u.id, f), to: "/goals" },
+	editGoalItem: { run: (u, f) => act.editGoalItem(u.id, f), to: "/goals" },
+	addGoalItem: { run: (u, f) => act.addGoalItem(u.id, f), to: "/goals" },
+	deleteGoalItem: { run: (u, f) => act.deleteGoalItem(u.id, f), to: "/goals" },
+	addSource: { run: (u, f) => inc.addSource(u.id, f), to: "/income" },
+	setHours: { run: (u, f) => inc.setHours(u.id, f), to: "/home" },
+	addNamed: { run: (u, f) => inc.addNamed(u.id, f), to: "/home" },
+	addIncome: { run: (u, f) => act.addIncome(u.id, f), to: "/income" },
+	deleteIncome: { run: (u, f) => act.deleteIncome(u.id, f), to: "/income" },
+	toggleSource: { run: (u, f) => act.toggleSource(u.id, f), to: "/income" },
+	editSource: { run: (u, f) => inc.editSource(u.id, f), to: "/income" },
+	deleteSource: { run: (u, f) => act.deleteSource(u.id, f), to: "/income" },
+	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },
+	tradeSet: { run: (u, f) => trading.setPredict(u.id, f), to: "/trading" },
+	tradeResult: { run: (u, f) => trading.saveResult(u.id, f), to: "/trading" },
+	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
+	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
+	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },
+	saveProfile: { run: (u, f) => updateProfile(u.id, { name: field(f, "name"), email: field(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
+	saveSettings: {
+		run: quiet((u, f) => updatePrefs(u.id, { currency: field(f, "currency"), run_at: field(f, "run_at"), day_start: parseInt(field(f, "day_start"), 10), week_start: field(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")), usd_rate_minor: toMinor(f.get("usd_rate")) })),
+		to: "/settings",
+	},
+	setTheme: { run: quiet((u, f) => setTheme(u.id, field(f, "theme"))), to: "/settings", empty: true },
+	padAddSpace: { run: (u, f) => pad.addSpace(u.id, f), to: "/pad", fail: "/pad/new" },
+	padEditSpace: { run: (u, f) => pad.editSpace(u.id, f), to: "/pad", fail: "/pad" },
+	padDelSpace: { run: quiet((u, f) => pad.deleteSpace(u.id, f)), to: "/pad" },
+	padAdd: { run: (u, f) => pad.addEntry(u.id, f), to: "/pad" },
+	padToggle: { run: quiet((u, f) => pad.toggleEntry(u.id, f)), to: "/pad" },
+	padEdit: { run: (u, f) => pad.editEntry(u.id, f), to: "/pad" },
+	padDel: { run: quiet((u, f) => pad.deleteEntry(u.id, f)), to: "/pad" },
+} satisfies Record<string, Command>
+
+export type CommandName = keyof typeof commands
+
+export const errorOf = (r: unknown) => (typeof r === "string" && r ? r : "")
+GOAT_EOF
+echo "updated app/commands.ts"
+
+mkdir -p "$(dirname app/controllers/pages.tsx)"
+cat > app/controllers/pages.tsx <<'GOAT_EOF'
+import { createController } from "remix/router"
+import type { RemixNode } from "remix/component"
+import * as act from "../lib/actions.ts"
+import { loadState, type Part, type State } from "../lib/data.ts"
+import { DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, NotesScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingScreen } from "../screens.tsx"
+import { routes } from "../routes.ts"
+import { go, takeError, userOf, type Ctx } from "../request.ts"
+import { loadPad } from "../lib/pad.ts"
+import type { PadTab } from "../components/pad.tsx"
+
+const page = (path: string, parts: Part[], render: (s: State) => RemixNode) => async (ctx: Ctx) => {
+	const user = userOf(ctx)
+	if (!user) return go("/login")
+	return ctx.render(render(await loadState(user, parts, { back: path, error: takeError(ctx) })))
+}
+
+const padPage = (tab: PadTab) => async (ctx: Ctx) => {
+	const user = userOf(ctx)
+	if (!user) return go("/login")
+	const q = new URL(ctx.request.url).searchParams
+	const d = await loadPad(user.id, q.get("p") ?? "")
+	return ctx.render(<PadScreen u={user} d={d} tab={tab} f={q.get("f") ?? ""} error={takeError(ctx)} />)
+}
+
+export default createController(routes.pages, {
+	actions: {
+		root: (ctx: Ctx) => go(userOf(ctx) ? "/home" : "/login"),
+		home: page("/home", ["today", "sources", "names", "incnames", "debts", "goals", "notes", "balance"], (s) => <HomeScreen s={s} />),
+		debts: page("/debts", ["debts", "goals", "balance"], (s) => <DebtsScreen s={s} />),
+		notes: page("/notes", ["notes"], (s) => <NotesScreen s={s} />),
+		goals: page("/goals", ["goals", "debts", "balance"], (s) => <GoalsScreen s={s} />),
+		plan: page("/plan", ["goals", "debts", "sources", "today", "balance"], (s) => <GoalsScreen s={s} />),
+		income: page("/income", ["sources", "today", "invoice"], (s) => <IncomeScreen s={s} />),
+		history: page("/history", ["history"], (s) => <HistoryScreen s={s} />),
+		profile: page("/profile", ["avatar", "balance"], (s) => <ProfileScreen s={s} />),
+		profileEdit: page("/profile/edit", ["avatar", "balance"], (s) => <ProfileEditScreen s={s} />),
+		settings: page("/settings", ["balance"], (s) => <SettingsScreen s={s} />),
+		pad: padPage("projects"),
+		padSaid: padPage("said"),
+		padHome: padPage("home"),
+		padNew: padPage("new"),
+		padProject: padPage("edit"),
+		trading: page("/trading", ["trading"], (s) => <TradingScreen s={s} />),
+
+		async exportCsv(ctx: Ctx) {
+			const user = userOf(ctx)
+			if (!user) return go("/login")
+			return new Response(await act.exportCsv(user.id), {
+				headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="moneytracker.csv"' },
+			})
+		},
+	},
+})
+GOAT_EOF
+echo "updated app/controllers/pages.tsx"
 
 mkdir -p "$(dirname scripts/migrate.ts)"
 cat > scripts/migrate.ts <<'GOAT_EOF'
@@ -1170,8 +1527,15 @@ cat > app/client/app.js <<'GOAT_EOF'
 			var was = !dd.hidden
 			closeMenus()
 			if (!was) {
+				dd.classList.remove("up")
 				dd.hidden = false
 				mb.setAttribute("aria-expanded", "true")
+				var box = mb.closest(".nt-scr")
+				if (box) {
+					var br = box.getBoundingClientRect()
+					var dr = dd.getBoundingClientRect()
+					if (dr.bottom > br.bottom) dd.classList.add("up")
+				}
 			}
 			return
 		}
@@ -1235,6 +1599,18 @@ cat > app/client/app.js <<'GOAT_EOF'
 		} catch (err) {}
 		n.hidden = true
 	})
+})()
+
+// Notes list: scroll to the newest (bottom) on load.
+;(function () {
+	var run = function () {
+		;[].slice.call(document.querySelectorAll("[data-bottom]")).forEach(function (l) {
+			l.scrollTop = l.scrollHeight
+		})
+	}
+	run()
+	window.addEventListener("load", run)
+	window.addEventListener("pageshow", run)
 })()
 GOAT_EOF
 echo "updated app/client/app.js"
@@ -1539,6 +1915,18 @@ button[data-lock]{opacity:.5}
 .tbr.lock{opacity:.45}
 .tbf{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0}
 .tbf .in{width:96px;flex:0 1 96px;min-width:0;padding:8px 10px;font-size:14px;border-radius:12px}
+.tbr:has(.tbp){flex-wrap:wrap}
+.tbp{flex:1 1 100%;flex-wrap:wrap;justify-content:flex-start;margin-top:2px}
+.tbp .in{flex:1 1 100%;width:100%;padding:10px 12px}
+.tst{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:22px;border:1px solid var(--ln);margin-bottom:12px}
+.tst b{display:block;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.tst .lb{margin-top:4px}
+.tsi{flex:none;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid currentColor}
+.tsi svg.ic{width:26px;height:26px;stroke-width:2.6}
+.tst.ok{color:var(--pos);background:rgba(76,195,138,.1);border-color:rgba(76,195,138,.4)}
+.tst.no{color:var(--neg);background:rgba(255,90,77,.1);border-color:rgba(255,90,77,.4)}
+.tst.no .tsi svg.ic{transform:rotate(45deg)}
+.tst .lb{color:var(--ink);opacity:.75}
 .btn.win{background:rgba(76,195,138,.14);color:var(--pos);border-color:rgba(76,195,138,.45)}
 .tbs{font-size:11px;font-weight:600;border:1px solid currentColor;border-radius:12px;padding:2px 9px;font-family:var(--mono)}
 .sw{border-bottom:1px solid var(--ln)}
@@ -1600,6 +1988,7 @@ details[data-fixed]>.xh{cursor:default;padding-right:70px}
 .hn{min-width:0;font-size:15px}
 .hr .ea{white-space:nowrap;text-align:right;font-size:15px}
 .hr .ub{width:32px;height:32px;border-radius:12px;background:var(--s2)}
+.hr .btn.xs{min-height:34px;min-width:96px;font-size:14px;white-space:nowrap}
 .hspan{grid-column:2/4;justify-self:end}
 .sw .ad{margin:0 0 10px}
 .hx{margin:0 0 8px;border:0;background:var(--s2);border-radius:14px}
@@ -1765,7 +2154,7 @@ html[data-theme=light]{--h-ink:#1f2430;--h-ink2:#374151;--h-mu:#5f6672;--h-ln:#e
 .hm .btn.xs.o{border:1px solid var(--h-acl);background:var(--h-card);color:var(--h-ac)}
 .hm .btn.xs.o:hover{background:var(--h-acs);filter:none}
 .hm .btn.xs:not(.o){background:var(--h-fill);border:1px solid var(--h-fill);color:var(--h-on)}
-.hm .btn.xs.hadd{height:30px;min-height:30px;padding:0 14px;border-radius:15px;font-size:13px;align-self:center;justify-self:end}
+.hm .hr .btn.xs,.hm .btn.xs.hadd{height:34px;min-height:34px;min-width:96px;padding:0 14px;border-radius:17px;font:600 14px/1 var(--h-sans);align-self:center;justify-self:end;white-space:nowrap}
 .hm .btn.xs.off,.hm .btn.xs:disabled{background:var(--h-chip);border-color:var(--h-ln);color:var(--h-mu);opacity:.8}
 .hm .sw .ad{background:var(--h-bg);border:1px solid var(--h-ln2);border-radius:14px;padding:8px;margin:0 0 8px}
 .hm .ad .ln{gap:8px;margin:0}
@@ -1954,7 +2343,7 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .hm .osum .ow .em{font:400 14px/1.4 var(--h-sans);color:var(--h-mu)}
 
 /* balance card (home + profile) */
-.hm-bal .hm-ba{grid-area:b;display:flex;align-items:center;justify-content:flex-end;gap:8px;align-self:center;height:100%}
+.hm-bal .hm-ba{display:flex;align-items:center;justify-content:flex-end;gap:8px}
 .hm-bal .hm-ba .ib{grid-area:auto;align-self:center}
 .hm-balc{padding:0;overflow:hidden}
 .hm-bedit{padding:0 14px 14px}
@@ -1988,8 +2377,29 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .nt-dd button:hover{background:var(--s2)}
 .nt-dd button.dg{color:var(--neg)}
 .nt-dd svg.ic{width:16px;height:16px;flex:none}
-.nt-list:has(.nt-dd:not([hidden])),.nt-q:has(.nt-dd:not([hidden])){overflow:visible}
+.nt-list:not(.nt-scr):has(.nt-dd:not([hidden])),.nt-q:has(.nt-dd:not([hidden])){overflow:visible}
+.nt-dd.up{top:auto;bottom:calc(100% + 4px)}
 .nt-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--h-ink);color:var(--h-card);padding:8px 16px;border-radius:18px;font-size:13px;z-index:60}
+
+/* balance icons: centered on the whole card (middle, right), not just the first row */
+.hm-balc,.hm-c.hm-bal{position:relative}
+.hm-bal{grid-template-columns:minmax(0,1fr);grid-template-areas:"l" "v";padding-right:58px}
+.hm-balc .hm-bal{padding-right:104px}
+.hm-bal .hm-ba{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:2}
+.hm-balc:has(.hm-bedit:not([hidden])) .hm-bedit{padding-right:104px}
+
+/* pad: low project card with background progress, tighter spacing, scrolling notes */
+.nt-page,.hm .nt-page{gap:6px;padding-bottom:8px}
+.nt-ph.nt-pg{position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;min-height:42px}
+.nt-pg>b{position:relative;z-index:1;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt-pg>.nt-m{position:relative;z-index:1;flex:none;white-space:nowrap}
+.nt-pgf{position:absolute;left:0;top:0;bottom:0;background:var(--mu);opacity:.2;pointer-events:none;transition:width .5s ease,background .3s ease,opacity .3s ease}
+.nt-pgf.full{background:var(--ac);opacity:.32}
+.nt-gs{position:relative;z-index:1;flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--mu);text-decoration:none}
+.nt-gs svg.ic{width:18px;height:18px}
+.nt-list.nt-scr{overflow-y:auto;max-height:calc(100dvh - 300px);min-height:150px;overscroll-behavior:contain;scrollbar-width:thin}
+.nt-go.dg{background:rgba(255,90,77,.12);color:var(--neg);border:1px solid rgba(255,90,77,.35)}
+
 GOAT_EOF
 echo "updated app/client/app.css"
 
@@ -3765,11 +4175,11 @@ echo "updated app/components/notes.tsx"
 
 mkdir -p "$(dirname app/components/pad.tsx)"
 cat > app/components/pad.tsx <<'GOAT_EOF'
-import { COLORS, type Entry, type PadData } from "../lib/padmeta.ts"
+import { COLORS, type Entry, type PadData, type Space } from "../lib/padmeta.ts"
 import { timeAgo } from "../lib/time.ts"
 import { Icon, Submit, view } from "./ui.tsx"
 
-export type PadTab = "projects" | "said" | "home" | "new"
+export type PadTab = "projects" | "said" | "home" | "new" | "edit"
 
 type Props = { d: PadData; tab: PadTab; f: string }
 
@@ -3785,7 +4195,7 @@ export const padBack = (d: PadData, tab: PadTab, f: string) =>
 const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	<div class="nt-seg">
 		{SEG.map((x) => (
-			<a key={x.key} href={x.href} class={x.key === tab || (tab === "new" && x.key === "projects") ? "on" : ""}>
+			<a key={x.key} href={x.href} class={x.key === tab || ((tab === "new" || tab === "edit") && x.key === "projects") ? "on" : ""}>
 				{x.label}
 			</a>
 		))}
@@ -3911,19 +4321,16 @@ const Projects = view<Props>(({ d, f }) => {
 					+ New
 				</a>
 			</div>
-			<div class="nt-c nt-ph">
-				<div class="nt-spread">
-					<b>{sp.title}</b>
-					<span class="nt-m">{`${open} open · ${done} done`}</span>
-				</div>
-				{sp.bar && sp.type !== "notes" ? <Bar pct={open + done ? Math.round((done / (open + done)) * 100) : 0} /> : null}
+			<div class="nt-c nt-ph nt-pg">
+				{sp.bar && sp.type !== "notes" ? <i class={open + done > 0 && done === open + done ? "nt-pgf full" : "nt-pgf"} style={{ width: `${open + done ? Math.round((done / (open + done)) * 100) : 0}%` }}></i> : null}
+				<b>{sp.title}</b>
+				<span class="nt-m">{`${open} open · ${done} done`}</span>
+				<a class="nt-gs" href={`/pad/project?p=${sp.id}`} aria-label="Project settings">
+					<Icon name="gear" />
+				</a>
 			</div>
 			{sp.type === "mix" ? <Filters base={`/pad?p=${sp.id}`} f={f} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]} /> : null}
-			<div class="nt-c nt-list">{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
-			<form method="post" action="/pad/space/delete" class="nt-del" data-confirm={`Delete ${sp.title} and everything in it?`}>
-				<Hid id={sp.id} back="/pad" />
-				<Submit type="submit">Delete this project</Submit>
-			</form>
+			<div class="nt-c nt-list nt-scr" data-bottom>{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
 		</>
 	)
 })
@@ -3997,29 +4404,30 @@ const TYPE_OPTS = [
 	{ key: "tasks", title: "Tasks only", sub: "A clean checklist with progress, like Home", rows: ["o", "o"] },
 ]
 
-const Sheet = view(() => {
-	const nid = crypto.randomUUID()
+const Sheet = view<{ sp?: Space | null }>(({ sp }) => {
+	const nid = sp ? sp.id : crypto.randomUUID()
+	const close = sp ? `/pad?p=${sp.id}` : "/pad"
 	return (
 		<>
-			<a class="nt-ov" href="/pad" aria-label="Close"></a>
-			<form class="nt-sht" method="post" action="/pad/space">
-				<input type="hidden" name="nid" value={nid} />
+			<a class="nt-ov" href={close} aria-label="Close"></a>
+			<form class="nt-sht" method="post" action={sp ? "/pad/space/edit" : "/pad/space"}>
+				{sp ? <input type="hidden" name="id" value={sp.id} /> : <input type="hidden" name="nid" value={nid} />}
 				<input type="hidden" name="back" value={`/pad?p=${nid}`} />
 				<span class="nt-gr"></span>
 				<div class="nt-shh">
-					<b>New project</b>
-					<a class="nt-m" href="/pad">
+					<b>{sp ? "Edit project" : "New project"}</b>
+					<a class="nt-m" href={close}>
 						Cancel
 					</a>
 				</div>
 				<label class="nt-fi">
 					<span class="nt-m">Name</span>
-					<input name="title" placeholder="Library website" maxlength="60" autocomplete="off" required />
+					<input name="title" value={sp?.title} placeholder="Library website" maxlength="60" autocomplete="off" required />
 				</label>
 				<div class="nt-cl">
 					{COLORS.map((c, i) => (
 						<label key={c}>
-							<input type="radio" name="color" value={c} checked={i === 0 ? true : undefined} />
+							<input type="radio" name="color" value={c} checked={(sp ? sp.color === c : i === 0) ? true : undefined} />
 							<i style={{ background: c }}></i>
 						</label>
 					))}
@@ -4027,7 +4435,7 @@ const Sheet = view(() => {
 				<div class="nt-m">What is it for?</div>
 				{TYPE_OPTS.map((o, i) => (
 					<label key={o.key} class="nt-op">
-						<input type="radio" name="type" value={o.key} checked={i === 0 ? true : undefined} />
+						<input type="radio" name="type" value={o.key} checked={(sp ? sp.type === o.key : i === 0) ? true : undefined} />
 						<span class="nt-pv">
 							{o.rows.map((r, j) => (
 								<div key={j} class="nt-pr2">
@@ -4045,12 +4453,18 @@ const Sheet = view(() => {
 				))}
 				<label class="nt-tr2">
 					<span>Progress bar</span>
-					<input type="checkbox" name="bar" value="1" checked class="nt-tgl" />
+					<input type="checkbox" name="bar" value="1" checked={!sp || sp.bar ? true : undefined} class="nt-tgl" />
 				</label>
-				<Submit class="nt-go">Create project</Submit>
-				<div class="nt-m" style={{ textAlign: "center" }}>
-					You can delete it any time
-				</div>
+				<Submit class="nt-go">{sp ? "Save project" : "Create project"}</Submit>
+				{sp ? (
+					<Submit class="nt-go dg" formaction="/pad/space/delete" formnovalidate data-confirm-btn={`Delete ${sp.title} and everything in it?`}>
+						Delete project
+					</Submit>
+				) : (
+					<div class="nt-m" style={{ textAlign: "center" }}>
+						You can delete it any time
+					</div>
+				)}
 			</form>
 		</>
 	)
@@ -4065,7 +4479,7 @@ export const PadBody = view<Props & { error?: string }>(({ d, tab, f, error }) =
 			</div>
 		) : null}
 		{tab === "said" ? <Said d={d} tab={tab} f={f} /> : tab === "home" ? <HomeTasks d={d} tab={tab} f={f} /> : <Projects d={d} tab={tab} f={f} />}
-		{tab === "new" ? <Sheet /> : null}
+		{tab === "new" ? <Sheet /> : tab === "edit" && d.space ? <Sheet sp={d.space} /> : null}
 	</div>
 ))
 
@@ -4081,7 +4495,7 @@ const Mode = view<{ opts: [string, string][] }>(({ opts }) => (
 ))
 
 export const PadComposer = view<Props>(({ d, tab, f }) => {
-	if ((tab === "projects" || tab === "new") && !d.space) return null
+	if ((tab === "projects" || tab === "new" || tab === "edit") && !d.space) return null
 	const said = tab === "said"
 	const home = tab === "home"
 	const type = d.space?.type
@@ -4389,7 +4803,7 @@ const PredictRow = view<{ s: State; t: TradeSession; game: Game; idx: number; r:
 						<b>Predict {idx}</b>
 						<div class="lb">{meta ? `${meta} · waiting` : "waiting"}</div>
 					</div>
-					<form method="post" action="/trading/result" class="tbf">
+					<form method="post" action="/trading/result" class="tbf tbp">
 						<SessionHid s={s} t={t} />
 						<input type="hidden" name="game" value={game} />
 						<input type="hidden" name="idx" value={String(idx)} />
@@ -4596,13 +5010,35 @@ const PastCard = view<{ s: State; list: TradeSession[]; canReopen: boolean }>(({
 	)
 })
 
+const Status = view<{ ok: boolean; title: string; sub: string }>(({ ok, title, sub }) => (
+	<div class={ok ? "tst ok" : "tst no"} role="status">
+		<span class="tsi">
+			<Icon name={ok ? "check" : "plus"} />
+		</span>
+		<div>
+			<b>{title}</b>
+			<div class="lb">{sub}</div>
+		</div>
+	</div>
+))
+
 export const TradingBody = view<{ s: State }>(({ s }) => {
 	const open = s.trades.find((t) => t.status === "open")
 	const settled = s.trades.filter((t) => t.status === "settled").slice(0, 10)
 	const day = today(s.user.day_start)
 	const tradedToday = s.trades.some((t) => t.day === day)
+	const at = `${String(s.user.day_start).padStart(2, "0")}:00`
+	const ok = !!open || !tradedToday
+	const sub = open
+		? btcDone(open.results)
+			? "Crypto is done for today. Finish your match predicts."
+			: "Your trade is open. Follow the steps below."
+		: tradedToday
+			? `One trade a day. You can trade again at ${at}.`
+			: `Deposit ${fmt(DEPOSIT)} USDT to start today's trade.`
 	return (
 		<div class="trd">
+			<Status ok={ok} title={ok ? "You can trade" : "You cannot trade"} sub={sub} />
 			{open ? (
 				<>
 					<OpenSummary s={s} t={open} />

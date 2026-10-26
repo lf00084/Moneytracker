@@ -94,29 +94,29 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 	if (x.type === "exoclick") {
 		return (
 			<>
-				<span></span>
 				{amt(sum)}
+				<span></span>
 			</>
 		)
 	}
 	if (x.mode === "auto") {
 		return (
 			<>
-				<span></span>
 				{amt(x.amount)}
+				<span></span>
 			</>
 		)
 	}
 	if (got.length) {
 		return (
 			<>
+				{amt(sum)}
 				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
 					<button class="ub" aria-label={`Undo ${x.name}`}>
 						<Icon name="revert" />
 					</button>
 				</form>
-				{amt(sum)}
 			</>
 		)
 	}
@@ -132,7 +132,7 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 		)
 	}
 	return (
-		<button type="button" class="btn xs o hspan" data-tg>
+		<button type="button" class="btn xs o hspan hadd" data-tg>
 			Add
 		</button>
 	)

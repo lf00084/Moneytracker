@@ -1,7 +1,7 @@
 import type { State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { LANG } from "../lib/view.ts"
-import { Avatar, Back, Card, ErrorBanner, Field, Icon, PageHeader, Section, ThemeSwitch, view } from "./ui.tsx"
+import { Avatar, Back, Card, ErrorBanner, Field, Icon, PageHeader, Section, Submit, ThemeSwitch, view } from "./ui.tsx"
 
 const BalanceForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/profile/balance">
@@ -10,9 +10,9 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 			<label>Balance ({s.user.currency})</label>
 			<input class="in f" name="balance" inputmode="decimal" value={plain(s.balance)} autocomplete="off" required />
 		</div>
-		<button class="btn full" style={{ marginTop: "14px" }}>
+		<Submit class="btn full" style={{ marginTop: "14px" }}>
 			Update balance
-		</button>
+		</Submit>
 	</form>
 ))
 
@@ -22,14 +22,16 @@ export const BalanceCard = view<{ s: State; edit?: boolean }>(({ s, edit = false
 			<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
 				••••••
 			</b>
-			<button type="button" class="ib" data-eye aria-label="Show balance">
-				<Icon name="eye" />
-			</button>
-			{edit ? (
-				<button type="button" class="lnk" data-edit-bal>
-					Edit balance
+			<div class="hm-ba">
+				<button type="button" class="ib" data-eye aria-label="Show balance">
+					<Icon name="eye" />
 				</button>
-			) : null}
+				{edit ? (
+					<button type="button" class="ib" data-edit-bal aria-label="Edit balance">
+						<Icon name="edit" />
+					</button>
+				) : null}
+			</div>
 			<div class="hm-m">Total balance</div>
 		</div>
 		{edit ? (
@@ -46,9 +48,9 @@ const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s
 		<Field label="Name" value={s.user.name} name="name" first />
 		<Field label="Email" value={s.user.email} type="email" name="email" />
 		<div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
-			<button class="btn" style={{ flex: "1" }}>
+			<Submit class="btn" style={{ flex: "1" }}>
 				Save
-			</button>
+			</Submit>
 			<a class="btn o" style={{ flex: "1" }} href={cancel}>
 				Cancel
 			</a>
@@ -73,9 +75,9 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 		</div>
 		<Field label="1 USD in MAD (ExoClick)" value={plain(s.user.usd_rate_minor)} name="usd_rate" />
 		<Field label="Week starts" value={s.user.week_start} name="week" />
-		<button class="btn" style={{ marginTop: "14px" }}>
+		<Submit class="btn" style={{ marginTop: "14px" }}>
 			Save
-		</button>
+		</Submit>
 	</form>
 ))
 
@@ -85,9 +87,9 @@ const DataButtons = view(() => (
 			Export CSV
 		</a>
 		<form method="post" action="/account/delete" style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
-			<button class="btn dng" style={{ flex: "1" }}>
+			<Submit class="btn dng" style={{ flex: "1" }}>
 				Delete account
-			</button>
+			</Submit>
 		</form>
 	</div>
 ))
@@ -126,10 +128,10 @@ export const ProfileMobile = view<{ s: State }>(({ s }) => (
 			<LinkRow href="/settings" label="Settings" />
 			<LinkRow href="/history" label="History" />
 			<form method="post" action="/logout">
-				<button class="li">
+				<Submit class="li">
 					<span class="neg">Log out</span>
 					<span class="mu">›</span>
-				</button>
+				</Submit>
 			</form>
 		</Card>
 	</>
@@ -173,7 +175,7 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 				</Section>
 				<Section title="Account">
 					<form method="post" action="/logout">
-						<button class="btn o">Log out</button>
+						<Submit class="btn o">Log out</Submit>
 					</form>
 				</Section>
 			</div>

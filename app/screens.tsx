@@ -11,7 +11,7 @@ import type { PadData } from "./lib/padmeta.ts"
 import type { User } from "./lib/users.ts"
 import { BalanceCard, EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
-import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, view } from "./components/ui.tsx"
+import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, Submit, view } from "./components/ui.tsx"
 import type { State } from "./lib/data.ts"
 import { fmt } from "./lib/money.ts"
 import { calc } from "./lib/view.ts"
@@ -306,7 +306,7 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 				{up ? <FloatField label="Name" name="name" auto="name" /> : null}
 				<FloatField label="Email" type="email" name="email" auto="email" />
 				<FloatField label="Password" type="password" name="password" auto={up ? "new-password" : "current-password"} />
-				<button class="btn full">{up ? "Create account" : "Sign in"}</button>
+				<Submit class="btn full">{up ? "Create account" : "Sign in"}</Submit>
 				<div class="auth-switch-wrap">
 					<a class="lnk-switch" href={up ? "/login" : "/signup"}>
 						{up ? (

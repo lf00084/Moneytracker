@@ -2,7 +2,7 @@ import type { DebtView, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { dayLabel, dayOf, hhmm, timeAgo } from "../lib/time.ts"
 import { calc, debtPct, peopleCount, pctOf } from "../lib/view.ts"
-import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, view } from "./ui.tsx"
+import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, Submit, view } from "./ui.tsx"
 
 type DebtProps = { s: State; d: DebtView; manage: boolean }
 
@@ -35,11 +35,11 @@ const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind, manag
 					) : null}
 					<span class="mu">{unit}</span>
 				</div>
-				<button class="btn xs">{pay ? "Pay" : "Add"}</button>
+				<Submit class="btn xs">{pay ? "Pay" : "Add"}</Submit>
 				{manage ? (
-					<button class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn={`Remove ${d.person} from the list without marking it paid?`} aria-label="Remove without paying" title="Remove without paying">
+					<Submit class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn={`Remove ${d.person} from the list without marking it paid?`} aria-label="Remove without paying" title="Remove without paying">
 						<Icon name="trash" />
-					</button>
+					</Submit>
 				) : null}
 			</div>
 		</form>
@@ -85,7 +85,7 @@ const AddDebtPanel = view<{ s: State }>(({ s }) => (
 			<input class="in" name="amount" data-price placeholder="Debt amount" inputmode="decimal" autocomplete="off" required />
 			<span class="mu">{s.user.currency}</span>
 		</div>
-		<button class="btn full">Add</button>
+		<Submit class="btn full">Add</Submit>
 	</form>
 ))
 

@@ -24,7 +24,7 @@ const toUser = (r: any): User => ({
 	currency: r.currency || "MAD",
 	theme: r.theme || "dark",
 	run_at: r.run_at || "06:00",
-	day_start: Number.isInteger(r.day_start) && r.day_start >= 0 && r.day_start <= 23 ? r.day_start : 17,
+	day_start: Number.isInteger(r.day_start) && r.day_start >= 0 && r.day_start <= 23 ? r.day_start : 5,
 	week_start: r.week_start || "Monday",
 	usd_rate_minor: r.usd_rate_minor || 1000,
 	usdt_rate: Number(r.usdt_rate_minor) > 0 ? Number(r.usdt_rate_minor) : 1100,
@@ -43,7 +43,7 @@ const newUserRow = (id: string, email: string, name: string, verified: number, n
 	currency: "MAD",
 	theme: "dark",
 	run_at: "06:00",
-	day_start: 17,
+	day_start: 5,
 	week_start: "Monday",
 	usdt_rate_minor: 1100,
 	created_at: now,
@@ -171,5 +171,5 @@ export async function setTheme(userId: string, theme: string) {
 
 export async function todayFor(userId: string) {
 	const row = await db.find(users, userId)
-	return today(row ? toUser(row).day_start : 17)
+	return today(row ? toUser(row).day_start : 5)
 }

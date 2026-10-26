@@ -1,6 +1,6 @@
 import { COLORS, type Entry, type PadData } from "../lib/padmeta.ts"
 import { timeAgo } from "../lib/time.ts"
-import { Icon, view } from "./ui.tsx"
+import { Icon, Submit, view } from "./ui.tsx"
 
 export type PadTab = "projects" | "said" | "home" | "new"
 
@@ -48,19 +48,42 @@ const Hid = view<{ id: string; back: string }>(({ id, back }) => (
 	</>
 ))
 
+// Edit uses the same look as the add bar, pre-filled with the current text.
 const EditForm = view<{ e: Entry; back: string }>(({ e, back }) => (
 	<form method="post" action="/pad/edit" class="nt-edit" data-edit hidden>
 		<Hid id={e.id} back={back} />
-		<textarea name="body" rows="2" maxlength="2000" aria-label="Edit">
-			{e.body}
-		</textarea>
-		<div class="nt-eb">
-			<button type="button" class="btn xs o" data-edit-x>
-				Cancel
+		<div class="nt-c nt-cin">
+			<input name="body" value={e.body} maxlength="2000" aria-label="Edit" autocomplete="off" required />
+			<button type="button" class="nt-xc" data-edit-x aria-label="Cancel edit">
+				<Icon name="plus" />
 			</button>
-			<button class="btn xs">Save</button>
+			<Submit class="nt-sd" aria-label="Save">
+				<Icon name="send" />
+			</Submit>
 		</div>
 	</form>
+))
+
+// Settings icon with a dropdown: Edit and Delete.
+const RowMenu = view<{ e: Entry; back: string }>(({ e, back }) => (
+	<div class="nt-mn">
+		<button type="button" class="nt-x" data-menu aria-label="Options" aria-haspopup="menu" aria-expanded="false">
+			<Icon name="gear" />
+		</button>
+		<div class="nt-dd" role="menu" hidden>
+			<button type="button" role="menuitem" data-menu-edit>
+				<Icon name="edit" />
+				Edit
+			</button>
+			<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
+				<Hid id={e.id} back={back} />
+				<Submit role="menuitem" class="dg">
+					<Icon name="trash" />
+					Delete
+				</Submit>
+			</form>
+		</div>
+	</div>
 ))
 
 const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
@@ -71,9 +94,9 @@ const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
 			{note ? null : (
 				<form method="post" action="/pad/toggle" class="nt-f">
 					<Hid id={e.id} back={back} />
-					<button class={done ? "nt-ck d" : "nt-ck"} aria-label={done ? "Mark as open" : "Mark as done"}>
+					<Submit class={done ? "nt-ck d" : "nt-ck"} aria-label={done ? "Mark as open" : "Mark as done"}>
 						{done ? <Icon name="check" /> : null}
-					</button>
+					</Submit>
 				</form>
 			)}
 			<div class="nt-b" data-copy>
@@ -81,12 +104,7 @@ const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
 				{note ? <div class="nt-m">{`note · ${timeAgo(e.at)}`}</div> : null}
 			</div>
 			<EditForm e={e} back={back} />
-			<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
-				<Hid id={e.id} back={back} />
-				<button class="nt-x" aria-label="Delete">
-					<Icon name="plus" />
-				</button>
-			</form>
+			<RowMenu e={e} back={back} />
 		</div>
 	)
 })
@@ -108,7 +126,7 @@ const Projects = view<Props>(({ d, f }) => {
 			</div>
 		)
 	}
-	const all = d.entries.filter((e) => e.space === sp.id && e.kind !== "said")
+	const all = d.entries.filter((e) => e.space === sp.id && e.kind !== "said").reverse()
 	const open = all.filter((e) => e.kind === "task").length
 	const done = all.filter((e) => e.kind === "done").length
 	const list = all.filter((e) => (f === "tasks" ? e.kind !== "note" : f === "notes" ? e.kind === "note" : true))
@@ -137,7 +155,7 @@ const Projects = view<Props>(({ d, f }) => {
 			<div class="nt-c nt-list">{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
 			<form method="post" action="/pad/space/delete" class="nt-del" data-confirm={`Delete ${sp.title} and everything in it?`}>
 				<Hid id={sp.id} back="/pad" />
-				<button type="submit">Delete this project</button>
+				<Submit type="submit">Delete this project</Submit>
 			</form>
 		</>
 	)
@@ -166,12 +184,7 @@ const Said = view<Props>(({ d, f }) => {
 									<span class="nt-m">{timeAgo(e.at)}</span>
 								</div>
 								<span class="nt-tag t">{e.tag}</span>
-								<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
-									<Hid id={e.id} back={back} />
-									<button class="nt-x" aria-label="Delete">
-										<Icon name="plus" />
-									</button>
-								</form>
+								<RowMenu e={e} back={back} />
 							</div>
 							{title(e.space) ? <div class="nt-m" style={{ marginTop: "8px" }}>{`→ ${title(e.space)}`}</div> : null}
 						</div>
@@ -185,7 +198,7 @@ const Said = view<Props>(({ d, f }) => {
 })
 
 const HomeTasks = view<Props>(({ d }) => {
-	const all = d.entries.filter((e) => !e.space && (e.kind === "task" || e.kind === "done"))
+	const all = d.entries.filter((e) => !e.space && (e.kind === "task" || e.kind === "done")).reverse()
 	const done = all.filter((e) => e.kind === "done").length
 	const back = padBack(d, "home", "")
 	const group = (label: string, rows: Entry[]) =>
@@ -267,7 +280,7 @@ const Sheet = view(() => {
 					<span>Progress bar</span>
 					<input type="checkbox" name="bar" value="1" checked class="nt-tgl" />
 				</label>
-				<button class="nt-go">Create project</button>
+				<Submit class="nt-go">Create project</Submit>
 				<div class="nt-m" style={{ textAlign: "center" }}>
 					You can delete it any time
 				</div>
@@ -314,9 +327,9 @@ export const PadComposer = view<Props>(({ d, tab, f }) => {
 				{said ? <input class="nt-who-i" name="who" placeholder="Who" maxlength="40" autocomplete="off" /> : null}
 				<input name="body" placeholder={said ? "What did they say…" : home ? "Add a home task…" : type === "notes" ? "Write a note…" : "Write a note or task…"} aria-label="Add" autocomplete="off" required />
 				{said ? <Mode opts={[["tip", "Tip"], ["info", "Info"]]} /> : home ? <Mode opts={[["today", "Today"], ["later", "Later"]]} /> : type === "mix" ? <Mode opts={[["task", "Task"], ["note", "Note"]]} /> : null}
-				<button class="nt-sd" aria-label="Add">
+				<Submit class="nt-sd" aria-label="Add">
 					<Icon name="send" />
-				</button>
+				</Submit>
 			</div>
 			{said && d.spaces.length ? (
 				<select name="space" class="nt-sel" aria-label="Project">

@@ -2,7 +2,7 @@ import type { Income, Source, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { isFixed } from "../lib/util.ts"
 import { calc, gotToday, srcAmount } from "../lib/view.ts"
-import { Back, Empty, ExpandCard, Icon, ListCard, NameChips, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, ListCard, NameChips, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 const rateOf = (x: Source) => Number(x.config.rate_minor) || 0
@@ -30,9 +30,9 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} ${s.user.currency} from ${i.source}?`}>
 				<Back s={s} />
 				<input type="hidden" name="id" value={i.id} />
-				<button class="ub" aria-label="Undo income">
+				<Submit class="ub" aria-label="Undo income">
 					<Icon name="undo" />
-				</button>
+				</Submit>
 			</form>
 		</span>
 	</div>
@@ -60,10 +60,10 @@ const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) =>
 							<input type="hidden" name="source_id" value={x.id} />
 							<input type="hidden" name="hours" value={String(n)} />
 							<input type="hidden" name="toggle" value="1" />
-							<button class={h === n ? "chip hc on" : "chip hc"}>
+							<Submit class={h === n ? "chip hc on" : "chip hc"}>
 								<b>{n}h</b>
 								<small>+{fmt(n * rate)}</small>
-							</button>
+							</Submit>
 						</form>
 					))}
 				</div>
@@ -71,7 +71,7 @@ const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) =>
 					<Back s={s} />
 					<input type="hidden" name="source_id" value={x.id} />
 					<input class="in" name="hours" value={h && !opts.includes(h) ? String(h) : ""} placeholder="Other hours" inputmode="decimal" autocomplete="off" />
-					<button class="btn xs o">Set</button>
+					<Submit class="btn xs o">Set</Submit>
 					<button type="button" class="btn xs o" data-close>
 						Close
 					</button>
@@ -113,9 +113,9 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 				{amt(sum)}
 				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
-					<button class="ub" aria-label={`Undo ${x.name}`}>
+					<Submit class="ub" aria-label={`Undo ${x.name}`}>
 						<Icon name="revert" />
-					</button>
+					</Submit>
 				</form>
 			</>
 		)
@@ -125,9 +125,9 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 			<form method="post" action="/income/add" style={contents}>
 				<Back s={s} />
 				<input type="hidden" name="source_id" value={x.id} />
-				<button class="btn xs o hspan">
+				<Submit class="btn xs o hspan">
 					Add {fmt(fixed)} {cur}
-				</button>
+				</Submit>
 			</form>
 		)
 	}
@@ -141,9 +141,9 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 	<form method="post" action="/income/source/delete" style={contents} data-confirm={`Delete ${x.name}? What it already paid stays in your balance.`}>
 		<Hid s={s} id={x.id} />
-		<button class="ub" aria-label={`Delete ${x.name}`}>
+		<Submit class="ub" aria-label={`Delete ${x.name}`}>
 			<Icon name="trash" />
-		</button>
+		</Submit>
 	</form>
 ))
 
@@ -175,7 +175,7 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					<input type="hidden" name="source_id" value={x.id} />
 					<div class="ln">
 						<input class="in" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
-						<button class="btn xs">Add</button>
+						<Submit class="btn xs">Add</Submit>
 					</div>
 				</form>
 			) : null}
@@ -192,7 +192,7 @@ const NamedFields = view<{ s: State }>(({ s }) => (
 			<input class="in" name="label" data-name placeholder="Name (e.g. Tip)" autocomplete="off" />
 			<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
 		</div>
-		<button class="btn full">Add income</button>
+		<Submit class="btn full">Add income</Submit>
 	</>
 ))
 
@@ -234,7 +234,7 @@ const SourceFields = view<{ s: State }>(({ s }) => (
 			<input class="in" name="api_key" type="password" placeholder="ExoClick API key" autocomplete="off" />
 			<div class="lb">Saved encrypted. Counted in USD during the day, converted to {s.user.currency} when the day ends.</div>
 		</div>
-		<button class="btn full">Add source</button>
+		<Submit class="btn full">Add source</Submit>
 	</>
 ))
 
@@ -312,7 +312,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 				<span class="rt">
 					<form method="post" action="/income/toggle" style={contents}>
 						<Hid s={s} id={x.id} />
-						<button class="btn xs o">{x.active ? "Pause" : "Resume"}</button>
+						<Submit class="btn xs o">{x.active ? "Pause" : "Resume"}</Submit>
 					</form>
 					<button type="button" class="ub" data-tg aria-label={`Edit ${x.name}`}>
 						<Icon name="edit" />
@@ -332,9 +332,9 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 				) : null}
 				{x.type === "exoclick" ? <input class="in" style={{ marginTop: "8px" }} name="api_key" type="password" placeholder="New API key (leave empty to keep)" autocomplete="off" /> : null}
 				{!fixedSrc && x.type !== "exoclick" && x.mode === "auto" ? <input class="in" style={{ marginTop: "8px" }} name="amount" value={plain(x.amount)} placeholder="Amount" inputmode="decimal" autocomplete="off" /> : null}
-				<button class="btn xs" style={{ marginTop: "10px" }}>
+				<Submit class="btn xs" style={{ marginTop: "10px" }}>
 					Save
-				</button>
+				</Submit>
 			</form>
 		</div>
 	)

@@ -1,7 +1,7 @@
 import type { Goal, GoalItem, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { canAfford, goalLeft, goalStat, pctOf } from "../lib/view.ts"
-import { Back, Empty, ExpandCard, Icon, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 
@@ -29,9 +29,9 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					{it.done ? null : (
 						<form method="post" action="/goals/buy" style={contents} data-confirm={`Mark ${it.name} as bought? It will be added as a spend.`}>
 							{hid()}
-							<button class={ok ? "btn xs" : "btn xs off"} disabled={ok ? undefined : true}>
+							<Submit class={ok ? "btn xs" : "btn xs off"} disabled={ok ? undefined : true}>
 								Bought
-							</button>
+							</Submit>
 						</form>
 					)}
 				</span>
@@ -51,9 +51,9 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					)}
 					<form method="post" action="/goals/item/delete" style={contents} data-confirm={`Remove ${it.name} from this goal?`}>
 						{hid()}
-						<button class="ub" aria-label={`Remove ${it.name}`}>
+						<Submit class="ub" aria-label={`Remove ${it.name}`}>
 							<Icon name="trash" />
-						</button>
+						</Submit>
 					</form>
 				</span>
 			</div>
@@ -64,7 +64,7 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					<div class="ln">
 						<input class="in f" name="name" value={it.name} autocomplete="off" required />
 						<input class="in pr2" name="price" value={plain(it.price)} placeholder="Price" inputmode="decimal" autocomplete="off" required />
-						<button class="btn xs">Save</button>
+						<Submit class="btn xs">Save</Submit>
 					</div>
 				</form>
 			)}
@@ -111,9 +111,9 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 						<form method="post" action="/goals/delete" style={contents} data-confirm={`Delete ${g.title} and all its items?`}>
 							<Back s={s} />
 							<input type="hidden" name="id" value={g.id} />
-							<button class="ub" aria-label={`Delete ${g.title}`}>
+							<Submit class="ub" aria-label={`Delete ${g.title}`}>
 								<Icon name="trash" />
-							</button>
+							</Submit>
 						</form>
 					</span>
 				</div>
@@ -124,7 +124,7 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 					<div class="ln">
 						<input class="in f" name="name" placeholder="Item to buy" autocomplete="off" required />
 						<input class="in pr2" name="price" placeholder="Price" inputmode="decimal" autocomplete="off" required />
-						<button class="btn xs">Add</button>
+						<Submit class="btn xs">Add</Submit>
 					</div>
 				</form>
 				<form method="post" action="/goals/edit" class="ad" data-payp hidden>
@@ -133,7 +133,7 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 					<label>Rename goal</label>
 					<div class="ln">
 						<input class="in f" name="name" value={g.title} autocomplete="off" required />
-						<button class="btn xs">Save</button>
+						<Submit class="btn xs">Save</Submit>
 					</div>
 				</form>
 			</div>
@@ -154,7 +154,7 @@ const GoalForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/goals" class="sf xfm" data-adp hidden>
 		<Back s={s} />
 		<input class="in" name="name" placeholder="Goal name" autocomplete="off" required />
-		<button class="btn full">Add goal</button>
+		<Submit class="btn full">Add goal</Submit>
 	</form>
 ))
 

@@ -1,7 +1,7 @@
 import type { RemixNode } from "remix/component"
 import type { State } from "../lib/data.ts"
 import { dayLabel, dayOf, hhmm } from "../lib/time.ts"
-import { Back, Empty, Icon, Section, view } from "./ui.tsx"
+import { Back, Empty, Icon, Section, Submit, view } from "./ui.tsx"
 
 export const NoteList = view<{ s: State; listKey: string }>(({ s, listKey }) => {
 	if (listKey === "dash") {
@@ -51,7 +51,7 @@ export const NoteList = view<{ s: State; listKey: string }>(({ s, listKey }) => 
 					<form method="post" action="/notes/delete" style={{ display: "contents" }} data-confirm="Delete this note?">
 						<Back s={s} />
 						<input type="hidden" name="id" value={n.id} />
-						<button class="btn xs dng">Delete</button>
+						<Submit class="btn xs dng">Delete</Submit>
 					</form>
 				</div>
 			</div>,
@@ -84,9 +84,9 @@ export const Composer = view<{ s: State; listKey: string }>(({ s, listKey }) => 
 		</div>
 		<div class="cin">
 			<textarea rows="1" name="text" placeholder="Message yourself"></textarea>
-			<button class="send" aria-label="Send">
+			<Submit class="send" aria-label="Send">
 				<Icon name="send" />
-			</button>
+			</Submit>
 		</div>
 	</form>
 ))
@@ -97,9 +97,9 @@ export const NoteCard = view<{ s: State }>(({ s }) => (
 			<Back s={s} />
 			<input type="hidden" name="id" data-eid />
 			<textarea rows="1" name="text" placeholder="Message yourself"></textarea>
-			<button class="send" aria-label="Send">
+			<Submit class="send" aria-label="Send">
 				<Icon name="send" />
-			</button>
+			</Submit>
 		</form>
 		<NoteList s={s} listKey="dash" />
 	</Section>

@@ -49,6 +49,20 @@ const ICONS: Record<string, string> = {
 	Tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1"/>',
 }
 
+/**
+ * Shared submit button. Use it for every button that submits a form.
+ * While its form is submitting, the page script marks it data-busy and CSS shows
+ * only the rotate icon (label and icons are hidden, size stays the same).
+ */
+export const Submit = view<Record<string, any>>(({ children, ...rest }) => (
+	<button {...rest}>
+		<span class="sb-l">{children}</span>
+		<span class="sb-i" aria-hidden="true">
+			<Icon name="revert" />
+		</span>
+	</button>
+))
+
 export const Icon = view<{ name: string }>(({ name }) => <svg class="ic" viewBox="0 0 24 24" innerHTML={unsafeHTML(ICONS[name] ?? "")} />)
 
 export const ThemeIcons = view(() => (

@@ -8,9 +8,11 @@ export const HomeBalance = view<{ s: State }>(({ s }) => (
 		<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
 			••••••
 		</b>
-		<button type="button" class="ib" data-eye aria-label="Show balance">
-			<Icon name="eye" />
-		</button>
+		<div class="hm-ba">
+			<button type="button" class="ib" data-eye aria-label="Show balance">
+				<Icon name="eye" />
+			</button>
+		</div>
 		<div class="hm-m">Total balance</div>
 	</div>
 ))

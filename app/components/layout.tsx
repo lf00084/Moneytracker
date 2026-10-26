@@ -3,7 +3,7 @@ import { env } from "../env.ts"
 import { SITE } from "../lib/assets.ts"
 import { liveClockNow } from "../lib/time.ts"
 import { V } from "../lib/static.ts"
-import { Icon, Logo, ThemeIcons, view } from "./ui.tsx"
+import { Icon, Logo, Submit, ThemeIcons, view } from "./ui.tsx"
 
 type DocumentProps = {
 	title: string
@@ -153,10 +153,10 @@ export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 			<span>Theme</span>
 		</button>
 		<form method="post" action="/logout">
-			<button class="sbl">
+			<Submit class="sbl">
 				<Icon name="out" />
 				<span class="neg">Log out</span>
-			</button>
+			</Submit>
 		</form>
 	</aside>
 ))

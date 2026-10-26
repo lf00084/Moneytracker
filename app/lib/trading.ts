@@ -76,10 +76,12 @@ export async function startTrade(user: User): Promise<string | void> {
 	const uid = user.id
 	const open = await db.findOne(tradeSessions, { where: { user_id: uid, status: "open" } })
 	if (open) return "Finish your open trade first"
+	const day = today(user.day_start)
+	const already = await db.findOne(tradeSessions, { where: { user_id: uid, day } })
+	if (already) return `One trade a day. The next one opens at ${String(user.day_start).padStart(2, "0")}:00`
 	const cost = toMad(DEPOSIT, user.usdt_rate)
 	if (!cost) return "Set the USDT price in Settings first"
 	const now = Date.now()
-	const day = today(user.day_start)
 	const sessionId = id()
 	const purchaseId = id()
 	await db.transaction(async (tx) => {
@@ -184,7 +186,7 @@ export async function saveResult(uid: string, f: FormData): Promise<string | voi
 		if (!amount) return "Enter the PnL in USDT"
 		pnl = amount
 	} else {
-		pnl = -missAmount(game, rows)
+		pnl = -missAmount(game)
 	}
 	await db.update(tradeResults, cur.id, { state: "done", won: won ? 1 : 0, pnl_minor: pnl })
 	const next = rows.map((r): TradeResult => (r.id === cur.id ? { ...r, state: "done", won, pnl } : r))

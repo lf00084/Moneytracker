@@ -2,7 +2,7 @@ import type { Buy, State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { hhmm } from "../lib/time.ts"
 import { calc } from "../lib/view.ts"
-import { Back, Card, Empty, ExpandCard, Icon, ListCard, NameChips, view } from "./ui.tsx"
+import { Back, Card, Empty, ExpandCard, Icon, ListCard, NameChips, Submit, view } from "./ui.tsx"
 
 export const buyName = (b: Buy) => (b.qty > 1 ? `${b.name} ×${b.qty}` : b.name)
 
@@ -17,9 +17,9 @@ export const SpendRow = view<{ s: State; id: string; name: string; sub: string; 
 			<form method="post" action="/buy/delete" style={{ display: "contents" }} data-confirm="Undo this buy? The money comes back.">
 				<Back s={s} />
 				<input type="hidden" name="id" value={id} />
-				<button class="ub" aria-label="Undo buy">
+				<Submit class="ub" aria-label="Undo buy">
 					<Icon name="undo" />
-				</button>
+				</Submit>
 			</form>
 		</span>
 	</div>
@@ -43,7 +43,7 @@ const SpendFields = view<{ s: State }>(({ s }) => (
 			<input class="in" name="label" data-name placeholder="Item" autocomplete="off" required />
 			<input class="in pr" name="price" data-price placeholder="Price" inputmode="decimal" autocomplete="off" required />
 		</div>
-		<button class="btn full">Add a spend</button>
+		<Submit class="btn full">Add a spend</Submit>
 	</>
 ))
 

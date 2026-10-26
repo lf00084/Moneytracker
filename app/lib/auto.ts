@@ -23,7 +23,7 @@ export async function settleAuto(uid: string): Promise<void> {
 	if (!srcs.length) return
 
 	const u = await db.find(users, uid)
-	const h = u && Number.isInteger(u.day_start) && u.day_start >= 0 && u.day_start <= 23 ? u.day_start : 17
+	const h = u && Number.isInteger(u.day_start) && u.day_start >= 0 && u.day_start <= 23 ? u.day_start : 5
 	const runAt = shiftHm(hm(u?.run_at), h)
 	const now = Date.now()
 	const t = today(h)

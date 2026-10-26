@@ -15,7 +15,7 @@ const addColumns = [
 	"ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE users ADD COLUMN run_at TEXT NOT NULL DEFAULT '06:00'",
 	"ALTER TABLE users ADD COLUMN week_start TEXT NOT NULL DEFAULT 'Monday'",
-	"ALTER TABLE users ADD COLUMN day_start INTEGER NOT NULL DEFAULT 17",
+	"ALTER TABLE users ADD COLUMN day_start INTEGER NOT NULL DEFAULT 5",
 	"ALTER TABLE users ADD COLUMN bg_mode TEXT NOT NULL DEFAULT 'auto'",
 	"ALTER TABLE users ADD COLUMN bg_url TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE users ADD COLUMN usdt_rate_minor INTEGER NOT NULL DEFAULT 1100",
@@ -43,6 +43,7 @@ for (const statement of addColumns) {
 	}
 }
 
+await client.execute("UPDATE users SET day_start = 5 WHERE day_start = 17")
 await client.execute("CREATE UNIQUE INDEX IF NOT EXISTS incomes_ext_key_idx ON incomes(ext_key) WHERE ext_key <> ''")
 await client.execute("INSERT INTO goal_items (id, user_id, goal_id, name, price_minor, done_at, created_at) SELECT lower(hex(randomblob(16))), user_id, id, title, target_minor, NULL, created_at FROM goals g WHERE target_minor > 0 AND NOT EXISTS (SELECT 1 FROM goal_items i WHERE i.goal_id = g.id)")
 await client.execute("UPDATE goals SET target_minor = 0 WHERE target_minor > 0 AND EXISTS (SELECT 1 FROM goal_items i WHERE i.goal_id = goals.id)")

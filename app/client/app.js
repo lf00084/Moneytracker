@@ -90,7 +90,7 @@
 			return
 		}
 		if ((q = t.closest("[data-eye]"))) {
-			var v = q.parentNode.firstChild
+			var v = q.closest(".hm-bal").querySelector(".hm-dots")
 			var hide = q.getAttribute("data-s") !== "1"
 			q.setAttribute("data-s", hide ? "1" : "0")
 			v.innerHTML = hide ? v.getAttribute("data-bal") + " <small>" + v.getAttribute("data-cur") + "</small>" : "••••••"
@@ -99,7 +99,8 @@
 		if ((q = t.closest("[data-edit-bal]"))) {
 			var bf = q.closest(".cd,.sc").querySelector("[data-balf]")
 			bf.hidden = !bf.hidden
-			q.textContent = bf.hidden ? "Edit balance" : "Cancel"
+			q.setAttribute("aria-label", bf.hidden ? "Edit balance" : "Cancel")
+			q.classList.toggle("hi", !bf.hidden)
 			if (!bf.hidden) {
 				var bi = bf.querySelector("input:not([type=hidden])")
 				if (bi) {
@@ -205,26 +206,32 @@
 		true,
 	)
 
+	// Fallback spinner for any submit button that is not the shared Submit component.
+	var SPIN = '<span class="sb-i" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>'
 	d.addEventListener("submit", function (e) {
 		var f = e.target
 		var msg = f.getAttribute && f.getAttribute("data-confirm")
 		if (msg && !confirm(msg)) return e.preventDefault()
+		var sub = e.submitter
 		setTimeout(function () {
 			if (e.defaultPrevented) return
 			all("button", f).forEach(function (b) {
-				if (!b.disabled) {
-					b.disabled = true
+				if (b.disabled) return
+				b.disabled = true
+				if (!sub || b === sub) {
 					b.setAttribute("data-busy", "1")
-					if (b.type === "submit") b.setAttribute("aria-busy", "true")
-				}
+					b.setAttribute("aria-busy", "true")
+					if (!b.querySelector(".sb-i")) b.insertAdjacentHTML("beforeend", SPIN)
+				} else b.setAttribute("data-lock", "1")
 			})
 		}, 0)
 	})
 
 	function unbusy() {
-		all("button[data-busy]").forEach(function (b) {
+		all("button[data-busy],button[data-lock]").forEach(function (b) {
 			b.disabled = false
 			b.removeAttribute("data-busy")
+			b.removeAttribute("data-lock")
 			b.removeAttribute("aria-busy")
 		})
 	}
@@ -513,7 +520,10 @@
 		if (!f || !b) return
 		f.hidden = false
 		b.hidden = true
-		var ta = f.querySelector("textarea")
+		var mn = it.querySelector(".nt-mn")
+		if (mn) mn.hidden = true
+		var ta = f.querySelector("input[name=body],textarea")
+		if (!ta.value) ta.value = ta.defaultValue || it.querySelector("[data-copy] p").textContent.trim()
 		ta.focus()
 		ta.setSelectionRange(ta.value.length, ta.value.length)
 		it.scrollIntoView({ block: "center", behavior: "smooth" })
@@ -542,8 +552,36 @@
 	d.addEventListener("contextmenu", function (e) {
 		if (e.target.closest && e.target.closest("[data-copy]")) e.preventDefault()
 	})
+	var closeMenus = function () {
+		all(".nt-dd:not([hidden])").forEach(function (m) {
+			m.hidden = true
+			var o = m.parentNode.querySelector("[data-menu]")
+			if (o) o.setAttribute("aria-expanded", "false")
+		})
+	}
+	d.addEventListener("keydown", function (e) {
+		if (e.key === "Escape") closeMenus()
+	})
 	d.addEventListener("click", function (e) {
 		var t = e.target
+		var mb = t.closest && t.closest("[data-menu]")
+		if (mb) {
+			var dd = mb.parentNode.querySelector(".nt-dd")
+			var was = !dd.hidden
+			closeMenus()
+			if (!was) {
+				dd.hidden = false
+				mb.setAttribute("aria-expanded", "true")
+			}
+			return
+		}
+		var me = t.closest && t.closest("[data-menu-edit]")
+		if (me) {
+			closeMenus()
+			edit(me.closest("[data-pad-item]"))
+			return
+		}
+		if (!(t.closest && t.closest(".nt-dd"))) closeMenus()
 		var b = t.closest && t.closest("[data-copy]")
 		if (b) {
 			if (fired) {
@@ -561,6 +599,8 @@
 			var it = x.closest("[data-pad-item]")
 			it.querySelector("[data-edit]").hidden = true
 			it.querySelector("[data-copy]").hidden = false
+			var mn2 = it.querySelector(".nt-mn")
+			if (mn2) mn2.hidden = false
 			return
 		}
 		var a = t.closest && t.closest("[data-xplus],[data-tg],[data-pay],[data-bigadd]")

@@ -277,11 +277,17 @@ html[data-nav=busy],html[data-nav=busy] a,html[data-nav=busy] button{cursor:prog
 html[data-nav=busy] main{opacity:.55}
 button[data-busy]{cursor:progress}
 .btn[data-busy]{opacity:.7}
-.btn[data-busy]::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;vertical-align:-2px}
+.sb-l{display:contents}
+.sb-i{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
+button[data-busy]{position:relative}
+button[data-busy] .sb-l{visibility:hidden}
+button[data-busy] .sb-i{display:flex}
+button[data-busy] .sb-i svg.ic{width:18px;height:18px;transform:none;animation:spin .7s linear infinite}
+button[data-lock]{opacity:.5}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){
 	main{transition:none}
-	.btn[data-busy]::after{animation:none}
+	button[data-busy] .sb-i svg.ic{animation:none}
 }
 .trd{max-width:640px;margin:0 auto}
 .tbn{margin:2px 0 6px;line-height:1.5}
@@ -705,9 +711,8 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .hm .osum .ow .em{font:400 14px/1.4 var(--h-sans);color:var(--h-mu)}
 
 /* balance card (home + profile) */
-.hm-bal{column-gap:0;grid-template-columns:1fr auto auto;grid-template-areas:"l e b" "v e b"}
-.hm-bal .ib{margin-left:10px}
-.hm-bal .lnk{grid-area:e;align-self:center;margin-left:10px}
+.hm-bal .hm-ba{grid-area:b;display:flex;align-items:center;justify-content:flex-end;gap:8px;align-self:center;height:100%}
+.hm-bal .hm-ba .ib{grid-area:auto;align-self:center}
 .hm-balc{padding:0;overflow:hidden}
 .hm-bedit{padding:0 14px 14px}
 
@@ -728,4 +733,17 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .nt-edit{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;margin:0}
 .nt-edit textarea{width:100%;margin:0;padding:8px 12px;border:1px solid var(--h-ln2);border-radius:14px;background:var(--h-card);color:var(--h-ink);font:15px/1.35 var(--h-sans);resize:none}
 .nt-eb{display:flex;gap:8px;justify-content:flex-end}
+.nt-edit .nt-cin{padding:4px 6px 4px 14px}
+.nt-xc{flex:none;width:30px;height:30px;border:0;background:none;color:var(--mu);padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.nt-xc svg.ic{width:18px;height:18px;transform:rotate(45deg)}
+.nt-mn{position:relative;flex:none;align-self:flex-start}
+.nt-mn[hidden],.nt-dd[hidden]{display:none!important}
+.nt-mn .nt-x svg.ic{transform:none}
+.nt-dd{position:absolute;right:0;top:calc(100% + 4px);z-index:40;min-width:150px;padding:4px;background:var(--s1);border:1px solid var(--ln);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.nt-dd form{display:block;margin:0}
+.nt-dd button{position:relative;display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.nt-dd button:hover{background:var(--s2)}
+.nt-dd button.dg{color:var(--neg)}
+.nt-dd svg.ic{width:16px;height:16px;flex:none}
+.nt-list:has(.nt-dd:not([hidden])),.nt-q:has(.nt-dd:not([hidden])){overflow:visible}
 .nt-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--h-ink);color:var(--h-card);padding:8px 16px;border-radius:18px;font-size:13px;z-index:60}

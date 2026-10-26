@@ -44,7 +44,7 @@ const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) =>
 	const cur = s.user.currency
 	const opts = [1, 2, 3, 4]
 	return (
-		<details class="hx" data-keep-open={`hx-${x.id}-${row.day}`} open={h ? undefined : true}>
+		<details class="hx" data-keep-open={`hx-${x.id}-${row.day}`}>
 			<summary>
 				<span>Extra hours</span>
 				<span>{h ? `+${h}h · +${fmt(Math.round(h * rate))} ${cur}` : `${fmt(rate)} ${cur} / hour`}</span>
@@ -81,60 +81,36 @@ const HoursPanel = view<{ s: State; x: Source; row: Income }>(({ s, x, row }) =>
 	)
 })
 
-const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggle }) => {
+const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 	const got = gotToday(s, x)
 	const sum = got.reduce((a, i) => a + i.amount, 0)
 	const fixed = srcAmount(x)
 	const cur = s.user.currency
-	if (toggle && !x.active) {
-		return (
-			<form method="post" action="/income/toggle" style={contents}>
-				<Hid s={s} id={x.id} />
-				<button class="btn xs o">Resume</button>
-			</form>
-		)
-	}
+	const amt = (n: number) => (
+		<b class="ea">
+			+{fmt(n)} <small>{cur}</small>
+		</b>
+	)
 	if (x.type === "exoclick") {
 		return (
 			<>
-				<b class="ea">
-					+{fmt(sum)} <small>{cur}</small>
-				</b>
-				{s.exo[x.id] ? (
-					<a class="btn xs o" href="/income">
-						Fix
-					</a>
-				) : null}
-				{toggle ? (
-					<form method="post" action="/income/toggle" style={contents}>
-						<Hid s={s} id={x.id} />
-						<button class="btn xs o">Pause</button>
-					</form>
-				) : null}
+				{amt(sum)}
+				<span></span>
 			</>
 		)
 	}
 	if (x.mode === "auto") {
 		return (
 			<>
-				<b class="ea">
-					+{fmt(x.amount)} <small>{cur}</small>
-				</b>
-				{toggle ? (
-					<form method="post" action="/income/toggle" style={contents}>
-						<Hid s={s} id={x.id} />
-						<button class="btn xs o">Pause</button>
-					</form>
-				) : null}
+				{amt(x.amount)}
+				<span></span>
 			</>
 		)
 	}
 	if (got.length) {
 		return (
 			<>
-				<b class="ea">
-					+{fmt(sum)} <small>{cur}</small>
-				</b>
+				{amt(sum)}
 				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
 					<button class="ub" aria-label={`Undo ${x.name}`}>
@@ -149,21 +125,19 @@ const SourceMain = view<{ s: State; x: Source; toggle: boolean }>(({ s, x, toggl
 			<form method="post" action="/income/add" style={contents}>
 				<Back s={s} />
 				<input type="hidden" name="source_id" value={x.id} />
-				<button class="btn xs o">
+				<button class="btn xs o hspan">
 					Add {fmt(fixed)} {cur}
 				</button>
 			</form>
 		)
 	}
 	return (
-		<form method="post" action="/income/add" class="ln" style={{ gap: "6px" }}>
-			<Back s={s} />
-			<input type="hidden" name="source_id" value={x.id} />
-			<input class="in pr2" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
-			<button class="btn xs o">Add</button>
-		</form>
+		<button type="button" class="btn xs o hspan" data-tg>
+			Add
+		</button>
 	)
 })
+
 
 const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 	<form method="post" action="/income/source/delete" style={contents} data-confirm={`Delete ${x.name}? What it already paid stays in your balance.`}>
@@ -176,20 +150,36 @@ const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 
 const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const fixedSrc = isFixed(x.type)
-	const got = fixedSrc ? gotToday(s, x)[0] : undefined
+	const all = gotToday(s, x)
+	const got = fixedSrc ? all[0] : undefined
 	const cur = s.user.currency
-	const sub = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))} ${cur}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} ${cur} + ${fmt(rateOf(x))} / hour`) : ""
+	const exo = x.type === "exoclick"
+	const sub = exo ? exoSub(s, x) : fixedSrc ? (got ? `${fmt(srcAmount(x))} ${cur}${got.hours ? ` + ${got.hours}h` : ""}` : `${fmt(srcAmount(x))} ${cur} + ${fmt(rateOf(x))} / hour`) : ""
+	const manual = !fixedSrc && !exo && x.mode !== "auto" && !all.length
 	return (
-		<div class="sw" data-exo={x.type === "exoclick" ? "1" : undefined}>
-			<div class="rw">
-				<div>
+		<div class="sw dbw" data-exo={exo ? "1" : undefined}>
+			<div class="hr">
+				<div class="hn">
 					<div>{x.name}</div>
-					{sub ? <div class={x.type === "exoclick" && s.exo[x.id] ? "lb neg" : "lb"}>{sub}</div> : null}
+					{sub ? <div class={exo && s.exo[x.id] ? "lb neg" : "lb"}>{sub}</div> : null}
+					{exo && s.exo[x.id] ? (
+						<a class="lnk" href="/income">
+							Fix
+						</a>
+					) : null}
 				</div>
-				<span class="rt">
-					<SourceMain s={s} x={x} toggle={false} />
-				</span>
+				<HomeAct s={s} x={x} />
 			</div>
+			{manual ? (
+				<form method="post" action="/income/add" class="ad" data-addp hidden>
+					<Back s={s} />
+					<input type="hidden" name="source_id" value={x.id} />
+					<div class="ln">
+						<input class="in" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
+						<button class="btn xs">Add</button>
+					</div>
+				</form>
+			) : null}
 			{got ? <HoursPanel s={s} x={x} row={got} /> : null}
 		</div>
 	)

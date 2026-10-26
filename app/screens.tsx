@@ -5,6 +5,7 @@ import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
 import { HomeIncome, IncomeDesktop, IncomeExpand } from "./components/income.tsx"
 import { AppLayout, AuthLayout } from "./components/layout.tsx"
 import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
+import { PadBody, PadHome, type PadTab } from "./components/pad.tsx"
 import { BalanceCard, EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
 import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, view } from "./components/ui.tsx"
@@ -27,6 +28,7 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 				<BuysExpand s={s} />
 				<GoalsExpand s={s} open={false} storeKey="goals" manage={false} />
 				<OweMobile s={s} open={false} storeKey="owe" />
+				<PadHome />
 			</>
 		}
 		desktop={
@@ -41,6 +43,7 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 						<OweDesktop s={s} open={false} storeKey="owe" />
 						<IncomeDesktop s={s} bare />
 						<NoteCard s={s} />
+						<PadHome />
 					</div>
 				</div>
 			</>
@@ -199,7 +202,9 @@ export const NotesScreen = view<{ s: State }>(({ s }) => (
 	/>
 ))
 
-export const PadScreen = view<{ s: State }>(({ s }) => <AppLayout title="Pad" theme={s.user.theme} mobileTab="pad" desktopTab="pad" mobile={null} desktop={null} />)
+export const PadScreen = view<{ s: State; tab: PadTab }>(({ s, tab }) => (
+	<AppLayout title="Pad" theme={s.user.theme} mobileTab="pad" desktopTab="pad" mobile={<PadBody tab={tab} />} desktop={<PadBody tab={tab} />} />
+))
 
 export const ProfileScreen = view<{ s: State }>(({ s }) => (
 	<AppLayout title="Profile" theme={s.user.theme} mobileTab="profile" desktopTab="settings" mobile={<ProfileMobile s={s} />} desktop={<SettingsDesktop s={s} />} />

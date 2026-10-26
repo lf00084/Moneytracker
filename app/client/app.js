@@ -295,3 +295,182 @@
 		location.reload()
 	}, 30000)
 })()
+
+;(function () {
+	var d = document
+	var K = "mt:pad:v1"
+	var TABS = {
+		projects: { space: "project", entry: "note", head: "Projects", add: "New project", ph: "Write a note", empty: "No projects yet. Add your first one above.", noun: "notes" },
+		people: { space: "person", entry: "quote", head: "People", add: "Add a person", ph: "What did they say?", empty: "No one yet. Add a person, then what they said.", noun: "things said" },
+		books: { space: "book", entry: "lesson", head: "Books", add: "Book name", sub: "Author (optional)", ref: "Chapter or page (optional)", ph: "What did you learn?", empty: "No books yet. Add a book, then what you learned from it.", noun: "lessons" },
+		tips: { entry: "tip", flat: true, ph: "Something useful to remember", ref: "Where from (optional)", empty: "Nothing saved yet." },
+	}
+	var data = { spaces: [], entries: [] }
+	var load = function () {
+		try {
+			var v = JSON.parse(localStorage.getItem(K) || "null")
+			if (v && v.spaces && v.entries) data = v
+		} catch (e) {}
+	}
+	var save = function () {
+		try {
+			localStorage.setItem(K, JSON.stringify(data))
+		} catch (e) {}
+	}
+	var uid = function () {
+		return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+	}
+	var esc = function (s) {
+		return String(s).replace(/[&<>"']/g, function (c) {
+			return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+		})
+	}
+	var when = function (t) {
+		return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+	}
+	var spaceOf = function (id) {
+		return data.spaces.filter(function (s) {
+			return s.id === id
+		})[0]
+	}
+	var entriesOf = function (fn) {
+		return data.entries
+			.filter(fn)
+			.sort(function (a, b) {
+				return b.at - a.at
+			})
+	}
+	var entryHtml = function (e, label) {
+		return (
+			'<div class="pdn" data-id="' + e.id + '"><div class="pdt">' + esc(e.body) + "</div>" +
+			'<div class="pdm"><span class="lb">' + (label ? esc(label) + " · " : "") + (e.ref ? esc(e.ref) + " · " : "") + when(e.at) + "</span>" +
+			'<span class="pda"><button type="button" class="chip' + (e.home ? " on" : "") + '" data-pd="home">Home</button>' +
+			'<button type="button" class="chip" data-pd="edit">Edit</button>' +
+			'<button type="button" class="chip" data-pd="del">Delete</button></span></div></div>'
+		)
+	}
+	var composer = function (c, spaceId) {
+		return (
+			'<form class="pdf" data-pd="entry" data-space="' + (spaceId || "") + '">' +
+			'<textarea class="pdi" name="body" rows="3" placeholder="' + esc(c.ph) + '" required></textarea>' +
+			(c.ref ? '<input class="pdi" name="ref" placeholder="' + esc(c.ref) + '" autocomplete="off">' : "") +
+			'<button class="btn xs">Add</button></form>'
+		)
+	}
+	var tabHtml = function (key) {
+		var c = TABS[key]
+		var id = decodeURIComponent(location.hash.slice(1))
+		if (c.flat) return composer(c, "") + (entriesOf(function (e) { return e.kind === c.entry }).map(function (e) { return entryHtml(e, "") }).join("") || '<div class="lb pde">' + c.empty + "</div>")
+		var sp = id && spaceOf(id)
+		if (sp && sp.kind === c.space) {
+			var list = entriesOf(function (e) { return e.space === sp.id })
+			return (
+				'<div class="pdhd"><a class="chip" href="#" data-pd="back">‹ ' + c.head + "</a>" +
+				'<button type="button" class="chip" data-pd="delspace" data-id="' + sp.id + '">Delete</button></div>' +
+				'<h2 class="pdtt">' + esc(sp.title) + "</h2>" + (sp.sub ? '<div class="lb">' + esc(sp.sub) + "</div>" : "") +
+				composer(c, sp.id) +
+				(list.map(function (e) { return entryHtml(e, "") }).join("") || '<div class="lb pde">Nothing here yet.</div>')
+			)
+		}
+		var spaces = data.spaces
+			.filter(function (s) { return s.kind === c.space })
+			.sort(function (a, b) { return b.at - a.at })
+		return (
+			'<form class="pdf" data-pd="space"><input class="pdi" name="title" placeholder="' + esc(c.add) + '" autocomplete="off" required>' +
+			(c.sub ? '<input class="pdi" name="sub" placeholder="' + esc(c.sub) + '" autocomplete="off">' : "") +
+			'<button class="btn xs">Add</button></form>' +
+			(spaces.map(function (s) {
+				var n = data.entries.filter(function (e) { return e.space === s.id }).length
+				return '<a class="pdc" href="#' + encodeURIComponent(s.id) + '"><span><b>' + esc(s.title) + '</b><span class="lb">' + (s.sub ? esc(s.sub) + " · " : "") + n + " " + c.noun + '</span></span><span class="mu">›</span></a>'
+			}).join("") || '<div class="lb pde">' + c.empty + "</div>")
+		)
+	}
+	var homeHtml = function () {
+		var list = entriesOf(function (e) { return e.home }).slice(0, 6)
+		return (
+			'<div class="sh"><span>Pinned notes</span><span class="lb">' + list.length + "</span></div>" +
+			'<form class="pdf" data-pd="entry" data-space="" data-home="1"><input class="pdi" name="body" placeholder="Add a note to home" autocomplete="off" required><button class="btn xs">Add</button></form>' +
+			(list.map(function (e) {
+				var s = e.space && spaceOf(e.space)
+				return '<div class="pdn" data-id="' + e.id + '"><div class="pdt">' + esc(e.body) + '</div><div class="pdm"><span class="lb">' + (s ? esc(s.title) + " · " : "") + when(e.at) + '</span><span class="pda"><button type="button" class="chip" data-pd="home">Unpin</button></span></div></div>'
+			}).join("") || '<div class="lb pde">Pin any note with the Home button.</div>')
+		)
+	}
+	var paint = function () {
+		[].slice.call(d.querySelectorAll("[data-pad]")).forEach(function (r) {
+			var a = d.activeElement
+			if (a && r.contains(a) && a.value) return
+			r.innerHTML = tabHtml(r.getAttribute("data-pad"))
+		})
+		var h = d.activeElement
+		;[].slice.call(d.querySelectorAll("[data-pad-home]")).forEach(function (r) {
+			if (h && r.contains(h) && h.value) return
+			r.innerHTML = homeHtml()
+		})
+	}
+	var repaint = function () {
+		save()
+		;[].slice.call(d.querySelectorAll("[data-pad],[data-pad-home]")).forEach(function (r) {
+			r.innerHTML = r.hasAttribute("data-pad") ? tabHtml(r.getAttribute("data-pad")) : homeHtml()
+		})
+	}
+	d.addEventListener("submit", function (e) {
+		var f = e.target
+		var kind = f.getAttribute && f.getAttribute("data-pd")
+		if (kind !== "space" && kind !== "entry") return
+		e.preventDefault()
+		var root = f.closest("[data-pad]")
+		var tab = root && root.getAttribute("data-pad")
+		var c = tab && TABS[tab]
+		var v = function (n) {
+			var i = f.elements[n]
+			return i ? i.value.trim() : ""
+		}
+		var now = Date.now()
+		if (kind === "space" && c) {
+			if (!v("title")) return
+			data.spaces.push({ id: uid(), kind: c.space, title: v("title").slice(0, 120), sub: v("sub").slice(0, 120), at: now })
+		} else if (kind === "entry") {
+			if (!v("body")) return
+			var home = f.getAttribute("data-home") === "1"
+			data.entries.push({ id: uid(), space: f.getAttribute("data-space") || null, kind: c ? c.entry : "note", body: v("body").slice(0, 4000), ref: v("ref").slice(0, 120), home: home, at: now })
+		}
+		repaint()
+	})
+	d.addEventListener("click", function (e) {
+		var b = e.target.closest && e.target.closest("[data-pd]")
+		if (!b || b.tagName === "FORM") return
+		var act = b.getAttribute("data-pd")
+		var row = b.closest("[data-id]")
+		var id = row ? row.getAttribute("data-id") : b.getAttribute("data-id")
+		var en = id && data.entries.filter(function (x) { return x.id === id })[0]
+		if (act === "back") {
+			e.preventDefault()
+			history.pushState("", "", location.pathname)
+			return repaint()
+		}
+		if (act === "home" && en) en.home = !en.home
+		else if (act === "edit" && en) {
+			var t = prompt("Edit", en.body)
+			if (t === null || !t.trim()) return
+			en.body = t.trim().slice(0, 4000)
+		} else if (act === "del" && en) {
+			if (!confirm("Delete this?")) return
+			data.entries = data.entries.filter(function (x) { return x.id !== id })
+		} else if (act === "delspace" && id) {
+			if (!confirm("Delete this and everything inside it?")) return
+			data.spaces = data.spaces.filter(function (x) { return x.id !== id })
+			data.entries = data.entries.filter(function (x) { return x.space !== id })
+			history.pushState("", "", location.pathname)
+		} else return
+		repaint()
+	})
+	addEventListener("hashchange", paint)
+	addEventListener("storage", function (e) {
+		if (e.key !== K) return
+		load()
+		paint()
+	})
+	load()
+	paint()
+})()

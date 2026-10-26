@@ -3,9 +3,9 @@ const TZ = "Africa/Casablanca"
 const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" })
 const timeFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" })
 
-export const dayOf = (ms: number) => dayFmt.format(ms)
-export const today = () => dayOf(Date.now())
-export const hhmm = (ms: number) => timeFmt.format(ms)
+export const dayOf = (ms: number, h = 0) => dayFmt.format(ms - h * 3600000)
+export const today = (h = 0) => dayOf(Date.now(), h)
+export const hhmm = (ms: number, h = 0) => timeFmt.format(ms - h * 3600000)
 
 export function addDays(day: string, n: number) {
 	const d = new Date(`${day}T12:00:00Z`)
@@ -13,8 +13,7 @@ export function addDays(day: string, n: number) {
 	return d.toISOString().slice(0, 10)
 }
 
-export function dayLabel(day: string) {
-	const t = today()
+export function dayLabel(day: string, t = today()) {
 	if (day === t) return "Today"
 	if (day === addDays(t, -1)) return "Yesterday"
 	return new Date(`${day}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).replace(",", "")

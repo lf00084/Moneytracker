@@ -25,7 +25,10 @@ export default createController(routes.pages, {
 		profile: page("/profile", ["avatar", "balance"], (s) => <ProfileScreen s={s} />),
 		profileEdit: page("/profile/edit", ["avatar", "balance"], (s) => <ProfileEditScreen s={s} />),
 		settings: page("/settings", ["balance"], (s) => <SettingsScreen s={s} />),
-		pad: page("/pad", [], (s) => <PadScreen s={s} />),
+		pad: page("/pad", [], (s) => <PadScreen s={s} tab="projects" />),
+		padPeople: page("/pad/people", [], (s) => <PadScreen s={s} tab="people" />),
+		padBooks: page("/pad/books", [], (s) => <PadScreen s={s} tab="books" />),
+		padTips: page("/pad/tips", [], (s) => <PadScreen s={s} tab="tips" />),
 		trading: page("/trading", ["trading"], (s) => <TradingScreen s={s} />),
 
 		async exportCsv(ctx: Ctx) {

@@ -1,7 +1,7 @@
 import { db, incomes, incomeSources } from "../db/index.ts"
 import { toMinor } from "./money.ts"
 import { encryptSecret } from "./crypto.ts"
-import { today } from "./time.ts"
+import { todayFor } from "./users.ts"
 import { extKey, id, isFixed, parseJson, text } from "./util.ts"
 
 export async function addSource(uid: string, f: FormData): Promise<string | void> {
@@ -74,7 +74,7 @@ export async function setHours(uid: string, f: FormData): Promise<string | void>
 	let h = raw === "" ? 0 : Number(raw)
 	if (!Number.isFinite(h) || h < 0 || h > 24) return "Hours must be between 0 and 24"
 	h = Math.round(h * 100) / 100
-	const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, today()) } })
+	const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, await todayFor(uid)) } })
 	if (!row) return `Add ${s.name} first`
 	const meta = parseJson(row.meta)
 	const cfg = parseJson(s.config)
@@ -88,5 +88,5 @@ export async function addNamed(uid: string, f: FormData): Promise<string | void>
 	const amount = toMinor(f.get("amount"))
 	if (!amount) return "Enter an amount"
 	const label = text(f.get("label"), 60)
-	await db.create(incomes, { id: id(), user_id: uid, amount_minor: amount, day: today(), created_at: Date.now(), meta: JSON.stringify(label ? { manual: 1, label } : { manual: 1 }), ext_key: "" })
+	await db.create(incomes, { id: id(), user_id: uid, amount_minor: amount, day: await todayFor(uid), created_at: Date.now(), meta: JSON.stringify(label ? { manual: 1, label } : { manual: 1 }), ext_key: "" })
 }

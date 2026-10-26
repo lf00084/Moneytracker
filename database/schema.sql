@@ -207,3 +207,32 @@ CREATE TABLE IF NOT EXISTS trade_results (
   UNIQUE (session_id, game, idx)
 );
 CREATE INDEX IF NOT EXISTS trade_results_user_idx ON trade_results(user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS pad_spaces (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  sub           TEXT NOT NULL DEFAULT '',
+  sort          INTEGER NOT NULL DEFAULT 0,
+  archived_at   INTEGER,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pad_spaces_list_idx ON pad_spaces(user_id, kind, archived_at, sort);
+CREATE UNIQUE INDEX IF NOT EXISTS pad_spaces_title_uq ON pad_spaces(user_id, kind, lower(title));
+
+CREATE TABLE IF NOT EXISTS pad_entries (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  space_id      TEXT REFERENCES pad_spaces(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL,
+  body          TEXT NOT NULL,
+  ref           TEXT NOT NULL DEFAULT '',
+  on_home       INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pad_entries_space_idx ON pad_entries(space_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS pad_entries_kind_idx ON pad_entries(user_id, kind, created_at DESC);
+CREATE INDEX IF NOT EXISTS pad_entries_home_idx ON pad_entries(user_id, created_at DESC) WHERE on_home = 1;

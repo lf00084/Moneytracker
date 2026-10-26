@@ -1,5 +1,6 @@
 import { db, oauthAccounts, passwords, userImages, users } from "../db/index.ts"
 import { fakeVerify, hashPassword, verifyPassword } from "./crypto.ts"
+import { today } from "./time.ts"
 import { id } from "./util.ts"
 
 export type User = {
@@ -9,6 +10,7 @@ export type User = {
 	currency: string
 	theme: string
 	run_at: string
+	day_start: number
 	week_start: string
 	usd_rate_minor: number
 	usdt_rate: number
@@ -22,6 +24,7 @@ const toUser = (r: any): User => ({
 	currency: r.currency || "MAD",
 	theme: r.theme || "dark",
 	run_at: r.run_at || "06:00",
+	day_start: Number.isInteger(r.day_start) && r.day_start >= 0 && r.day_start <= 23 ? r.day_start : 17,
 	week_start: r.week_start || "Monday",
 	usd_rate_minor: r.usd_rate_minor || 1000,
 	usdt_rate: Number(r.usdt_rate_minor) > 0 ? Number(r.usdt_rate_minor) : 1100,
@@ -40,6 +43,7 @@ const newUserRow = (id: string, email: string, name: string, verified: number, n
 	currency: "MAD",
 	theme: "dark",
 	run_at: "06:00",
+	day_start: 17,
 	week_start: "Monday",
 	usdt_rate_minor: 1100,
 	created_at: now,
@@ -147,12 +151,13 @@ export async function updateProfile(userId: string, input: { name: string; email
 	return null
 }
 
-export async function updatePrefs(userId: string, input: { currency: string; run_at: string; week_start: string; usdt_rate_minor: number; usd_rate_minor: number }) {
+export async function updatePrefs(userId: string, input: { currency: string; run_at: string; day_start: number; week_start: string; usdt_rate_minor: number; usd_rate_minor: number }) {
 	const runAt = input.run_at.trim()
 	await db.update(users, userId, {
 		currency: input.currency.trim().toUpperCase().slice(0, 8) || "MAD",
 		run_at: /^([01]?\d|2[0-3]):[0-5]\d$/.test(runAt) ? runAt.padStart(5, "0") : "06:00",
 		week_start: input.week_start.trim().slice(0, 16) || "Monday",
+		...(Number.isInteger(input.day_start) && input.day_start >= 0 && input.day_start <= 23 ? { day_start: input.day_start } : {}),
 		...(input.usd_rate_minor > 0 && input.usd_rate_minor <= 100000000 ? { usd_rate_minor: input.usd_rate_minor } : {}),
 		...(input.usdt_rate_minor > 0 && input.usdt_rate_minor <= 100000000 ? { usdt_rate_minor: input.usdt_rate_minor } : {}),
 		updated_at: Date.now(),
@@ -162,4 +167,9 @@ export async function updatePrefs(userId: string, input: { currency: string; run
 export async function setTheme(userId: string, theme: string) {
 	if (theme !== "dark" && theme !== "light") return
 	await db.update(users, userId, { theme, updated_at: Date.now() })
+}
+
+export async function todayFor(userId: string) {
+	const row = await db.find(users, userId)
+	return today(row ? toUser(row).day_start : 17)
 }

@@ -1,6 +1,7 @@
 import { sql } from "remix/data-table"
 import { db, incomes, purchases, tradeResults, tradeSessions } from "../db/index.ts"
 import { today } from "./time.ts"
+import { todayFor } from "./users.ts"
 import {
 	allDone,
 	backUsdt,
@@ -78,7 +79,7 @@ export async function startTrade(user: User): Promise<string | void> {
 	const cost = toMad(DEPOSIT, user.usdt_rate)
 	if (!cost) return "Set the USDT price in Settings first"
 	const now = Date.now()
-	const day = today()
+	const day = today(user.day_start)
 	const sessionId = id()
 	const purchaseId = id()
 	await db.transaction(async (tx) => {
@@ -113,6 +114,7 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 	const back = backUsdt(s.deposit_minor, pnl)
 	const mad = toMad(back, s.rate_minor)
 	const now = Date.now()
+	const t = await todayFor(uid)
 	const incomeId = mad > 0 ? id() : ""
 	await db.transaction(async (tx) => {
 		if (mad > 0) {
@@ -120,7 +122,7 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 				id: incomeId,
 				user_id: uid,
 				amount_minor: mad,
-				day: today(),
+				day: t,
 				created_at: now,
 				meta: JSON.stringify({ trade: 1, name: "Trading", usdt_minor: back }),
 				ext_key: `trade:${s.id}`,

@@ -2,7 +2,7 @@ import { sql } from "remix/data-table"
 import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases } from "../db/index.ts"
 import { balanceOf } from "./data.ts"
 import { fmt, toMinor, toSigned } from "./money.ts"
-import { today } from "./time.ts"
+import { todayFor } from "./users.ts"
 import { extKey, id, isFixed, parseJson, text } from "./util.ts"
 
 type Result = Promise<string | void>
@@ -17,9 +17,9 @@ const realDay = (v: string) => {
 	return /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === v
 }
 
-const pickDay = (f: FormData) => {
-	const d = text(f.get("day"), 10) || today()
-	return realDay(d) && d <= today() ? d : null
+const pickDay = (f: FormData, t: string) => {
+	const d = text(f.get("day"), 10) || t
+	return realDay(d) && d <= t ? d : null
 }
 
 const own = (f: FormData, key = "id", max = 36) => text(f.get(key), max)
@@ -27,7 +27,7 @@ const own = (f: FormData, key = "id", max = 36) => text(f.get(key), max)
 export async function addBuy(uid: string, f: FormData): Result {
 	const unit = toMinor(f.get("price"))
 	if (!unit) return "Enter a price"
-	const day = pickDay(f)
+	const day = pickDay(f, await todayFor(uid))
 	if (!day) return "Pick a day that is not in the future"
 	const qty = count(f.get("qty")) || 1
 	await db.create(purchases, { id: id(), user_id: uid, name: text(f.get("label"), 120) || "Item", qty, unit_minor: unit, total_minor: unit * qty, day, created_at: Date.now() })
@@ -36,7 +36,7 @@ export async function addBuy(uid: string, f: FormData): Result {
 export async function addDayIncome(uid: string, f: FormData): Result {
 	const amount = toMinor(f.get("amount"))
 	if (!amount) return "Enter an amount"
-	const day = pickDay(f)
+	const day = pickDay(f, await todayFor(uid))
 	if (!day) return "Pick a day that is not in the future"
 	const label = text(f.get("label"), 60)
 	await db.create(incomes, { id: id(), user_id: uid, amount_minor: amount, day, created_at: Date.now(), meta: JSON.stringify(label ? { manual: 1, label } : { manual: 1 }), ext_key: "" })
@@ -48,8 +48,9 @@ export async function setBalance(uid: string, f: FormData): Result {
 	const diff = target - (await balanceOf(uid))
 	if (!diff) return
 	const now = Date.now()
-	if (diff > 0) await db.create(incomes, { id: id(), user_id: uid, amount_minor: diff, day: today(), created_at: now, meta: '{"adjust":1}', ext_key: "" })
-	else await db.create(purchases, { id: id(), user_id: uid, name: "Balance adjustment", qty: 1, unit_minor: -diff, total_minor: -diff, day: today(), created_at: now })
+	const t = await todayFor(uid)
+	if (diff > 0) await db.create(incomes, { id: id(), user_id: uid, amount_minor: diff, day: t, created_at: now, meta: '{"adjust":1}', ext_key: "" })
+	else await db.create(purchases, { id: id(), user_id: uid, name: "Balance adjustment", qty: 1, unit_minor: -diff, total_minor: -diff, day: t, created_at: now })
 }
 
 export async function deleteBuy(uid: string, f: FormData): Result {
@@ -127,8 +128,9 @@ export async function payDebt(uid: string, f: FormData): Result {
 	const person = await db.find(people, d.person_id)
 	const purchaseId = id()
 	const now = Date.now()
+	const t = await todayFor(uid)
 	await db.transaction(async (tx) => {
-		await tx.create(purchases, { id: purchaseId, user_id: uid, name: `Paid ${person?.name ?? ""}`.trim(), qty: 1, unit_minor: pay, total_minor: pay, day: today(), debt_id: d.id, created_at: now })
+		await tx.create(purchases, { id: purchaseId, user_id: uid, name: `Paid ${person?.name ?? ""}`.trim(), qty: 1, unit_minor: pay, total_minor: pay, day: t, debt_id: d.id, created_at: now })
 		await tx.create(debtPayments, { id: id(), debt_id: d.id, user_id: uid, amount_minor: pay, purchase_id: purchaseId, created_at: now })
 		await tx.update(debts, d.id, { amount_minor: d.amount_minor - pay, updated_at: now, last_delta: -pay })
 	})
@@ -177,10 +179,11 @@ export async function deleteWish(uid: string, f: FormData) {
 export async function buyWish(uid: string, f: FormData): Result {
 	const it = await db.findOne(goalItems, { where: { id: own(f), user_id: uid } })
 	if (!it || it.done_at) return
+	const t = await todayFor(uid)
 	const bal = await balanceOf(uid)
 	if (it.price_minor > bal) return `Not enough balance for ${it.name}. You have ${fmt(Math.max(0, bal))}`
 	await db.transaction(async (tx) => {
-		await tx.create(purchases, { id: id(), user_id: uid, name: it.name, qty: 1, unit_minor: it.price_minor, total_minor: it.price_minor, day: today(), created_at: Date.now() })
+		await tx.create(purchases, { id: id(), user_id: uid, name: it.name, qty: 1, unit_minor: it.price_minor, total_minor: it.price_minor, day: t, created_at: Date.now() })
 		await tx.update(goalItems, it.id, { done_at: Date.now() })
 	})
 }
@@ -189,7 +192,7 @@ export async function addIncome(uid: string, f: FormData): Result {
 	const s = await db.findOne(incomeSources, { where: { id: own(f, "source_id"), user_id: uid } })
 	if (!s) return "Unknown source"
 	if (s.type === "exoclick") return "ExoClick income is added automatically"
-	const day = today()
+	const day = await todayFor(uid)
 	const key = extKey(s.id, day)
 	if (await db.findOne(incomes, { where: { user_id: uid, ext_key: key } })) return `${s.name} is already added today`
 	let amount = 0

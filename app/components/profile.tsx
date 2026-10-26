@@ -65,6 +65,16 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 		<Field label="Currency" value={s.user.currency} name="currency" />
 		<Field label={`1 USDT costs (${s.user.currency})`} value={plain(s.user.usdt_rate)} name="usdt" />
 		<Field label="Auto income runs at" value={s.user.run_at} name="run_at" />
+		<div class="fl">
+			<label>Day resets at</label>
+			<select class="in" name="day_start" style={{ width: "100%" }}>
+				{Array.from({ length: 24 }, (_, h) => (
+					<option key={h} value={String(h)} selected={h === s.user.day_start ? true : undefined}>
+						{String(h).padStart(2, "0")}:00
+					</option>
+				))}
+			</select>
+		</div>
 		<Field label="1 USD in MAD (ExoClick)" value={plain(s.user.usd_rate_minor)} name="usd_rate" />
 		<Field label="Week starts" value={s.user.week_start} name="week" />
 		<button class="btn" style={{ marginTop: "14px" }}>

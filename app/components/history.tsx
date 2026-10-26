@@ -18,7 +18,7 @@ const DayItems = view<{ s: State; d: DayRow }>(({ s, d }) => (
 ))
 
 const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
-	const t = today()
+	const t = today(s.user.day_start)
 	const body = (
 		<>
 			<form method="post" action="/buy">

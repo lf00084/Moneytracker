@@ -100,7 +100,7 @@ async function loadDebts(uid: string): Promise<DebtView[]> {
 export async function loadState(user: User, parts: Part[], extra: { back: string; error?: string }): Promise<State> {
 	const need = new Set(parts)
 	const uid = user.id
-	const t = today()
+	const t = today(user.day_start)
 	const s: State = {
 		user,
 		back: extra.back,
@@ -235,7 +235,7 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 					const inc = is.filter((x) => x.day === day && parseJson(x.meta).final !== 0)
 					return {
 						day,
-						label: dayLabel(day),
+						label: dayLabel(day, t),
 						earned: inc.reduce((a, x) => a + x.amount_minor, 0),
 						bought: b.reduce((a, x) => a + x.total_minor, 0),
 						buys: b.map(toBuy),

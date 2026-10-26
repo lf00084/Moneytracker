@@ -12,6 +12,7 @@ export const users = table({
 		phone: c.varchar(64),
 		bio: c.varchar(500),
 		run_at: c.varchar(8),
+		day_start: c.integer(),
 		week_start: c.varchar(16),
 		bg_mode: c.varchar(8),
 		bg_url: c.varchar(2048),

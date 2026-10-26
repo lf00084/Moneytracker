@@ -2,10 +2,13 @@ import { BuysDesktop, BuysExpand, Hero, TodayCards } from "./components/buys.tsx
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
+import { HomeBalance, HomeToday } from "./components/home.tsx"
 import { HomeIncome, IncomeDesktop, IncomeExpand } from "./components/income.tsx"
 import { AppLayout, AuthLayout } from "./components/layout.tsx"
 import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
-import { PadBody, PadHome, type PadTab } from "./components/pad.tsx"
+import { PadBody, PadComposer, type PadTab } from "./components/pad.tsx"
+import type { PadData } from "./lib/padmeta.ts"
+import type { User } from "./lib/users.ts"
 import { BalanceCard, EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
 import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, view } from "./components/ui.tsx"
@@ -20,16 +23,15 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 		mobileTab="home"
 		desktopTab="home"
 		mobile={
-			<>
+			<div class="hm hm-f">
 				<ErrorBanner s={s} />
-				<BalanceCard s={s} />
-				<TodayCards s={s} />
+				<HomeBalance s={s} />
+				<HomeToday s={s} />
 				<HomeIncome s={s} />
 				<BuysExpand s={s} />
 				<GoalsExpand s={s} open={false} storeKey="goals" manage={false} />
 				<OweMobile s={s} open={false} storeKey="owe" />
-				<PadHome />
-			</>
+			</div>
 		}
 		desktop={
 			<>
@@ -43,7 +45,6 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 						<OweDesktop s={s} open={false} storeKey="owe" />
 						<IncomeDesktop s={s} bare />
 						<NoteCard s={s} />
-						<PadHome />
 					</div>
 				</div>
 			</>
@@ -202,8 +203,21 @@ export const NotesScreen = view<{ s: State }>(({ s }) => (
 	/>
 ))
 
-export const PadScreen = view<{ s: State; tab: PadTab }>(({ s, tab }) => (
-	<AppLayout title="Pad" theme={s.user.theme} mobileTab="pad" desktopTab="pad" mobile={<PadBody tab={tab} />} desktop={<PadBody tab={tab} />} />
+export const PadScreen = view<{ u: User; d: PadData; tab: PadTab; f: string; error: string }>(({ u, d, tab, f, error }) => (
+	<AppLayout
+		title="Pad"
+		theme={u.theme}
+		mobileTab="pad"
+		desktopTab="pad"
+		mobile={<PadBody d={d} tab={tab} f={f} error={error} />}
+		dock={<PadComposer d={d} tab={tab} f={f} />}
+		desktop={
+			<div class="chat">
+				<PadBody d={d} tab={tab} f={f} error={error} />
+				<PadComposer d={d} tab={tab} f={f} />
+			</div>
+		}
+	/>
 ))
 
 export const ProfileScreen = view<{ s: State }>(({ s }) => (

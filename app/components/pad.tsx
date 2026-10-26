@@ -1,12 +1,19 @@
+import { COLORS, type Entry, type PadData } from "../lib/padmeta.ts"
+import { timeAgo } from "../lib/time.ts"
 import { Icon, view } from "./ui.tsx"
 
 export type PadTab = "projects" | "said" | "home" | "new"
+
+type Props = { d: PadData; tab: PadTab; f: string }
 
 const SEG = [
 	{ key: "projects", label: "Projects", href: "/pad" },
 	{ key: "said", label: "Said", href: "/pad/said" },
 	{ key: "home", label: "Home", href: "/pad/home" },
 ]
+
+export const padBack = (d: PadData, tab: PadTab, f: string) =>
+	tab === "said" ? `/pad/said${f ? `?f=${f}` : ""}` : tab === "home" ? "/pad/home" : d.space ? `/pad?p=${d.space.id}${f ? `&f=${f}` : ""}` : "/pad"
 
 const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	<div class="nt-seg">
@@ -18,207 +25,290 @@ const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	</div>
 ))
 
-const Filters = view<{ items: string[] }>(({ items }) => (
+const Filters = view<{ base: string; f: string; items: [string, string][] }>(({ base, f, items }) => (
 	<div class="nt-fl">
-		{items.map((x, i) => (
-			<span key={x} class={i === 0 ? "on" : ""}>
-				{x}
-			</span>
+		{items.map(([label, key]) => (
+			<a key={key} href={key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base} class={f === key ? "on" : ""}>
+				{label}
+			</a>
 		))}
 	</div>
 ))
 
-const Item = view<{ kind: "task" | "note" | "done"; text: string; meta?: string }>(({ kind, text, meta }) => (
-	<div class={kind === "done" ? "nt-it dn" : kind === "note" ? "nt-it nt" : "nt-it"}>
-		{kind === "note" ? null : (
-			<span class={kind === "done" ? "nt-ck d" : "nt-ck"}>{kind === "done" ? <Icon name="check" /> : null}</span>
-		)}
-		<div>
-			<p>{text}</p>
-			{meta ? <div class="nt-m">{meta}</div> : null}
-		</div>
+const Bar = view<{ pct: number }>(({ pct }) => (
+	<div class="nt-bar2">
+		<i style={{ width: `${pct}%` }}></i>
 	</div>
 ))
 
-const Quote = view<{ text: string; name: string; src: string; tag: string; to: string }>(({ text, name, src, tag, to }) => (
-	<div class="nt-q">
-		<p>{text}</p>
-		<div class="nt-who">
-			<span class="nt-av">{name[0]}</span>
-			<div>
-				<b>{name}</b>
-				<span class="nt-m">{src}</span>
-			</div>
-			<span class="nt-tag t">{tag}</span>
-		</div>
-		<div class="nt-m" style={{ marginTop: "8px" }}>
-			→ {to}
-		</div>
-	</div>
-))
-
-const Projects = view(() => (
+const Hid = view<{ id: string; back: string }>(({ id, back }) => (
 	<>
-		<div class="nt-pj">
-			<span class="nt-pc on">
-				Moneytracker <small>4</small>
-			</span>
-			<span class="nt-pc">
-				Video site <small>7</small>
-			</span>
-			<span class="nt-pc">
-				Library <small>2</small>
-			</span>
-			<a class="nt-pc" href="/pad/new">
-				+ New
-			</a>
-		</div>
-		<div class="nt-c nt-ph">
-			<div class="nt-spread">
-				<b>Moneytracker</b>
-				<span class="nt-m">4 open · 8 done</span>
-			</div>
-			<div class="nt-bar2">
-				<i></i>
-			</div>
-		</div>
-		<Filters items={["All", "Tasks", "Notes"]} />
-		<div class="nt-c nt-list">
-			<Item kind="task" text="Collapse extra hours with arrow on the right" meta="today" />
-			<Item kind="note" text="Balance stays in the normal flow, no floating." meta="note · 2h ago" />
-			<Item kind="task" text="Custom source: tap Add to show the input" meta="today" />
-			<Item kind="task" text="Deploy to Cloudflare preview" meta="Fri" />
-			<Item kind="note" text="Phase 2: real DB after fake data is good." meta="note · yesterday" />
-			<Item kind="done" text="Bottom bar without radius" />
-			<Item kind="done" text="Revert icon in a fixed right slot" />
-		</div>
+		<input type="hidden" name="id" value={id} />
+		<input type="hidden" name="back" value={back} />
 	</>
 ))
 
-const Said = view(() => (
-	<>
-		<Filters items={["All", "Tips", "Info"]} />
-		<div class="nt-c nt-list">
-			<Quote text="Save a part of every earning before you spend anything." name="Youssef" src="said in person · 2 days ago" tag="Tip" to="Moneytracker" />
-			<Quote text="Check the payout threshold before expecting your first payment." name="Reda" src="WhatsApp · last week" tag="Info" to="Moneytracker" />
-			<Quote text="Always test on a preview link before the real deploy." name="Imane" src="call · 3 weeks ago" tag="Tip" to="Library" />
-			<Quote text="Keep thumbnails small, the grid loads much faster." name="Salma" src="WhatsApp · 1 month ago" tag="Tip" to="Video site" />
-		</div>
-	</>
-))
-
-const HomeTasks = view(() => (
-	<>
-		<div class="nt-c nt-ph">
-			<div class="nt-spread">
-				<b>Home</b>
-				<span class="nt-m">3 of 7 done</span>
+const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
+	const note = e.kind === "note"
+	const done = e.kind === "done"
+	return (
+		<div class={done ? "nt-it dn" : note ? "nt-it nt" : "nt-it"}>
+			{note ? null : (
+				<form method="post" action="/pad/toggle" class="nt-f">
+					<Hid id={e.id} back={back} />
+					<button class={done ? "nt-ck d" : "nt-ck"} aria-label={done ? "Mark as open" : "Mark as done"}>
+						{done ? <Icon name="check" /> : null}
+					</button>
+				</form>
+			)}
+			<div class="nt-b">
+				<p>{e.body}</p>
+				{note ? <div class="nt-m">{`note · ${timeAgo(e.at)}`}</div> : null}
 			</div>
-			<div class="nt-bar2">
-				<i style={{ width: "43%" }}></i>
-			</div>
+			<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
+				<Hid id={e.id} back={back} />
+				<button class="nt-x" aria-label="Delete">
+					<Icon name="plus" />
+				</button>
+			</form>
 		</div>
-		<div class="nt-gl">Today</div>
-		<div class="nt-c nt-list">
-			<Item kind="done" text="Buy bread and milk" />
-			<Item kind="done" text="Wash the dishes" meta="daily" />
-			<Item kind="task" text="Call the plumber about the tap" meta="today" />
-			<Item kind="task" text="Pay the electricity bill" meta="Fri" />
-		</div>
-		<div class="nt-gl">This week</div>
-		<div class="nt-c nt-list">
-			<Item kind="task" text="Clean the room" meta="weekly · Sat" />
-			<Item kind="task" text="Laundry" meta="weekly · Sun" />
-			<Item kind="task" text="Fix the shelf" />
-		</div>
-	</>
-))
+	)
+})
 
-const Opt = view<{ on?: boolean; title: string; sub: string; rows: ("o" | "x")[] }>(({ on, title, sub, rows }) => (
-	<div class={on ? "nt-op on" : "nt-op"}>
-		<span class="nt-pv">
-			{rows.map((r, i) => (
-				<div key={i} class="nt-pr2">
-					{r === "o" ? <u></u> : null}
-					<i></i>
+const Empty = view<{ children?: unknown }>(({ children }) => <div class="nt-m nt-em">{children as never}</div>)
+
+const Projects = view<Props>(({ d, f }) => {
+	const sp = d.space
+	if (!sp) {
+		return (
+			<div class="nt-c nt-ph">
+				<b>No projects yet</b>
+				<div class="nt-m" style={{ margin: "4px 0 10px" }}>
+					Make one for each thing you work on.
 				</div>
-			))}
-		</span>
-		<div>
-			<b>{title}</b>
-			<span class="d">{sub}</span>
-		</div>
-		<span class="nt-rd"></span>
-	</div>
-))
-
-const Sheet = view(() => (
-	<>
-		<a class="nt-ov" href="/pad" aria-label="Close"></a>
-		<div class="nt-sht">
-			<span class="nt-gr"></span>
-			<div class="nt-shh">
-				<b>New project</b>
-				<a class="nt-m" href="/pad">
-					Cancel
+				<a class="nt-go" href="/pad/new">
+					New project
 				</a>
 			</div>
-			<div class="nt-fi">
-				<span class="nt-m">Name</span>
-				<b>Library website</b>
+		)
+	}
+	const all = d.entries.filter((e) => e.space === sp.id && e.kind !== "said")
+	const open = all.filter((e) => e.kind === "task").length
+	const done = all.filter((e) => e.kind === "done").length
+	const list = all.filter((e) => (f === "tasks" ? e.kind !== "note" : f === "notes" ? e.kind === "note" : true))
+	const back = padBack(d, "projects", f)
+	return (
+		<>
+			<div class="nt-pj">
+				{d.spaces.map((x) => (
+					<a key={x.id} class={x.id === sp.id ? "nt-pc on" : "nt-pc"} href={`/pad?p=${x.id}`}>
+						<i class="nt-dot" style={{ background: x.color }}></i>
+						{x.title} <small>{d.entries.filter((e) => e.space === x.id && e.kind === "task").length}</small>
+					</a>
+				))}
+				<a class="nt-pc" href="/pad/new">
+					+ New
+				</a>
 			</div>
-			<div class="nt-cl">
-				<i style={{ background: "#2f6f78" }}></i>
-				<i style={{ background: "#6a4fd1" }}></i>
-				<i class="on" style={{ background: "#8a5a00" }}></i>
-				<i style={{ background: "#b4435a" }}></i>
-				<i style={{ background: "#3b6fd1" }}></i>
-				<i style={{ background: "#4b5563" }}></i>
+			<div class="nt-c nt-ph">
+				<div class="nt-spread">
+					<b>{sp.title}</b>
+					<span class="nt-m">{`${open} open · ${done} done`}</span>
+				</div>
+				{sp.bar && sp.type !== "notes" ? <Bar pct={open + done ? Math.round((done / (open + done)) * 100) : 0} /> : null}
 			</div>
-			<div class="nt-m">What is it for?</div>
-			<Opt on title="Mixed" sub="Notes and tasks together in one list" rows={["o", "x"]} />
-			<Opt title="Notes only" sub="Just writing, no checkboxes" rows={["x", "x"]} />
-			<Opt title="Tasks only" sub="A clean checklist with progress, like Home" rows={["o", "o"]} />
-			<div class="nt-tr2">
-				<span>Show its tasks in Now</span>
-				<span class="nt-tgl"></span>
-			</div>
-			<div class="nt-tr2">
-				<span>Progress bar</span>
-				<span class="nt-tgl"></span>
-			</div>
-			<a class="nt-go" href="/pad">
-				Create project
-			</a>
-			<div class="nt-m" style={{ textAlign: "center" }}>
-				You can change the type later
-			</div>
-		</div>
-	</>
-))
+			{sp.type === "mix" ? <Filters base={`/pad?p=${sp.id}`} f={f} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]} /> : null}
+			<div class="nt-c nt-list">{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
+			<form method="post" action="/pad/space/delete" class="nt-del" data-confirm={`Delete ${sp.title} and everything in it?`}>
+				<Hid id={sp.id} back="/pad" />
+				<button type="submit">Delete this project</button>
+			</form>
+		</>
+	)
+})
 
-export const PadBody = view<{ tab: PadTab }>(({ tab }) => (
+const Said = view<Props>(({ d, f }) => {
+	const all = d.entries.filter((e) => e.kind === "said")
+	const list = all.filter((e) => !f || e.tag.toLowerCase() === f)
+	const back = padBack(d, "said", f)
+	const title = (id: string) => d.spaces.find((x) => x.id === id)?.title
+	return (
+		<>
+			<Filters base="/pad/said" f={f} items={[["All", ""], ["Tips", "tip"], ["Info", "info"]]} />
+			<div class="nt-c nt-list">
+				{list.length ? (
+					list.map((e) => (
+						<div key={e.id} class="nt-q">
+							<p>{e.body}</p>
+							<div class="nt-who">
+								<span class="nt-av">{(e.who[0] ?? "?").toUpperCase()}</span>
+								<div>
+									<b>{e.who}</b>
+									<span class="nt-m">{timeAgo(e.at)}</span>
+								</div>
+								<span class="nt-tag t">{e.tag}</span>
+								<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
+									<Hid id={e.id} back={back} />
+									<button class="nt-x" aria-label="Delete">
+										<Icon name="plus" />
+									</button>
+								</form>
+							</div>
+							{title(e.space) ? <div class="nt-m" style={{ marginTop: "8px" }}>{`→ ${title(e.space)}`}</div> : null}
+						</div>
+					))
+				) : (
+					<Empty>Nothing yet. Write what someone told you below.</Empty>
+				)}
+			</div>
+		</>
+	)
+})
+
+const HomeTasks = view<Props>(({ d }) => {
+	const all = d.entries.filter((e) => !e.space && (e.kind === "task" || e.kind === "done"))
+	const done = all.filter((e) => e.kind === "done").length
+	const back = padBack(d, "home", "")
+	const group = (label: string, rows: Entry[]) =>
+		rows.length ? (
+			<>
+				<div class="nt-gl">{label}</div>
+				<div class="nt-c nt-list">{rows.map((e) => <Row key={e.id} e={e} back={back} />)}</div>
+			</>
+		) : null
+	return (
+		<>
+			<div class="nt-c nt-ph">
+				<div class="nt-spread">
+					<b>Home</b>
+					<span class="nt-m">{`${done} of ${all.length} done`}</span>
+				</div>
+				<Bar pct={all.length ? Math.round((done / all.length) * 100) : 0} />
+			</div>
+			{group("Today", all.filter((e) => e.today))}
+			{group("Later", all.filter((e) => !e.today))}
+			{all.length ? null : <Empty>No home tasks yet. Add one below.</Empty>}
+		</>
+	)
+})
+
+const TYPE_OPTS = [
+	{ key: "mix", title: "Mixed", sub: "Notes and tasks together in one list", rows: ["o", "x"] },
+	{ key: "notes", title: "Notes only", sub: "Just writing, no checkboxes", rows: ["x", "x"] },
+	{ key: "tasks", title: "Tasks only", sub: "A clean checklist with progress, like Home", rows: ["o", "o"] },
+]
+
+const Sheet = view(() => {
+	const nid = crypto.randomUUID()
+	return (
+		<>
+			<a class="nt-ov" href="/pad" aria-label="Close"></a>
+			<form class="nt-sht" method="post" action="/pad/space">
+				<input type="hidden" name="nid" value={nid} />
+				<input type="hidden" name="back" value={`/pad?p=${nid}`} />
+				<span class="nt-gr"></span>
+				<div class="nt-shh">
+					<b>New project</b>
+					<a class="nt-m" href="/pad">
+						Cancel
+					</a>
+				</div>
+				<label class="nt-fi">
+					<span class="nt-m">Name</span>
+					<input name="title" placeholder="Library website" maxlength="60" autocomplete="off" required />
+				</label>
+				<div class="nt-cl">
+					{COLORS.map((c, i) => (
+						<label key={c}>
+							<input type="radio" name="color" value={c} checked={i === 0 ? true : undefined} />
+							<i style={{ background: c }}></i>
+						</label>
+					))}
+				</div>
+				<div class="nt-m">What is it for?</div>
+				{TYPE_OPTS.map((o, i) => (
+					<label key={o.key} class="nt-op">
+						<input type="radio" name="type" value={o.key} checked={i === 0 ? true : undefined} />
+						<span class="nt-pv">
+							{o.rows.map((r, j) => (
+								<div key={j} class="nt-pr2">
+									{r === "o" ? <u></u> : null}
+									<i></i>
+								</div>
+							))}
+						</span>
+						<div>
+							<b>{o.title}</b>
+							<span class="d">{o.sub}</span>
+						</div>
+						<span class="nt-rd"></span>
+					</label>
+				))}
+				<label class="nt-tr2">
+					<span>Progress bar</span>
+					<input type="checkbox" name="bar" value="1" checked class="nt-tgl" />
+				</label>
+				<button class="nt-go">Create project</button>
+				<div class="nt-m" style={{ textAlign: "center" }}>
+					You can delete it any time
+				</div>
+			</form>
+		</>
+	)
+})
+
+export const PadBody = view<Props & { error?: string }>(({ d, tab, f, error }) => (
 	<div class="nt-page">
 		<Seg tab={tab} />
-		{tab === "said" ? <Said /> : tab === "home" ? <HomeTasks /> : <Projects />}
+		{error ? (
+			<div class="neg" role="alert" style={{ fontSize: "13px" }}>
+				{error}
+			</div>
+		) : null}
+		{tab === "said" ? <Said d={d} tab={tab} f={f} /> : tab === "home" ? <HomeTasks d={d} tab={tab} f={f} /> : <Projects d={d} tab={tab} f={f} />}
 		{tab === "new" ? <Sheet /> : null}
 	</div>
 ))
 
-export const PadComposer = view<{ tab: PadTab }>(({ tab }) => (
-	<div class="nt-cmp">
-		<div class="nt-c nt-cin">
-			<input placeholder={tab === "said" ? "Add what someone said…" : tab === "home" ? "Add a home task…" : "Write a note or task…"} aria-label="Add" />
-			{tab === "said" ? <span class="nt-tag">Tip</span> : null}
-			{tab === "projects" || tab === "new" ? (
-				<div class="nt-tg2">
-					<span class="on">Task</span>
-					<span>Note</span>
-				</div>
-			) : null}
-			<button type="button" class="nt-sd" aria-label="Add">
-				<Icon name="send" />
-			</button>
-		</div>
+const Mode = view<{ opts: [string, string][] }>(({ opts }) => (
+	<div class="nt-tg2">
+		{opts.map(([k, label], i) => (
+			<label key={k}>
+				<input type="radio" name="mode" value={k} checked={i === 0 ? true : undefined} />
+				<span>{label}</span>
+			</label>
+		))}
 	</div>
 ))
+
+export const PadComposer = view<Props>(({ d, tab, f }) => {
+	if ((tab === "projects" || tab === "new") && !d.space) return null
+	const said = tab === "said"
+	const home = tab === "home"
+	const type = d.space?.type
+	return (
+		<form class="nt-cmp" method="post" action="/pad/add">
+			<input type="hidden" name="tab" value={said ? "said" : home ? "home" : "projects"} />
+			<input type="hidden" name="back" value={padBack(d, tab, f)} />
+			{said || home ? null : <input type="hidden" name="space" value={d.space!.id} />}
+			<div class="nt-c nt-cin">
+				{said ? <input class="nt-who-i" name="who" placeholder="Who" maxlength="40" autocomplete="off" /> : null}
+				<input name="body" placeholder={said ? "What did they say…" : home ? "Add a home task…" : type === "notes" ? "Write a note…" : "Write a note or task…"} aria-label="Add" autocomplete="off" required />
+				{said ? <Mode opts={[["tip", "Tip"], ["info", "Info"]]} /> : home ? <Mode opts={[["today", "Today"], ["later", "Later"]]} /> : type === "mix" ? <Mode opts={[["task", "Task"], ["note", "Note"]]} /> : null}
+				<button class="nt-sd" aria-label="Add">
+					<Icon name="send" />
+				</button>
+			</div>
+			{said && d.spaces.length ? (
+				<select name="space" class="nt-sel" aria-label="Project">
+					<option value="">No project</option>
+					{d.spaces.map((x) => (
+						<option key={x.id} value={x.id}>
+							{x.title}
+						</option>
+					))}
+				</select>
+			) : null}
+		</form>
+	)
+})

@@ -1,6 +1,7 @@
 import * as act from "./lib/actions.ts"
 import * as inc from "./lib/income.ts"
 import { toMinor } from "./lib/money.ts"
+import * as pad from "./lib/pad.ts"
 import * as trading from "./lib/trading.ts"
 import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts"
 
@@ -55,6 +56,11 @@ export const commands = {
 		to: "/settings",
 	},
 	setTheme: { run: quiet((u, f) => setTheme(u.id, field(f, "theme"))), to: "/settings", empty: true },
+	padAddSpace: { run: (u, f) => pad.addSpace(u.id, f), to: "/pad", fail: "/pad/new" },
+	padDelSpace: { run: quiet((u, f) => pad.deleteSpace(u.id, f)), to: "/pad" },
+	padAdd: { run: (u, f) => pad.addEntry(u.id, f), to: "/pad" },
+	padToggle: { run: quiet((u, f) => pad.toggleEntry(u.id, f)), to: "/pad" },
+	padDel: { run: quiet((u, f) => pad.deleteEntry(u.id, f)), to: "/pad" },
 } satisfies Record<string, Command>
 
 export type CommandName = keyof typeof commands

@@ -17,7 +17,7 @@ type DocumentProps = {
 
 const THEME_BOOT = `try{var t=localStorage.getItem('mtheme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`
 const REGISTER_SW = `if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))`
-const FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@500;600&display=swap"
+const FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@500;600&display=swap"
 
 export const Document = view<DocumentProps>(({ title, user = true, theme, desc, path, auth, children }) => {
 	const description = desc ?? SITE.desc
@@ -164,12 +164,12 @@ export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 export type MobileTab = "home" | "notes" | "goals" | "income" | "trading" | "pad" | "history" | "profile" | ""
 
 const TABS = [
-	{ key: "home", label: "Home", icon: "home", href: "/home" },
-	{ key: "notes", label: "Notes", icon: "notes", href: "/notes" },
-	{ key: "income", label: "Income", icon: "gear", href: "/income" },
-	{ key: "trading", label: "Trading", icon: "trade", href: "/trading" },
-	{ key: "pad", label: "Pad", icon: "pad", href: "/pad" },
-	{ key: "profile", label: "Profile", icon: "user", href: "/profile" },
+	{ key: "home", label: "Home", icon: "bhome", href: "/home" },
+	{ key: "trading", label: "Trading", icon: "btrade", href: "/trading" },
+	{ key: "pad", label: "Pad", icon: "bdoc", href: "/pad" },
+	{ key: "income", label: "Income", icon: "bsun", href: "/income" },
+	{ key: "notes", label: "Notes", icon: "bchat", href: "/notes" },
+	{ key: "profile", label: "Profile", icon: "buser", href: "/profile" },
 ] as const
 
 export const BottomBar = view<{ active: MobileTab }>(({ active }) => (
@@ -202,7 +202,7 @@ export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, 
 				<div class="m">
 					<TopBar split left={topLeft} />
 				</div>
-				<div class="m mm">{mobile}</div>
+				<div class="m mm hm">{mobile}</div>
 				<div class="d">
 					<TopBar />
 				</div>

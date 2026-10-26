@@ -94,29 +94,29 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 	if (x.type === "exoclick") {
 		return (
 			<>
-				{amt(sum)}
 				<span></span>
+				{amt(sum)}
 			</>
 		)
 	}
 	if (x.mode === "auto") {
 		return (
 			<>
-				{amt(x.amount)}
 				<span></span>
+				{amt(x.amount)}
 			</>
 		)
 	}
 	if (got.length) {
 		return (
 			<>
-				{amt(sum)}
 				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
 					<Hid s={s} id={got[0]!.id} />
 					<button class="ub" aria-label={`Undo ${x.name}`}>
-						<Icon name="undo" />
+						<Icon name="revert" />
 					</button>
 				</form>
+				{amt(sum)}
 			</>
 		)
 	}
@@ -137,7 +137,6 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 		</button>
 	)
 })
-
 
 const DeleteSource = view<{ s: State; x: Source }>(({ s, x }) => (
 	<form method="post" action="/income/source/delete" style={contents} data-confirm={`Delete ${x.name}? What it already paid stays in your balance.`}>

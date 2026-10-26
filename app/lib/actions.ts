@@ -257,6 +257,8 @@ export async function deleteAccount(uid: string) {
 			sql`delete from trade_sessions where user_id = ${uid}`,
 			sql`delete from goal_items where user_id = ${uid}`,
 			sql`delete from goals where user_id = ${uid}`,
+			sql`delete from pad_entries where user_id = ${uid}`,
+			sql`delete from pad_spaces where user_id = ${uid}`,
 			sql`delete from notes where user_id = ${uid}`,
 			sql`delete from quick_buys where user_id = ${uid}`,
 			sql`delete from user_images where user_id = ${uid}`,

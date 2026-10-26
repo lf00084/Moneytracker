@@ -5,11 +5,21 @@ import { loadState, type Part, type State } from "../lib/data.ts"
 import { DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, NotesScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingScreen } from "../screens.tsx"
 import { routes } from "../routes.ts"
 import { go, takeError, userOf, type Ctx } from "../request.ts"
+import { loadPad } from "../lib/pad.ts"
+import type { PadTab } from "../components/pad.tsx"
 
 const page = (path: string, parts: Part[], render: (s: State) => RemixNode) => async (ctx: Ctx) => {
 	const user = userOf(ctx)
 	if (!user) return go("/login")
 	return ctx.render(render(await loadState(user, parts, { back: path, error: takeError(ctx) })))
+}
+
+const padPage = (tab: PadTab) => async (ctx: Ctx) => {
+	const user = userOf(ctx)
+	if (!user) return go("/login")
+	const q = new URL(ctx.request.url).searchParams
+	const d = await loadPad(user.id, q.get("p") ?? "")
+	return ctx.render(<PadScreen u={user} d={d} tab={tab} f={q.get("f") ?? ""} error={takeError(ctx)} />)
 }
 
 export default createController(routes.pages, {
@@ -25,10 +35,10 @@ export default createController(routes.pages, {
 		profile: page("/profile", ["avatar", "balance"], (s) => <ProfileScreen s={s} />),
 		profileEdit: page("/profile/edit", ["avatar", "balance"], (s) => <ProfileEditScreen s={s} />),
 		settings: page("/settings", ["balance"], (s) => <SettingsScreen s={s} />),
-		pad: page("/pad", [], (s) => <PadScreen s={s} tab="projects" />),
-		padPeople: page("/pad/people", [], (s) => <PadScreen s={s} tab="people" />),
-		padBooks: page("/pad/books", [], (s) => <PadScreen s={s} tab="books" />),
-		padTips: page("/pad/tips", [], (s) => <PadScreen s={s} tab="tips" />),
+		pad: padPage("projects"),
+		padSaid: padPage("said"),
+		padHome: padPage("home"),
+		padNew: padPage("new"),
 		trading: page("/trading", ["trading"], (s) => <TradingScreen s={s} />),
 
 		async exportCsv(ctx: Ctx) {

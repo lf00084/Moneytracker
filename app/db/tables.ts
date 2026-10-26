@@ -206,3 +206,33 @@ export const tradeResults = table({
 		created_at: c.integer(),
 	},
 })
+
+export const padSpaces = table({
+	name: "pad_spaces",
+	columns: {
+		id: c.varchar(36),
+		user_id: c.varchar(36),
+		kind: c.varchar(16),
+		title: c.varchar(120),
+		sub: c.varchar(500),
+		sort: c.integer(),
+		archived_at: c.integer(),
+		created_at: c.integer(),
+		updated_at: c.integer(),
+	},
+})
+
+export const padEntries = table({
+	name: "pad_entries",
+	columns: {
+		id: c.varchar(36),
+		user_id: c.varchar(36),
+		space_id: c.varchar(36),
+		kind: c.varchar(16),
+		body: c.varchar(2000),
+		ref: c.varchar(500),
+		on_home: c.integer(),
+		created_at: c.integer(),
+		updated_at: c.integer(),
+	},
+})

@@ -19,7 +19,7 @@ export const assets = {
 				name: "Moneytracker",
 				short_name: "Money",
 				description: SITE_DESC,
-				start_url: "/home",
+				start_url: "/",
 				scope: "/",
 				display: "standalone",
 				orientation: "portrait",

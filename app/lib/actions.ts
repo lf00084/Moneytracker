@@ -223,7 +223,7 @@ export async function deleteSource(uid: string, f: FormData) {
 export async function deleteIncome(uid: string, f: FormData): Result {
 	const row = await db.findOne(incomes, { where: { id: own(f, "id", 80), user_id: uid } })
 	if (!row) return
-	if (row.ext_key.startsWith("trade:")) return "Undo this from the Trading page"
+	if (row.ext_key.startsWith("trade:")) return "Undo this from the Predict page"
 	if (row.ext_key) {
 		const src = row.source_id ? await db.findOne(incomeSources, { where: { id: row.source_id, user_id: uid } }) : null
 		if (src?.mode === "auto") return "Auto income can't be undone. Pause the source instead"

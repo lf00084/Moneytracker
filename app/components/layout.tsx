@@ -132,7 +132,7 @@ const LINKS = [
 	{ key: "notes", label: "Notes", icon: "notes", href: "/notes" },
 	{ key: "plan", label: "Plan", icon: "goal", href: "/plan" },
 	{ key: "income", label: "Income", icon: "coin", href: "/income" },
-	{ key: "trading", label: "Trading", icon: "trade", href: "/trading" },
+	{ key: "trading", label: "Predict", icon: "trade", href: "/trading" },
 	{ key: "pad", label: "Pad", icon: "pad", href: "/pad" },
 	{ key: "history", label: "History", icon: "hist", href: "/history" },
 	{ key: "settings", label: "Settings", icon: "gear", href: "/settings" },
@@ -165,7 +165,7 @@ export type MobileTab = "home" | "notes" | "goals" | "income" | "trading" | "pad
 
 const TABS = [
 	{ key: "home", label: "Home", icon: "bhome", href: "/home" },
-	{ key: "trading", label: "Trading", icon: "btrade", href: "/trading" },
+	{ key: "trading", label: "Predict", icon: "btrade", href: "/trading" },
 	{ key: "pad", label: "Pad", icon: "bdoc", href: "/pad" },
 	{ key: "income", label: "Income", icon: "bsun", href: "/income" },
 	{ key: "notes", label: "Notes", icon: "bchat", href: "/notes" },
@@ -177,6 +177,7 @@ export const BottomBar = view<{ active: MobileTab }>(({ active }) => (
 		{TABS.map((t) => (
 			<a key={t.key} href={t.href} class={active === t.key ? "on" : ""} aria-label={t.label}>
 				<Icon name={t.icon} />
+				<span class="bl">{t.label}</span>
 			</a>
 		))}
 	</nav>

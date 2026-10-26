@@ -18,6 +18,7 @@ export const users = table({
 		bg_url: c.varchar(2048),
 		usd_rate_minor: c.integer(),
 		usdt_rate_minor: c.integer(),
+		last_tab: c.varchar(80),
 		created_at: c.integer(),
 		updated_at: c.integer(),
 	},

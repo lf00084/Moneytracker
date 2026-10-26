@@ -14,6 +14,7 @@ export type User = {
 	week_start: string
 	usd_rate_minor: number
 	usdt_rate: number
+	last_tab: string
 }
 
 const normEmail = (e: string) => e.trim().toLowerCase()
@@ -28,6 +29,7 @@ const toUser = (r: any): User => ({
 	week_start: r.week_start || "Monday",
 	usd_rate_minor: r.usd_rate_minor || 1000,
 	usdt_rate: Number(r.usdt_rate_minor) > 0 ? Number(r.usdt_rate_minor) : 1100,
+	last_tab: r.last_tab || "",
 })
 
 export async function getUserById(id: string): Promise<User | null> {

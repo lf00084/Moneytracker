@@ -75,10 +75,10 @@ export async function loadTrades(uid: string): Promise<TradeSession[]> {
 export async function startTrade(user: User): Promise<string | void> {
 	const uid = user.id
 	const open = await db.findOne(tradeSessions, { where: { user_id: uid, status: "open" } })
-	if (open) return "Finish your open trade first"
+	if (open) return "Finish your open predict first"
 	const day = today(user.day_start)
 	const already = await db.findOne(tradeSessions, { where: { user_id: uid, day } })
-	if (already) return `One trade a day. The next one opens at ${String(user.day_start).padStart(2, "0")}:00`
+	if (already) return `One predict a day. The next one opens at ${String(user.day_start).padStart(2, "0")}:00`
 	const cost = toMad(DEPOSIT, user.usdt_rate)
 	if (!cost) return "Set the USDT price in Settings first"
 	const now = Date.now()
@@ -126,7 +126,7 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 				amount_minor: mad,
 				day: t,
 				created_at: now,
-				meta: JSON.stringify({ trade: 1, name: "Trading", usdt_minor: back }),
+				meta: JSON.stringify({ trade: 1, name: "Predict", usdt_minor: back }),
 				ext_key: `trade:${s.id}`,
 			})
 		}
@@ -143,8 +143,8 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 
 export async function setPredict(uid: string, f: FormData): Promise<string | void> {
 	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
-	if (!s) return "Trade not found"
-	if (s.status !== "open") return "This trade is already settled"
+	if (!s) return "Predict not found"
+	if (s.status !== "open") return "This predict is already settled"
 	const game: Game = f.get("game") === "pred" ? "pred" : "btc"
 	const idx = Math.floor(Number(f.get("idx")))
 	const max = game === "btc" ? BTC_ROUNDS : PRED_COUNT
@@ -170,8 +170,8 @@ export async function setPredict(uid: string, f: FormData): Promise<string | voi
 
 export async function saveResult(uid: string, f: FormData): Promise<string | void> {
 	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
-	if (!s) return "Trade not found"
-	if (s.status !== "open") return "This trade is already settled"
+	if (!s) return "Predict not found"
+	if (s.status !== "open") return "This predict is already settled"
 	const game: Game = f.get("game") === "pred" ? "pred" : "btc"
 	const idx = Math.floor(Number(f.get("idx")))
 	const outcome = text(f.get("outcome"), 4)
@@ -195,8 +195,8 @@ export async function saveResult(uid: string, f: FormData): Promise<string | voi
 
 export async function undoResult(uid: string, f: FormData): Promise<string | void> {
 	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
-	if (!s) return "Trade not found"
-	if (s.status !== "open") return "This trade is already settled"
+	if (!s) return "Predict not found"
+	if (s.status !== "open") return "This predict is already settled"
 	const r = await db.findOne(tradeResults, { where: { id: text(f.get("result_id"), 36), session_id: s.id, user_id: uid } })
 	if (!r) return
 	if (r.game === "btc") {
@@ -209,8 +209,8 @@ export async function undoResult(uid: string, f: FormData): Promise<string | voi
 
 export async function finishTrade(uid: string, f: FormData): Promise<string | void> {
 	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
-	if (!s) return "Trade not found"
-	if (s.status !== "open") return "This trade is already settled"
+	if (!s) return "Predict not found"
+	if (s.status !== "open") return "This predict is already settled"
 	const rows = await resultsOf(uid, s.id)
 	const done = doneOf(rows)
 	if (!done.length) return "Add at least one result first"
@@ -222,7 +222,7 @@ export async function reopenTrade(uid: string, f: FormData): Promise<string | vo
 	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
 	if (!s || s.status !== "settled") return
 	const open = await db.findOne(tradeSessions, { where: { user_id: uid, status: "open" } })
-	if (open) return "Finish your open trade first"
+	if (open) return "Finish your open predict first"
 	const key = `trade:${s.id}`
 	await db.transaction(async (tx) => {
 		await tx.exec(sql`delete from incomes where user_id = ${uid} and ext_key = ${key}`)

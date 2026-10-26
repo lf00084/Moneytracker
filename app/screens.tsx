@@ -2,7 +2,7 @@ import { BuysDesktop, BuysExpand, Hero, TodayCards } from "./components/buys.tsx
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
-import { HomeBalance, HomeToday } from "./components/home.tsx"
+import { HomeBalance, HomePredict, HomeTasks, HomeToday, type PadLeft } from "./components/home.tsx"
 import { HomeIncome, IncomeDesktop, IncomeExpand, InvoiceCard } from "./components/income.tsx"
 import { AppLayout, AuthLayout } from "./components/layout.tsx"
 import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
@@ -16,7 +16,7 @@ import type { State } from "./lib/data.ts"
 import { fmt } from "./lib/money.ts"
 import { calc } from "./lib/view.ts"
 
-export const HomeScreen = view<{ s: State }>(({ s }) => (
+export const HomeScreen = view<{ s: State; p: PadLeft }>(({ s, p }) => (
 	<AppLayout
 		title="Home"
 		theme={s.user.theme}
@@ -27,6 +27,8 @@ export const HomeScreen = view<{ s: State }>(({ s }) => (
 				<ErrorBanner s={s} />
 				<HomeBalance s={s} />
 				<HomeToday s={s} />
+				<HomePredict s={s} />
+				<HomeTasks p={p} />
 				<HomeIncome s={s} />
 				<BuysExpand s={s} />
 				<GoalsExpand s={s} open={false} storeKey="goals" manage={false} />
@@ -262,21 +264,21 @@ export const TradingScreen = view<{ s: State }>(({ s }) => {
 	const right = `1 USDT = ${fmt(s.user.usdt_rate)} ${s.user.currency}`
 	return (
 		<AppLayout
-			title="Trading"
+			title="Predict"
 			theme={s.user.theme}
 			mobileTab="trading"
 			desktopTab="trading"
 			mobile={
 				<>
 					<ErrorBanner s={s} />
-					<PageHeader title="Trading" right={right} />
+					<PageHeader title="Predict" right={right} />
 					<TradingBody s={s} />
 				</>
 			}
 			desktop={
 				<>
 					<ErrorBanner s={s} />
-					<PageHeader title="Trading" right={right} />
+					<PageHeader title="Predict" right={right} />
 					<TradingBody s={s} />
 				</>
 			}

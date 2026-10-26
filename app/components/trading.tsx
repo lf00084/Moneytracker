@@ -158,7 +158,7 @@ const BtcCard = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 				const state: RowState = r ? "result" : done ? "skip" : idx === list.length + 1 && list.every(isDone) ? "active" : "wait"
 				return <PredictRow key={idx} s={s} t={t} game="btc" idx={idx} r={r} state={state} canUndo={!!r && idx === list.length} />
 			})}
-			{done ? <div class="lb tbn">{won ? `Won on try ${list.findIndex((x) => x.won) + 1}. Stop trading today. Do your ${PRED_COUNT} predicts below.` : "Both tries missed. Done with crypto today."}</div> : null}
+			{done ? <div class="lb tbn">{won ? `Won on try ${list.findIndex((x) => x.won) + 1}. Stop predicting today. Do your ${PRED_COUNT} predicts below.` : "Both tries missed. Done with crypto today."}</div> : null}
 		</Card>
 	)
 })
@@ -182,7 +182,7 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	const back = backUsdt(t.deposit, pnl)
 	const net = toMad(pnl, t.rate)
 	return (
-		<Card title="Open trade">
+		<Card title="Open predict">
 			<div class="ow" style={{ margin: "0 0 8px" }}>
 				<b class={`big2 ${t.results.some(isDone) ? tone(pnl) : ""}`}>
 					{t.results.some(isDone) ? sg(pnl) : "0"} <small>USDT PnL</small>
@@ -213,8 +213,8 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 })
 
 const LockedCard = view<{ s: State }>(({ s }) => (
-	<Card title="Today's trade">
-		<div class="lb tbn">{`Done for today. One trade a day. The next one opens at ${String(s.user.day_start).padStart(2, "0")}:00.`}</div>
+	<Card title="Today's predict">
+		<div class="lb tbn">{`Done for today. One predict a day. The next one opens at ${String(s.user.day_start).padStart(2, "0")}:00.`}</div>
 	</Card>
 ))
 
@@ -223,7 +223,7 @@ const StartCard = view<{ s: State }>(({ s }) => {
 	const rate = s.user.usdt_rate
 	const cost = toMad(DEPOSIT, rate)
 	return (
-		<Card title="Today's trade">
+		<Card title="Today's predict">
 			<div class="ow" style={{ margin: "0 0 6px" }}>
 				<b class="big2">
 					{fmt(DEPOSIT)} <small>USDT</small>
@@ -235,7 +235,7 @@ const StartCard = view<{ s: State }>(({ s }) => {
 				<Back s={s} />
 				<Submit class="btn full">Deposit {fmt(DEPOSIT)} USDT</Submit>
 			</form>
-			<div class="lb tbn">{`Then 1 crypto predict of ${fmt(BTC_STAKE)} USDT (a second try only if the first misses) and ${PRED_COUNT} match predicts of ${fmt(PRED_STAKE)} USDT. One trade a day.`}</div>
+			<div class="lb tbn">{`Then 1 crypto predict of ${fmt(BTC_STAKE)} USDT (a second try only if the first misses) and ${PRED_COUNT} match predicts of ${fmt(PRED_STAKE)} USDT. One predict a day.`}</div>
 		</Card>
 	)
 })
@@ -254,9 +254,9 @@ const PastRow = view<{ s: State; t: TradeSession; reopen: boolean }>(({ s, t, re
 				<span class="lb">{`${sg(t.pnl)} USDT`}</span>
 				<b class={tone(net)}>{sg(net)}</b>
 				{reopen ? (
-					<form method="post" action="/trading/reopen" style={contents} data-confirm="Open this trade again? The money it added is taken back.">
+					<form method="post" action="/trading/reopen" style={contents} data-confirm="Open this predict again? The money it added is taken back.">
 						<SessionHid s={s} t={t} />
-						<Submit class="ub" aria-label="Open this trade again">
+						<Submit class="ub" aria-label="Open this predict again">
 							<Icon name="undo" />
 						</Submit>
 					</form>
@@ -270,7 +270,7 @@ const PastCard = view<{ s: State; list: TradeSession[]; canReopen: boolean }>(({
 	if (!list.length) return null
 	const total = list.reduce((a, t) => a + (t.returnMad - toMad(t.deposit, t.rate)), 0)
 	return (
-		<Card title={`Past trades · ${sg(total)} ${s.user.currency}`}>
+		<Card title={`Past predicts · ${sg(total)} ${s.user.currency}`}>
 			{list.map((t, i) => (
 				<PastRow key={t.id} s={s} t={t} reopen={canReopen && i === 0} />
 			))}
@@ -300,13 +300,13 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 	const sub = open
 		? btcDone(open.results)
 			? "Crypto is done for today. Finish your match predicts."
-			: "Your trade is open. Follow the steps below."
+			: "Your predict is open. Follow the steps below."
 		: tradedToday
-			? `One trade a day. You can trade again at ${at}.`
-			: `Deposit ${fmt(DEPOSIT)} USDT to start today's trade.`
+			? `One predict a day. You can predict again at ${at}.`
+			: `Deposit ${fmt(DEPOSIT)} USDT to start today's predict.`
 	return (
 		<div class="trd">
-			<Status ok={ok} title={ok ? "You can trade" : "You cannot trade"} sub={sub} />
+			<Status ok={ok} title={ok ? "You can predict" : "You cannot predict"} sub={sub} />
 			{open ? (
 				<>
 					<OpenSummary s={s} t={open} />

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   bg_url        TEXT NOT NULL DEFAULT '',
   usd_rate_minor INTEGER NOT NULL DEFAULT 1000,
   usdt_rate_minor INTEGER NOT NULL DEFAULT 1100,
+  last_tab      TEXT NOT NULL DEFAULT '',
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL
 );

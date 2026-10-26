@@ -6,26 +6,62 @@ import { DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, Note
 import { routes } from "../routes.ts"
 import { go, takeError, userOf, type Ctx } from "../request.ts"
 import { loadPad } from "../lib/pad.ts"
+import type { PadData } from "../lib/padmeta.ts"
+import { saveTab, type User } from "../lib/users.ts"
 import type { PadTab } from "../components/pad.tsx"
+import type { PadLeft } from "../components/home.tsx"
+
+const KEEP = /^\/(home|trading|income|notes|profile|history|plan|settings|pad(\/(said|home))?)(\?p=[0-9a-f-]{36})?$/
+
+const remember = async (user: User, path: string) => {
+	if (user.last_tab === path || !KEEP.test(path)) return
+	try {
+		await saveTab(user.id, path)
+	} catch {}
+}
+
+const padLeft = (d: PadData): PadLeft => ({
+	projects: d.entries.filter((e) => e.kind === "task" && d.spaces.some((x) => x.id === e.space)).length,
+	home: d.entries.filter((e) => e.kind === "task" && !e.space).length,
+})
 
 const page = (path: string, parts: Part[], render: (s: State) => RemixNode) => async (ctx: Ctx) => {
 	const user = userOf(ctx)
 	if (!user) return go("/login")
+	await remember(user, path)
 	return ctx.render(render(await loadState(user, parts, { back: path, error: takeError(ctx) })))
 }
 
 const padPage = (tab: PadTab) => async (ctx: Ctx) => {
 	const user = userOf(ctx)
 	if (!user) return go("/login")
-	const q = new URL(ctx.request.url).searchParams
-	const d = await loadPad(user.id, q.get("p") ?? "")
+	const url = new URL(ctx.request.url)
+	const q = url.searchParams
+	const p = q.get("p") ?? ""
+	await remember(user, `${url.pathname}${p ? `?p=${p}` : ""}`)
+	const d = await loadPad(user.id, p)
 	return ctx.render(<PadScreen u={user} d={d} tab={tab} f={q.get("f") ?? ""} error={takeError(ctx)} />)
+}
+
+const homePage = async (ctx: Ctx) => {
+	const user = userOf(ctx)
+	if (!user) return go("/login")
+	await remember(user, "/home")
+	const [s, d] = await Promise.all([
+		loadState(user, ["today", "sources", "names", "incnames", "debts", "goals", "notes", "balance", "trading"], { back: "/home", error: takeError(ctx) }),
+		loadPad(user.id, ""),
+	])
+	return ctx.render(<HomeScreen s={s} p={padLeft(d)} />)
 }
 
 export default createController(routes.pages, {
 	actions: {
-		root: (ctx: Ctx) => go(userOf(ctx) ? "/home" : "/login"),
-		home: page("/home", ["today", "sources", "names", "incnames", "debts", "goals", "notes", "balance"], (s) => <HomeScreen s={s} />),
+		root: (ctx: Ctx) => {
+			const user = userOf(ctx)
+			if (!user) return go("/login")
+			return go(KEEP.test(user.last_tab) ? user.last_tab : "/home")
+		},
+		home: homePage,
 		debts: page("/debts", ["debts", "goals", "balance"], (s) => <DebtsScreen s={s} />),
 		notes: page("/notes", ["notes"], (s) => <NotesScreen s={s} />),
 		goals: page("/goals", ["goals", "debts", "balance"], (s) => <GoalsScreen s={s} />),

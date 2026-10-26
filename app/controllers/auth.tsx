@@ -11,7 +11,7 @@ import { fail, formOf, go, signInAs, signOut, takeError, userOf, type Ctx } from
 export default createController(routes.auth, {
 	actions: {
 		login(ctx: Ctx) {
-			if (userOf(ctx)) return go("/home")
+			if (userOf(ctx)) return go("/")
 			return ctx.render(<LoginScreen error={takeError(ctx)} />)
 		},
 
@@ -20,11 +20,11 @@ export default createController(routes.auth, {
 			const user = await signInWithPassword(String(f.get("email") ?? ""), String(f.get("password") ?? ""))
 			if (!user) return fail(ctx, "/login", "Wrong email or password.")
 			signInAs(ctx, user.id)
-			return go("/home")
+			return go("/")
 		},
 
 		signup(ctx: Ctx) {
-			if (userOf(ctx)) return go("/home")
+			if (userOf(ctx)) return go("/")
 			return ctx.render(<SignupScreen error={takeError(ctx)} />)
 		},
 
@@ -37,7 +37,7 @@ export default createController(routes.auth, {
 			})
 			if (!result.ok) return fail(ctx, "/signup", result.error)
 			signInAs(ctx, result.user.id)
-			return go("/home")
+			return go("/")
 		},
 
 		logout(ctx: Ctx) {
@@ -49,7 +49,7 @@ export default createController(routes.auth, {
 			if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
 				return fail(ctx, "/login", "Google login is not configured. Please sign in with email and password.")
 			}
-			return startExternalAuth(googleProvider, ctx as never, { returnTo: "/home" })
+			return startExternalAuth(googleProvider, ctx as never, { returnTo: "/" })
 		},
 
 		async googleCallback(ctx: Ctx) {
@@ -57,7 +57,7 @@ export default createController(routes.auth, {
 				const { result, returnTo } = await finishExternalAuth(googleProvider, ctx as never)
 				const user = await upsertFromGoogle(result.account, result.profile as never)
 				signInAs(ctx, user.id)
-				return go(returnTo ?? "/home")
+				return go(returnTo ?? "/")
 			} catch (err) {
 				console.error("google sign-in failed", err)
 				return fail(ctx, "/login", "Google sign-in failed. Try again.")

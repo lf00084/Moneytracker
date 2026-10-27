@@ -2,24 +2,7 @@ import { sql } from "remix/data-table"
 import { db, incomes, purchases, tradeResults, tradeSessions } from "../db/index.ts"
 import { today } from "./time.ts"
 import { todayFor } from "./users.ts"
-import {
-	allDone,
-	backUsdt,
-	BTC_ROUNDS,
-	btcDone,
-	btcOf,
-	DEPOSIT,
-	doneOf,
-	isDone,
-	missAmount,
-	PICKS,
-	PRED_COUNT,
-	toMad,
-	totalPnl,
-	type Game,
-	type TradeResult,
-	type TradeSession,
-} from "./trade-math.ts"
+import { backUsdt, DEPOSIT, doneOf, flowOf, PARTS, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
 import type { User } from "./users.ts"
 import { id, text } from "./util.ts"
 
@@ -32,7 +15,7 @@ const usdtMinor = (v: unknown) => {
 
 const toResult = (r: { id: string; game: string; idx: number; won: number; pnl_minor: number; state: string; asset: string; tf: number }): TradeResult => ({
 	id: r.id,
-	game: r.game === "pred" ? "pred" : "btc",
+	game: r.game === "step" ? "step" : "res",
 	idx: r.idx,
 	won: r.won !== 0,
 	pnl: r.pnl_minor,
@@ -67,7 +50,7 @@ export async function loadTrades(uid: string): Promise<TradeSession[]> {
 			returnUsdt: s.return_usdt_minor ?? 0,
 			returnMad: s.return_mad_minor ?? 0,
 			at: s.created_at,
-			results: (by.get(s.id) ?? []).sort((a, b) => (a.game === b.game ? a.idx - b.idx : a.game === "btc" ? -1 : 1)),
+			results: (by.get(s.id) ?? []).sort((a, b) => (a.game === b.game ? a.idx - b.idx : a.game === "step" ? -1 : 1)),
 		}),
 	)
 }
@@ -141,85 +124,90 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 	})
 }
 
+const openOf = async (uid: string, f: FormData) => db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+
 export async function setPredict(uid: string, f: FormData): Promise<string | void> {
-	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+	const s = await openOf(uid, f)
 	if (!s) return "Predict not found"
 	if (s.status !== "open") return "This predict is already settled"
-	const game: Game = f.get("game") === "pred" ? "pred" : "btc"
-	const idx = Math.floor(Number(f.get("idx")))
-	const max = game === "btc" ? BTC_ROUNDS : PRED_COUNT
-	if (!Number.isInteger(idx) || idx < 1 || idx > max) return "Unknown predict"
-	let asset = ""
-	let tf = 0
-	if (game === "btc") {
-		const [a, t] = text(f.get("pick"), 8).split("-")
-		const ok = PICKS.some(([pa, pt]) => pa === a && pt === Number(t))
-		if (!ok) return "Pick BTC or ETH and 5 or 15 minutes"
-		asset = a!
-		tf = Number(t)
-	}
 	const rows = await resultsOf(uid, s.id)
-	if (rows.some((r) => r.game === game && r.idx === idx)) return "That predict is already set"
-	if (game === "btc") {
-		if (btcDone(rows)) return "The up or down predicts are finished"
-		if (btcOf(rows).some((r) => !isDone(r))) return "Wait for the result of the last predict first"
-		if (idx !== btcOf(rows).length + 1) return "Do the predicts in order"
+	const fl = flowOf(s.deposit_minor, rows)
+	if (fl.over) return "This predict is finished"
+	const n = fl.steps.length + 1
+	if (n > PARTS) return "Enter the result first"
+	const choice = text(f.get("choice"), 8)
+	const first = fl.steps[0]?.asset === "down" ? "down" : "up"
+	let side = "up"
+	if (n === 1) {
+		if (choice !== "up" && choice !== "down") return "Pick Up or Down"
+		side = choice
+	} else if (n === 2) {
+		if (choice === "same") side = first
+		else if (choice === "other") side = first === "up" ? "down" : "up"
+		else return "Pick how the move went"
+	} else {
+		side = fl.steps[1]?.asset === "down" ? "down" : "up"
 	}
-	await db.create(tradeResults, { id: id(), user_id: uid, session_id: s.id, game, idx, won: 0, pnl_minor: 0, state: "set", asset, tf, created_at: Date.now() })
+	await db.create(tradeResults, {
+		id: id(),
+		user_id: uid,
+		session_id: s.id,
+		game: "step",
+		idx: (fl.tryNo - 1) * PARTS + n,
+		won: 0,
+		pnl_minor: 0,
+		state: "set",
+		asset: side,
+		tf: fl.stakes[n - 1]!,
+		created_at: Date.now(),
+	})
 }
 
 export async function saveResult(uid: string, f: FormData): Promise<string | void> {
-	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+	const s = await openOf(uid, f)
 	if (!s) return "Predict not found"
 	if (s.status !== "open") return "This predict is already settled"
-	const game: Game = f.get("game") === "pred" ? "pred" : "btc"
-	const idx = Math.floor(Number(f.get("idx")))
-	const outcome = text(f.get("outcome"), 4)
-	if (outcome !== "win" && outcome !== "miss") return "Pick Win or Miss"
 	const rows = await resultsOf(uid, s.id)
-	const cur = rows.find((r) => r.game === game && r.idx === idx)
-	if (!cur || isDone(cur)) return "Set this predict first"
+	const fl = flowOf(s.deposit_minor, rows)
+	if (fl.over) return "This predict is finished"
+	if (!fl.steps.length) return "Put in your first step first"
+	const outcome = text(f.get("outcome"), 4)
+	if (outcome !== "win" && outcome !== "lose") return "Pick I won or I lost"
 	const won = outcome === "win"
+	const amount = usdtMinor(f.get("pnl"))
 	let pnl = 0
 	if (won) {
-		const amount = usdtMinor(f.get("pnl"))
 		if (!amount) return "Enter the PnL in USDT"
 		pnl = amount
 	} else {
-		pnl = -missAmount(game)
+		pnl = 0 - Math.min(amount ?? fl.staked, fl.staked)
 	}
-	await db.update(tradeResults, cur.id, { state: "done", won: won ? 1 : 0, pnl_minor: pnl })
-	const next = rows.map((r): TradeResult => (r.id === cur.id ? { ...r, state: "done", won, pnl } : r))
-	if (allDone(next)) await settle(uid, s, next)
+	const row = { id: id(), user_id: uid, session_id: s.id, game: "res", idx: fl.tryNo, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: "", tf: 0, created_at: Date.now() }
+	await db.create(tradeResults, row)
+	const next = [...rows, toResult(row)]
+	if (flowOf(s.deposit_minor, next).over) await settle(uid, s, doneOf(next))
 }
 
 export async function undoResult(uid: string, f: FormData): Promise<string | void> {
-	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+	const s = await openOf(uid, f)
 	if (!s) return "Predict not found"
 	if (s.status !== "open") return "This predict is already settled"
-	const r = await db.findOne(tradeResults, { where: { id: text(f.get("result_id"), 36), session_id: s.id, user_id: uid } })
-	if (!r) return
-	if (r.game === "btc") {
-		const last = btcOf(await resultsOf(uid, s.id)).at(-1)
-		if (last?.id !== r.id) return "Undo the latest predict first"
-	}
-	if (r.state === "set") await db.deleteMany(tradeResults, { where: { id: r.id, user_id: uid } })
-	else await db.update(tradeResults, r.id, { state: "set", won: 0, pnl_minor: 0 })
+	const last = (await resultsOf(uid, s.id)).at(-1)
+	if (!last) return
+	await db.deleteMany(tradeResults, { where: { id: last.id, user_id: uid } })
 }
 
 export async function finishTrade(uid: string, f: FormData): Promise<string | void> {
-	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+	const s = await openOf(uid, f)
 	if (!s) return "Predict not found"
 	if (s.status !== "open") return "This predict is already settled"
-	const rows = await resultsOf(uid, s.id)
-	const done = doneOf(rows)
+	const done = doneOf(await resultsOf(uid, s.id))
 	if (!done.length) return "Add at least one result first"
-	await db.deleteMany(tradeResults, { where: { session_id: s.id, user_id: uid, state: "set" } })
 	await settle(uid, s, done)
 }
 
 export async function reopenTrade(uid: string, f: FormData): Promise<string | void> {
-	const s = await db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
+	const s = await openOf(uid, f)
 	if (!s || s.status !== "settled") return
 	const open = await db.findOne(tradeSessions, { where: { user_id: uid, status: "open" } })
 	if (open) return "Finish your open predict first"

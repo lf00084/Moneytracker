@@ -6,15 +6,27 @@ const page = (message: string, status: number) =>
 		{ status, headers: { "Content-Type": "text/html; charset=utf-8" } },
 	)
 
+const run = async (request: Request) => {
+	const { router } = await import("../app/router.ts")
+	return router.fetch(request)
+}
+
 export default {
 	async fetch(request: Request) {
 		const missing = missingEnv()
 		if (missing.length) return page(`Missing config: ${missing.join(", ")}`, 500)
+		const safe = request.method === "GET" || request.method === "HEAD"
 		try {
-			const { router } = await import("../app/router.ts")
-			return await router.fetch(request)
+			return await run(safe ? request.clone() : request)
 		} catch (e) {
 			console.error(e)
+			if (safe) {
+				try {
+					return await run(request)
+				} catch (e2) {
+					console.error(e2)
+				}
+			}
 			return page("Something went wrong. Please try again.", 500)
 		}
 	},

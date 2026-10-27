@@ -21,8 +21,16 @@ const remember = async (user: User, path: string) => {
 }
 
 const padLeft = (d: PadData): PadLeft => ({
-	projects: d.entries.filter((e) => e.kind === "task" && d.spaces.some((x) => x.id === e.space)).length,
-	home: d.entries.filter((e) => e.kind === "task" && !e.space).length,
+	projects: d.spaces
+		.map((x) => {
+			const es = d.entries.filter((e) => e.space === x.id && (e.kind === "task" || e.kind === "done"))
+			return { id: x.id, title: x.title, color: x.color, left: es.filter((e) => e.kind === "task").length, total: es.length }
+		})
+		.filter((x) => x.left > 0),
+	home: (() => {
+		const es = d.entries.filter((e) => !e.space && (e.kind === "task" || e.kind === "done"))
+		return { left: es.filter((e) => e.kind === "task").length, total: es.length }
+	})(),
 })
 
 const page = (path: string, parts: Part[], render: (s: State) => RemixNode) => async (ctx: Ctx) => {

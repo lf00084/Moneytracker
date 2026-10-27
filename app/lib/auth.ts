@@ -2,7 +2,7 @@ import { auth, createSessionAuthScheme } from "remix/middleware/auth"
 import { createGoogleAuthProvider } from "remix/auth"
 import { createCookie } from "remix/cookie"
 import { session } from "remix/middleware/session"
-import { createDbSessionStorage } from "../db/session-storage.ts"
+import { createDbSessionStorage, retry } from "../db/session-storage.ts"
 import { env } from "../env.ts"
 import { getUserById } from "./users.ts"
 const sessionCookie = createCookie("__session", {
@@ -23,9 +23,10 @@ export const authMiddleware = auth({
 			},
 			async verify(value) {
 				try {
-					return await getUserById(value.userId)
-				} catch {
-					return null
+					return await retry(() => getUserById(value.userId))
+				} catch (e) {
+					console.error("auth verify failed", e)
+					throw e
 				}
 			},
 			invalidate(s) {

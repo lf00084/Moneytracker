@@ -3,13 +3,31 @@ import { sql } from "remix/data-table"
 import { db } from "./index.ts"
 import { sessions as sessionsTable } from "./tables.ts"
 const TTL_MS = 30 * 24 * 60 * 60 * 1000
+export async function retry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+	let err: unknown
+	for (let i = 0; i < tries; i++) {
+		try {
+			return await fn()
+		} catch (e) {
+			err = e
+			await new Promise((r) => setTimeout(r, 150 * (i + 1)))
+		}
+	}
+	throw err
+}
 export function createDbSessionStorage(): SessionStorage {
 	return {
 		async read(cookie) {
 			if (!cookie) return createSession()
+			let row
 			try {
-				const row = await db.find(sessionsTable, cookie)
-				if (!row || row.expires_at < Date.now()) return createSession()
+				row = await retry(() => db.find(sessionsTable, cookie))
+			} catch (e) {
+				console.error("session read failed", e)
+				throw e
+			}
+			if (!row || row.expires_at < Date.now()) return createSession()
+			try {
 				return createSession(row.id, JSON.parse(row.data))
 			} catch {
 				return createSession()

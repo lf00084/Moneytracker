@@ -47,6 +47,7 @@ export const commands = {
 	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },
 	tradeSet: { run: (u, f) => trading.setPredict(u.id, f), to: "/trading" },
 	tradeResult: { run: (u, f) => trading.saveResult(u.id, f), to: "/trading" },
+	tradeGame: { run: (u, f) => trading.saveGame(u.id, f), to: "/trading" },
 	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
 	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
 	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },

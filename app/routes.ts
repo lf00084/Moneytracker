@@ -61,6 +61,7 @@ export const routes = route({
 		tradeDeposit: post("/trading/deposit"),
 		tradeSet: post("/trading/set"),
 		tradeResult: post("/trading/result"),
+		tradeGame: post("/trading/game"),
 		tradeUndo: post("/trading/undo"),
 		tradeFinish: post("/trading/finish"),
 		tradeReopen: post("/trading/reopen"),

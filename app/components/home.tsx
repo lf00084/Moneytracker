@@ -46,9 +46,11 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 	const f = open ? flowOf(open.deposit, open.results) : null
 	const won = !!done && resOf(done.results).some((x) => x.won)
 	const title = f
-		? f.tryNo > 1 && f.steps.length === 0
-			? `Lost · one more try, ${fmt(f.left)} USDT left`
-			: `Predict is open · try ${f.tryNo} of ${TRIES}`
+		? f.over
+			? "5 min done · finish the games"
+			: f.tryNo > 1 && f.steps.length === 0
+				? `Missed · one more try, ${fmt(f.left)} USDT left`
+				: `Predict is open · try ${f.tryNo} of ${TRIES}`
 		: done
 			? won
 				? "Won today · predict ended"

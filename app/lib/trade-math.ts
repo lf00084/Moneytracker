@@ -1,8 +1,12 @@
-export const DEPOSIT = 1600
+export const FIVE = 1600
+export const GAME = 400
+export const GAMES = 2
+export const DEPOSIT = FIVE + GAME * GAMES
 export const TRIES = 2
 export const PARTS = 3
 
-export type Game = "step" | "res"
+export type GameKey = "ga" | "gb"
+export type Game = "step" | "res" | GameKey
 export type TradeResult = { id: string; game: Game; idx: number; won: boolean; pnl: number; state: "set" | "done"; asset: string; tf: number }
 export type TradeSession = {
 	id: string
@@ -36,6 +40,10 @@ export const totalPnl = (r: TradeResult[]) => doneOf(r).reduce((a, x) => a + x.p
 export const backUsdt = (deposit: number, pnl: number) => Math.max(0, deposit + pnl)
 export const toMad = (usdtMinor: number, rateMinor: number) => Math.round((usdtMinor * rateMinor) / 100)
 export const strip = (r: TradeResult[]) => doneOf(r).map((x) => (x.won ? "W" : "M")).join(" ")
+export const hasGames = (deposit: number) => deposit > FIVE
+export const gameOf = (r: TradeResult[], g: GameKey) => r.find((x) => x.game === g && isDone(x))
+export const gamesDone = (r: TradeResult[]) => !!gameOf(r, "ga") && !!gameOf(r, "gb")
+export const gamesStrip = (r: TradeResult[]) => (["ga", "gb"] as const).map((g) => { const x = gameOf(r, g); return x ? (x.won ? "W" : "M") : "-" }).join(" ")
 
 export const stakesFor = (base: number) => {
 	const a = Math.round(base / 4)
@@ -45,7 +53,7 @@ export const stakesFor = (base: number) => {
 export function flowOf(deposit: number, rows: TradeResult[]): Flow {
 	const res = resOf(rows)
 	const won = res.some((x) => x.won)
-	const left = deposit + res.reduce((a, x) => a + x.pnl, 0)
+	const left = Math.min(deposit, FIVE) + res.reduce((a, x) => a + x.pnl, 0)
 	const over = won || res.length >= TRIES || (res.length > 0 && left <= 0)
 	const tryNo = Math.min(res.length + 1, TRIES)
 	const steps = stepsOf(rows, tryNo)
@@ -60,3 +68,5 @@ export function flowOf(deposit: number, rows: TradeResult[]): Flow {
 		over,
 	}
 }
+
+export const allDone = (deposit: number, rows: TradeResult[]) => flowOf(deposit, rows).over && (!hasGames(deposit) || gamesDone(rows))

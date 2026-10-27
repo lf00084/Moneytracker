@@ -2,7 +2,7 @@ import { sql } from "remix/data-table"
 import { db, incomes, purchases, tradeResults, tradeSessions } from "../db/index.ts"
 import { today } from "./time.ts"
 import { todayFor } from "./users.ts"
-import { backUsdt, DEPOSIT, doneOf, flowOf, PARTS, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
+import { allDone, backUsdt, DEPOSIT, doneOf, flowOf, GAME, gameOf, hasGames, PARTS, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
 import type { User } from "./users.ts"
 import { id, text } from "./util.ts"
 
@@ -15,7 +15,7 @@ const usdtMinor = (v: unknown) => {
 
 const toResult = (r: { id: string; game: string; idx: number; won: number; pnl_minor: number; state: string; asset: string; tf: number }): TradeResult => ({
 	id: r.id,
-	game: r.game === "step" ? "step" : "res",
+	game: r.game === "step" || r.game === "ga" || r.game === "gb" ? r.game : "res",
 	idx: r.idx,
 	won: r.won !== 0,
 	pnl: r.pnl_minor,
@@ -137,16 +137,13 @@ export async function setPredict(uid: string, f: FormData): Promise<string | voi
 	if (n > PARTS) return "Enter the result first"
 	const choice = text(f.get("choice"), 8)
 	const first = fl.steps[0]?.asset === "down" ? "down" : "up"
-	let side = "up"
+	let side = first
 	if (n === 1) {
 		if (choice !== "up" && choice !== "down") return "Pick Up or Down"
 		side = choice
-	} else if (n === 2) {
-		if (choice === "same") side = first
-		else if (choice === "other") side = first === "up" ? "down" : "up"
-		else return "Pick how the move went"
-	} else {
-		side = fl.steps[1]?.asset === "down" ? "down" : "up"
+	} else if (n === 3) {
+		if (choice === "other") side = first === "up" ? "down" : "up"
+		else if (choice !== "same") return "Pick how the move went"
 	}
 	await db.create(tradeResults, {
 		id: id(),
@@ -182,10 +179,37 @@ export async function saveResult(uid: string, f: FormData): Promise<string | voi
 	} else {
 		pnl = 0 - Math.min(amount ?? fl.staked, fl.staked)
 	}
-	const row = { id: id(), user_id: uid, session_id: s.id, game: "res", idx: fl.tryNo, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: "", tf: 0, created_at: Date.now() }
+	const coin = text(f.get("coin"), 3).toLowerCase()
+	const row = { id: id(), user_id: uid, session_id: s.id, game: "res", idx: fl.tryNo, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: coin === "btc" || coin === "eth" ? coin : "", tf: 0, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
-	if (flowOf(s.deposit_minor, next).over) await settle(uid, s, doneOf(next))
+	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))
+}
+
+export async function saveGame(uid: string, f: FormData): Promise<string | void> {
+	const s = await openOf(uid, f)
+	if (!s) return "Predict not found"
+	if (s.status !== "open") return "This predict is already settled"
+	if (!hasGames(s.deposit_minor)) return "This predict has no games"
+	const g = text(f.get("game"), 2)
+	if (g !== "ga" && g !== "gb") return "Pick a game"
+	const rows = await resultsOf(uid, s.id)
+	if (gameOf(rows, g)) return "That game already has a result"
+	const outcome = text(f.get("outcome"), 4)
+	if (outcome !== "win" && outcome !== "lose") return "Pick Won or Miss"
+	const won = outcome === "win"
+	const amount = usdtMinor(f.get("pnl"))
+	let pnl = 0
+	if (won) {
+		if (!amount) return "Enter the PnL in USDT"
+		pnl = amount
+	} else {
+		pnl = 0 - Math.min(amount ?? GAME, GAME)
+	}
+	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
+	await db.create(tradeResults, row)
+	const next = [...rows, toResult(row)]
+	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))
 }
 
 export async function undoResult(uid: string, f: FormData): Promise<string | void> {

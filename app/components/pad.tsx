@@ -159,14 +159,14 @@ const Projects = view<Props>(({ d, f }) => {
 })
 
 const Said = view<Props>(({ d, f }) => {
-	const all = d.entries.filter((e) => e.kind === "said")
+	const all = d.entries.filter((e) => e.kind === "said").reverse()
 	const list = all.filter((e) => !f || e.tag.toLowerCase() === f)
 	const back = padBack(d, "said", f)
 	const title = (id: string) => d.spaces.find((x) => x.id === id)?.title
 	return (
 		<>
 			<Filters base="/pad/said" f={f} items={[["All", ""], ["Tips", "tip"], ["Info", "info"]]} />
-			<div class="nt-c nt-list">
+			<div class="nt-c nt-list nt-scr" data-bottom>
 				{list.length ? (
 					list.map((e) => (
 						<div key={e.id} class="nt-q" data-pad-item>
@@ -214,9 +214,11 @@ const HomeTasks = view<Props>(({ d }) => {
 				</div>
 				<Bar pct={all.length ? Math.round((done / all.length) * 100) : 0} />
 			</div>
-			{group("Today", all.filter((e) => e.today))}
-			{group("Later", all.filter((e) => !e.today))}
-			{all.length ? null : <Empty>No home tasks yet. Add one below.</Empty>}
+			<div class="nt-wrap nt-scr" data-bottom>
+				{group("Today", all.filter((e) => e.today))}
+				{group("Later", all.filter((e) => !e.today))}
+				{all.length ? null : <Empty>No home tasks yet. Add one below.</Empty>}
+			</div>
 		</>
 	)
 })

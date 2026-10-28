@@ -3,7 +3,7 @@ import { fmt } from "../lib/money.ts"
 import { today } from "../lib/time.ts"
 import { DEPOSIT, flowOf, resOf, TRIES } from "../lib/trade-math.ts"
 import { calc } from "../lib/view.ts"
-import { Icon, view } from "./ui.tsx"
+import { Icon, Submit, view } from "./ui.tsx"
 
 export type PadProject = { id: string; title: string; color: string; left: number; total: number }
 export type PadLeft = { projects: PadProject[]; home: { left: number; total: number } }
@@ -47,9 +47,11 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 	const won = !!done && resOf(done.results).some((x) => x.won)
 	const title = f
 		? f.over
-			? "5 min done · finish the games"
-			: f.tryNo > 1 && f.steps.length === 0
-				? `Missed · one more try, ${fmt(f.left)} USDT left`
+			? f.won
+				? "5 min done · finish the games"
+				: "Stop trading · finish the games"
+			: f.tryNo > 1
+				? `Second try · ${fmt(f.left)} USDT left`
 				: `Predict is open · try ${f.tryNo} of ${TRIES}`
 		: done
 			? won
@@ -69,7 +71,10 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 					Continue predict
 				</a>
 			) : !done ? (
-				<a class="hm-go" href="/trading">{`Start predict · ${fmt(DEPOSIT)} USDT`}</a>
+				<form method="post" action="/trading/deposit" style={{ margin: 0 }}>
+					<input type="hidden" name="back" value="/trading" />
+					<Submit class="hm-go">{`Start predict · ${fmt(DEPOSIT)} USDT`}</Submit>
+				</form>
 			) : null}
 		</div>
 	)

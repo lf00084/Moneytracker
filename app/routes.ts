@@ -59,7 +59,6 @@ export const routes = route({
 		editSource: post("/income/edit"),
 		deleteSource: post("/income/source/delete"),
 		tradeDeposit: post("/trading/deposit"),
-		tradeSet: post("/trading/set"),
 		tradeResult: post("/trading/result"),
 		tradeGame: post("/trading/game"),
 		tradeUndo: post("/trading/undo"),

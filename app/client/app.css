@@ -830,3 +830,37 @@ input.nt-tgl[type=checkbox]:checked::after{left:19px}
 .hm-balc:has(.hm-bedit:not([hidden])) .hm-bedit{padding-right:14px}
 .tnote{display:flex;gap:10px;align-items:baseline;padding:12px 14px;margin-bottom:12px;border-radius:16px;border:1px solid var(--ln);background:var(--s2);font-size:13px;line-height:1.4;color:var(--ink)}
 .tnote b{font:600 12px/1.4 var(--mono);color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+
+/* file21: icon buttons without browser margins, centered balance icons, compact theme switch */
+button.ib{margin:0}
+.hm-bal:has(.hm-ba){grid-template-rows:auto auto;align-content:center}
+.hm-bal:has(.hm-ba) .hm-ba{grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:end;margin:0;height:32px}
+.hm-bal:has(.hm-ba) .hm-m{grid-column:1;grid-row:1}
+.hm-bal:has(.hm-ba) .hm-dots{grid-column:1;grid-row:2}
+.hm-bal .ib,.hm-bal .hm-ba .ib{margin:0;align-self:center}
+.sg{align-items:stretch;margin:0}
+.sg button{margin:0;min-height:0;height:34px;padding:0 12px;line-height:1;box-sizing:border-box}
+.hm .cd .cb .sg{margin:0}
+
+/* trading: three result buttons, game rows, stop notice */
+.pbt.p3 .btn{flex-direction:row;min-height:46px;padding:0 8px;border-radius:14px;font-size:14px}
+.btn.lost{background:rgba(255,170,60,.14);color:var(--earn);border-color:rgba(255,170,60,.45)}
+.gm{margin:0;padding:10px 0;border-bottom:1px solid var(--ln)}
+.gm:last-of-type{border-bottom:0}
+.gmh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.gmh span{font-size:14px;font-weight:600}
+.gmh b{font:600 14px/1.2 var(--mono);color:var(--ink);white-space:nowrap}
+.tstop{display:flex;flex-direction:column;gap:6px;padding:14px 16px;margin-bottom:12px;border-radius:18px;border:1px solid rgba(255,90,77,.4);background:rgba(255,90,77,.1);font-size:14px;line-height:1.45;color:var(--ink)}
+.tstop b{font-size:18px;font-weight:700;color:var(--neg);letter-spacing:-.02em}
+button.hm-go{width:100%;border:0;margin-bottom:0;cursor:pointer;font-family:inherit}
+
+/* pad: chat-style lists, newest at the bottom */
+.nt-wrap{display:flex;flex-direction:column;gap:6px}
+.nt-wrap.nt-scr{overflow-y:auto;max-height:calc(100dvh - 300px);min-height:150px;overscroll-behavior:contain;scrollbar-width:thin}
+.nt-scr{scroll-behavior:auto}
+.nt-it,.nt-q{transition:background .15s ease}
+.nt-it:hover,.nt-q:hover{background:var(--h-chip)}
+.nt-it.nt:hover{background:var(--h-acs)}
+.nt-cmp .nt-c{border-radius:26px;box-shadow:var(--sh1)}
+.nt-cmp{padding-top:10px}
+.nt-list.nt-scr>:last-child{padding-bottom:14px}

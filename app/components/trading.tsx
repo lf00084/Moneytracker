@@ -1,14 +1,13 @@
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { dayLabel, today } from "../lib/time.ts"
-import { allDone, backUsdt, DEPOSIT, FIVE, flowOf, GAME, gameOf, gamesStrip, hasGames, isDone, PARTS, resOf, stakesFor, toMad, totalPnl, TRIES, type Flow, type GameKey, type TradeSession } from "../lib/trade-math.ts"
+import { allDone, backUsdt, DEPOSIT, FIVE, flowOf, GAME, gameOf, gamesStrip, hasGames, isDone, letter, resOf, stakesFor, toMad, totalPnl, TRIES, word, type Flow, type GameKey, type TradeSession } from "../lib/trade-math.ts"
 import { Back, Card, Icon, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 
 const sg = (minor: number) => `${minor < 0 ? "−" : "+"}${fmt(Math.abs(minor))}`
 const tone = (minor: number) => (minor < 0 ? "neg" : "pos")
-const side = (x: string | undefined) => (x === "down" ? "Down" : "Up")
 
 const SessionHid = view<{ s: State; t: TradeSession }>(({ s, t }) => (
 	<>
@@ -17,129 +16,98 @@ const SessionHid = view<{ s: State; t: TradeSession }>(({ s, t }) => (
 	</>
 ))
 
-const Bar = view<{ f: Flow }>(({ f }) => (
+const MethodRows = view<{ stakes: number[] }>(({ stakes }) => (
 	<>
-		<div class="pseg">
-			{f.stakes.map((v, i) => (
-				<b key={i} class={i < f.steps.length ? "on" : i === f.steps.length && !f.over ? "cur" : ""} style={{ flex: String(v) }}>
-					{fmt(v)}
-				</b>
-			))}
+		<div class="rw">
+			<span>1 · Follow the indicator. Pick Up or Down</span>
+			<b>{`${fmt(stakes[0]!)} USDT`}</b>
 		</div>
-		<div class="psl">
-			{f.stakes.map((v, i) => (
-				<span key={i} style={{ flex: String(v) }}>{`step ${i + 1}`}</span>
-			))}
+		<div class="rw">
+			<span>2 · Instantly, same side</span>
+			<b>{`${fmt(stakes[1]!)} USDT`}</b>
+		</div>
+		<div class="rw">
+			<span>3 · Went your way: same side. If not: other side</span>
+			<b>{`${fmt(stakes[2]!)} USDT`}</b>
 		</div>
 	</>
 ))
 
-const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => {
-	const n = f.steps.length
-	const first = f.steps[0]?.asset
-	const other = first === "down" ? "Up" : "Down"
-	const msg =
-		n === 0
-			? `Step 1 of ${PARTS}. Follow the indicator. Pick Up or Down and put ${fmt(f.stakes[0]!)} USDT in.`
-			: n === 1
-				? `Step 2 of ${PARTS}. Instantly put another ${fmt(f.stakes[1]!)} USDT on ${side(first)}.`
-				: n === 2
-					? `Step 3 of ${PARTS}. Did it go your way? If yes add ${fmt(f.stakes[2]!)} USDT on ${side(first)}. If not, put it on ${other}.`
-					: `All ${fmt(f.base)} USDT are in. Wait for the 5 min result, then enter the PnL or tap Miss.`
-	return (
-		<Card title={`5 min predict · try ${f.tryNo} of ${TRIES} · ${fmt(f.base)} USDT`}>
-			{f.tryNo > 1 && n === 0 ? <div class="lb tbn">{`You missed the first try. One more try with ${fmt(f.left)} USDT. This is the last try today.`}</div> : null}
-			<Bar f={f} />
-			<div class="lb tbn">{msg}</div>
-			{n === 0 ? (
-				<form method="post" action="/trading/set" style={contents}>
-					<SessionHid s={s} t={t} />
-					<div class="pbt">
-						<Submit class="btn" name="choice" value="up">
-							<b>Up</b>
-							<small>{`${fmt(f.stakes[0]!)} USDT`}</small>
-						</Submit>
-						<Submit class="btn o" name="choice" value="down">
-							<b>Down</b>
-							<small>{`${fmt(f.stakes[0]!)} USDT`}</small>
-						</Submit>
-					</div>
-				</form>
-			) : null}
-			{n === 1 ? (
-				<form method="post" action="/trading/set" style={contents}>
-					<SessionHid s={s} t={t} />
-					<Submit class="btn full" name="choice" value="go">
-						{`Put ${fmt(f.stakes[1]!)} USDT · ${side(first)}`}
-					</Submit>
-				</form>
-			) : null}
-			{n === 2 ? (
-				<form method="post" action="/trading/set" style={contents}>
-					<SessionHid s={s} t={t} />
-					<div class="pbt">
-						<Submit class="btn o" name="choice" value="same">
-							<b>Went my way</b>
-							<small>{`${fmt(f.stakes[2]!)} on ${side(first)}`}</small>
-						</Submit>
-						<Submit class="btn o" name="choice" value="other">
-							<b>Went other way</b>
-							<small>{`${fmt(f.stakes[2]!)} on ${other}`}</small>
-						</Submit>
-					</div>
-				</form>
-			) : null}
-			{n > 0 ? (
-				<form method="post" action="/trading/result" class="pres">
-					<SessionHid s={s} t={t} />
-					<select class="in" name="coin" style={{ width: "100%" }}>
-						<option value="">Which 5 min? BTC or ETH</option>
-						<option value="btc">5 min BTC</option>
-						<option value="eth">5 min ETH</option>
-					</select>
-					<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
-					<div class="lb tbn">{`Won: type what you made. Miss: leave it empty to count ${fmt(f.staked)} USDT, or type what you lost.`}</div>
-					<div class="pbt">
-						<Submit class="btn win" name="outcome" value="win">
-							Won
-						</Submit>
-						<Submit class="btn miss" name="outcome" value="lose" formnovalidate>
-							Miss
-						</Submit>
-					</div>
-				</form>
-			) : null}
-			{t.results.length > 0 ? (
-				<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
-					<SessionHid s={s} t={t} />
-					<Submit class="btn xs o">Undo last</Submit>
-				</form>
-			) : null}
-		</Card>
-	)
-})
+const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
+	<Card title={`5 min predict · try ${f.tryNo} of ${TRIES} · ${fmt(f.base)} USDT`}>
+		{f.tryNo > 1 ? <div class="lb tbn">{`First try lost. ${fmt(f.left)} USDT is left. Do a second 5 min predict with it. This is the last try today.`}</div> : null}
+		<div class="lb tbn">Instructions</div>
+		<div class="lb tbn">{`Open the 5 min BTC or ETH. Use only ${fmt(f.base)} USDT in total. Follow the method below, nothing else.`}</div>
+		<div class="lb tbn">Method</div>
+		<MethodRows stakes={f.stakes} />
+		<form method="post" action="/trading/result" class="pres">
+			<SessionHid s={s} t={t} />
+			<select class="in" name="coin" style={{ width: "100%" }}>
+				<option value="">Which 5 min? BTC or ETH</option>
+				<option value="btc">5 min BTC</option>
+				<option value="eth">5 min ETH</option>
+			</select>
+			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
+			<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost, what is left stays for the next try. Miss: all ${fmt(f.base)} USDT is gone.`}</div>
+			<div class="pbt p3">
+				<Submit class="btn win" name="outcome" value="win">
+					Won
+				</Submit>
+				<Submit class="btn lost" name="outcome" value="lose">
+					Lost
+				</Submit>
+				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
+					Miss
+				</Submit>
+			</div>
+		</form>
+		{t.results.length > 0 ? (
+			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
+				<SessionHid s={s} t={t} />
+				<Submit class="btn xs o">Undo last</Submit>
+			</form>
+		) : null}
+	</Card>
+))
+
+const StopCard = view<{ f: Flow; games: boolean }>(({ f, games }) => (
+	<div class="tstop" role="alert">
+		<b>Stop trading now</b>
+		<span>
+			{`Do not predict again. ${fmt(f.left)} USDT is left from the 5 min.`}
+			{games ? " If you feel like trading more, just wait for the other 2 games and close." : ""}
+			{" Wait for the next day and follow your method only."}
+		</span>
+	</div>
+))
 
 const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s, t, g, n }) => {
 	const x = gameOf(t.results, g)
 	if (x) {
 		return (
 			<div class="rw">
-				<span>{`Game ${n} · ${fmt(GAME)} USDT`}</span>
-				<b class={tone(x.pnl)}>{`${x.won ? "Won" : "Miss"} ${sg(x.pnl)}`}</b>
+				<span>{`Game ${n}`}</span>
+				<b class={tone(x.pnl)}>{`${word(x)} ${sg(x.pnl)} USDT`}</b>
 			</div>
 		)
 	}
 	return (
-		<form method="post" action="/trading/game" class="pres">
+		<form method="post" action="/trading/game" class="pres gm">
 			<SessionHid s={s} t={t} />
 			<input type="hidden" name="game" value={g} />
-			<div class="lb">{`Game ${n} · ${fmt(GAME)} USDT`}</div>
+			<div class="gmh">
+				<span>{`Game ${n}`}</span>
+				<b>{`${fmt(GAME)} USDT`}</b>
+			</div>
 			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
-			<div class="pbt">
+			<div class="pbt p3">
 				<Submit class="btn win" name="outcome" value="win">
 					Won
 				</Submit>
-				<Submit class="btn miss" name="outcome" value="lose" formnovalidate>
+				<Submit class="btn lost" name="outcome" value="lose">
+					Lost
+				</Submit>
+				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
 					Miss
 				</Submit>
 			</div>
@@ -148,10 +116,10 @@ const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s,
 })
 
 const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, undo }) => (
-	<Card title={`Matches / vote predict · ${fmt(GAME)} + ${fmt(GAME)} USDT`}>
+	<Card title="Matches / vote predict · 2 games">
 		<GameRow s={s} t={t} g="ga" n={1} />
 		<GameRow s={s} t={t} g="gb" n={2} />
-		<div class="lb tbn">{`Won: type what you made. Miss: leave it empty to count ${fmt(GAME)} USDT.`}</div>
+		<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost. Miss: all ${fmt(GAME)} USDT is gone.`}</div>
 		{undo && t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
 				<SessionHid s={s} t={t} />
@@ -162,25 +130,14 @@ const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, un
 ))
 
 const Plan = view(() => {
-	const [a, b, c] = stakesFor(FIVE)
+	const st = stakesFor(FIVE)
 	return (
 		<Card title="The way">
 			<div class="lb tbn">{`5 min predict · BTC or ETH · ${fmt(FIVE)} USDT`}</div>
-			<div class="rw">
-				<span>1 · Follow the indicator. Pick Up or Down</span>
-				<b>{fmt(a!)}</b>
-			</div>
-			<div class="rw">
-				<span>2 · Instantly, same side</span>
-				<b>{fmt(b!)}</b>
-			</div>
-			<div class="rw">
-				<span>3 · Went your way: same side. If not: other side</span>
-				<b>{fmt(c!)}</b>
-			</div>
-			<div class="lb tbn">Then enter the PnL, or Miss. A win ends the 5 min for today. A miss: one more try with what is left.</div>
-			<div class="lb tbn">{`Matches / vote predict · 2 games · ${fmt(GAME)} + ${fmt(GAME)} USDT`}</div>
-			<div class="lb tbn">Enter the PnL for each, or Miss.</div>
+			<MethodRows stakes={st} />
+			<div class="lb tbn">When the 5 min ends, enter the PnL: Won, Lost or Miss. Lost with something left: one more 5 min try with what is left. Miss or a second loss: stop for the day.</div>
+			<div class="lb tbn">{`Matches / vote predict · 2 games · ${fmt(GAME)} USDT each`}</div>
+			<div class="lb tbn">Enter the PnL for each: Won, Lost or Miss.</div>
 		</Card>
 	)
 })
@@ -248,11 +205,11 @@ const StartCard = view<{ s: State }>(({ s }) => {
 					<span class="lb">{`${fmt(cost)} ${cur}`}</span>
 				</div>
 				<div class="lb">{`${fmt(FIVE)} for the 5 min predict + ${fmt(GAME)} + ${fmt(GAME)} for two games. 1 USDT = ${fmt(rate)} ${cur}. You can change it in Settings.`}</div>
-				<form method="post" action="/trading/deposit" data-confirm={`Deposit ${fmt(DEPOSIT)} USDT? It counts as a buy of ${fmt(cost)} ${cur}.`}>
+				<form method="post" action="/trading/deposit">
 					<Back s={s} />
-					<Submit class="btn full">Deposit {fmt(DEPOSIT)} USDT</Submit>
+					<Submit class="btn full">Start predict</Submit>
 				</form>
-				<div class="lb tbn">One predict a day.</div>
+				<div class="lb tbn">{`Tapping start puts in the ${fmt(DEPOSIT)} USDT deposit by itself. It counts as a buy of ${fmt(cost)} ${cur}. One predict a day.`}</div>
 			</Card>
 			<Plan />
 		</>
@@ -261,7 +218,7 @@ const StartCard = view<{ s: State }>(({ s }) => {
 
 const PastRow = view<{ s: State; t: TradeSession; reopen: boolean }>(({ s, t, reopen }) => {
 	const net = t.returnMad - toMad(t.deposit, t.rate)
-	const five = resOf(t.results).map((x) => `${x.won ? "W" : "M"}${x.asset ? ` ${x.asset.toUpperCase()}` : ""}`).join(" · ")
+	const five = resOf(t.results).map((x) => `${letter(x)}${x.asset ? ` ${x.asset.toUpperCase()}` : ""}`).join(" · ")
 	const games = hasGames(t.deposit) ? gamesStrip(t.results) : ""
 	const label = `${five ? `5 min ${five}` : ""}${five && games ? " · " : ""}${games ? `Games ${games}` : ""}`
 	return (
@@ -316,22 +273,26 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 	const day = today(s.user.day_start)
 	const tradedToday = s.trades.some((t) => t.day === day)
 	const at = `${String(s.user.day_start).padStart(2, "0")}:00`
-	const ok = !!open || !tradedToday
 	const f = open ? flowOf(open.deposit, open.results) : null
+	const stop = !!f?.stop
+	const ok = (!!open || !tradedToday) && !stop
 	const sub = open
 		? f!.over
-			? "5 min is done. Finish the games below."
-			: `Try ${f!.tryNo} of ${TRIES}. Follow the steps below.`
+			? f!.won
+				? "5 min is done. Finish the games below."
+				: "5 min is done. Do not predict again. Finish the games below."
+			: `Try ${f!.tryNo} of ${TRIES}. Follow the method below.`
 		: tradedToday
 			? `One predict a day. You can predict again at ${at}.`
 			: `Deposit ${fmt(DEPOSIT)} USDT to start today's predict.`
 	return (
 		<div class="trd">
-			<Status ok={ok} title={ok ? "You can predict" : "You cannot predict"} sub={sub} />
+			<Status ok={ok} title={stop ? "Stop trading now" : ok ? "You can predict" : "You cannot predict"} sub={sub} />
 			<Note />
 			{open && f ? (
 				<>
 					<OpenSummary s={s} t={open} f={f} />
+					{f.stop ? <StopCard f={f} games={hasGames(open.deposit) && !allDone(open.deposit, open.results)} /> : null}
 					{f.over ? null : <Steps s={s} t={open} f={f} />}
 					{hasGames(open.deposit) ? <GamesCard s={s} t={open} undo={f.over} /> : null}
 				</>

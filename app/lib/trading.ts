@@ -2,7 +2,7 @@ import { sql } from "remix/data-table"
 import { db, incomes, purchases, tradeResults, tradeSessions } from "../db/index.ts"
 import { today } from "./time.ts"
 import { todayFor } from "./users.ts"
-import { allDone, backUsdt, DEPOSIT, doneOf, flowOf, GAME, gameOf, hasGames, PARTS, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
+import { allDone, backUsdt, DEPOSIT, doneOf, flowOf, GAME, gameOf, hasGames, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
 import type { User } from "./users.ts"
 import { id, text } from "./util.ts"
 
@@ -126,38 +126,11 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 
 const openOf = async (uid: string, f: FormData) => db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
 
-export async function setPredict(uid: string, f: FormData): Promise<string | void> {
-	const s = await openOf(uid, f)
-	if (!s) return "Predict not found"
-	if (s.status !== "open") return "This predict is already settled"
-	const rows = await resultsOf(uid, s.id)
-	const fl = flowOf(s.deposit_minor, rows)
-	if (fl.over) return "This predict is finished"
-	const n = fl.steps.length + 1
-	if (n > PARTS) return "Enter the result first"
-	const choice = text(f.get("choice"), 8)
-	const first = fl.steps[0]?.asset === "down" ? "down" : "up"
-	let side = first
-	if (n === 1) {
-		if (choice !== "up" && choice !== "down") return "Pick Up or Down"
-		side = choice
-	} else if (n === 3) {
-		if (choice === "other") side = first === "up" ? "down" : "up"
-		else if (choice !== "same") return "Pick how the move went"
-	}
-	await db.create(tradeResults, {
-		id: id(),
-		user_id: uid,
-		session_id: s.id,
-		game: "step",
-		idx: (fl.tryNo - 1) * PARTS + n,
-		won: 0,
-		pnl_minor: 0,
-		state: "set",
-		asset: side,
-		tf: fl.stakes[n - 1]!,
-		created_at: Date.now(),
-	})
+const pnlFor = (outcome: string, amount: number | null, base: number): { pnl: number } | { error: string } => {
+	if (outcome === "win") return amount ? { pnl: amount } : { error: "Enter how much you won in USDT" }
+	if (outcome === "lose") return amount ? { pnl: 0 - Math.min(amount, base) } : { error: "Enter how much you lost in USDT" }
+	if (outcome === "miss") return { pnl: 0 - base }
+	return { error: "Pick Won, Lost or Miss" }
 }
 
 export async function saveResult(uid: string, f: FormData): Promise<string | void> {
@@ -167,20 +140,12 @@ export async function saveResult(uid: string, f: FormData): Promise<string | voi
 	const rows = await resultsOf(uid, s.id)
 	const fl = flowOf(s.deposit_minor, rows)
 	if (fl.over) return "This predict is finished"
-	if (!fl.steps.length) return "Put in your first step first"
+	if (fl.base <= 0) return "Nothing is left to predict with"
 	const outcome = text(f.get("outcome"), 4)
-	if (outcome !== "win" && outcome !== "lose") return "Pick I won or I lost"
-	const won = outcome === "win"
-	const amount = usdtMinor(f.get("pnl"))
-	let pnl = 0
-	if (won) {
-		if (!amount) return "Enter the PnL in USDT"
-		pnl = amount
-	} else {
-		pnl = 0 - Math.min(amount ?? fl.staked, fl.staked)
-	}
+	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), fl.base)
+	if ("error" in r) return r.error
 	const coin = text(f.get("coin"), 3).toLowerCase()
-	const row = { id: id(), user_id: uid, session_id: s.id, game: "res", idx: fl.tryNo, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: coin === "btc" || coin === "eth" ? coin : "", tf: 0, created_at: Date.now() }
+	const row = { id: id(), user_id: uid, session_id: s.id, game: "res", idx: fl.tryNo, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: coin === "btc" || coin === "eth" ? coin : "", tf: fl.base, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
 	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))
@@ -196,17 +161,9 @@ export async function saveGame(uid: string, f: FormData): Promise<string | void>
 	const rows = await resultsOf(uid, s.id)
 	if (gameOf(rows, g)) return "That game already has a result"
 	const outcome = text(f.get("outcome"), 4)
-	if (outcome !== "win" && outcome !== "lose") return "Pick Won or Miss"
-	const won = outcome === "win"
-	const amount = usdtMinor(f.get("pnl"))
-	let pnl = 0
-	if (won) {
-		if (!amount) return "Enter the PnL in USDT"
-		pnl = amount
-	} else {
-		pnl = 0 - Math.min(amount ?? GAME, GAME)
-	}
-	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: won ? 1 : 0, pnl_minor: pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
+	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME)
+	if ("error" in r) return r.error
+	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
 	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))

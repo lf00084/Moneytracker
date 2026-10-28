@@ -126,7 +126,8 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 
 const openOf = async (uid: string, f: FormData) => db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
 
-const pnlFor = (outcome: string, amount: number | null, base: number): { pnl: number } | { error: string } => {
+const pnlFor = (outcome: string, amount: number | null, base: number, skip = false): { pnl: number } | { error: string } => {
+	if (skip && outcome === "skip") return { pnl: 0 }
 	if (outcome === "win") return amount ? { pnl: amount } : { error: "Enter how much you won in USDT" }
 	if (outcome === "lose") return amount ? { pnl: 0 - Math.min(amount, base) } : { error: "Enter how much you lost in USDT" }
 	if (outcome === "miss") return { pnl: 0 - base }
@@ -161,9 +162,9 @@ export async function saveGame(uid: string, f: FormData): Promise<string | void>
 	const rows = await resultsOf(uid, s.id)
 	if (gameOf(rows, g)) return "That game already has a result"
 	const outcome = text(f.get("outcome"), 4)
-	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME)
+	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME, true)
 	if ("error" in r) return r.error
-	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
+	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: outcome === "skip" ? "skip" : "", tf: GAME, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
 	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))

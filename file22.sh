@@ -10,7 +10,7 @@ export const PARTS = 3
 
 export type GameKey = "ga" | "gb"
 export type Game = "step" | "res" | GameKey
-export type Kind = "won" | "lost" | "miss"
+export type Kind = "won" | "lost" | "miss" | "skip"
 export type TradeResult = { id: string; game: Game; idx: number; won: boolean; pnl: number; state: "set" | "done"; asset: string; tf: number }
 export type TradeSession = {
 	id: string
@@ -41,9 +41,9 @@ export const resOf = (r: TradeResult[]) => r.filter((x) => x.game === "res" && i
 export const totalPnl = (r: TradeResult[]) => doneOf(r).reduce((a, x) => a + x.pnl, 0)
 export const backUsdt = (deposit: number, pnl: number) => Math.max(0, deposit + pnl)
 export const toMad = (usdtMinor: number, rateMinor: number) => Math.round((usdtMinor * rateMinor) / 100)
-export const kindOf = (x: TradeResult): Kind => (x.won ? "won" : x.tf <= 0 || 0 - x.pnl >= x.tf ? "miss" : "lost")
-export const letter = (x: TradeResult) => (kindOf(x) === "won" ? "W" : kindOf(x) === "lost" ? "L" : "M")
-export const word = (x: TradeResult) => (kindOf(x) === "won" ? "Won" : kindOf(x) === "lost" ? "Lost" : "Miss")
+export const kindOf = (x: TradeResult): Kind => (x.asset === "skip" ? "skip" : x.won ? "won" : x.tf <= 0 || 0 - x.pnl >= x.tf ? "miss" : "lost")
+export const letter = (x: TradeResult) => ({ won: "W", lost: "L", miss: "M", skip: "S" })[kindOf(x)]
+export const word = (x: TradeResult) => ({ won: "Won", lost: "Lost", miss: "Miss", skip: "Skipped" })[kindOf(x)]
 export const strip = (r: TradeResult[]) => doneOf(r).map(letter).join(" ")
 export const hasGames = (deposit: number) => deposit > FIVE
 export const gameOf = (r: TradeResult[], g: GameKey) => r.find((x) => x.game === g && isDone(x))
@@ -203,7 +203,8 @@ async function settle(uid: string, s: { id: string; deposit_minor: number; rate_
 
 const openOf = async (uid: string, f: FormData) => db.findOne(tradeSessions, { where: { id: text(f.get("session_id"), 36), user_id: uid } })
 
-const pnlFor = (outcome: string, amount: number | null, base: number): { pnl: number } | { error: string } => {
+const pnlFor = (outcome: string, amount: number | null, base: number, skip = false): { pnl: number } | { error: string } => {
+	if (skip && outcome === "skip") return { pnl: 0 }
 	if (outcome === "win") return amount ? { pnl: amount } : { error: "Enter how much you won in USDT" }
 	if (outcome === "lose") return amount ? { pnl: 0 - Math.min(amount, base) } : { error: "Enter how much you lost in USDT" }
 	if (outcome === "miss") return { pnl: 0 - base }
@@ -238,9 +239,9 @@ export async function saveGame(uid: string, f: FormData): Promise<string | void>
 	const rows = await resultsOf(uid, s.id)
 	if (gameOf(rows, g)) return "That game already has a result"
 	const outcome = text(f.get("outcome"), 4)
-	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME)
+	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME, true)
 	if ("error" in r) return r.error
-	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
+	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: outcome === "skip" ? "skip" : "", tf: GAME, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
 	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))
@@ -278,175 +279,7 @@ export async function reopenTrade(uid: string, f: FormData): Promise<string | vo
 	})
 }
 MT_EOF_2
-cat > app/routes.ts <<'MT_EOF_3'
-import { get, post, route } from "remix/routes"
-
-export const routes = route({
-	pages: {
-		root: get("/"),
-		home: get("/home"),
-		debts: get("/debts"),
-		notes: get("/notes"),
-		goals: get("/goals"),
-		pad: get("/pad"),
-		padSaid: get("/pad/said"),
-		padHome: get("/pad/home"),
-		padNew: get("/pad/new"),
-		padProject: get("/pad/project"),
-		trading: get("/trading"),
-		income: get("/income"),
-		plan: get("/plan"),
-		history: get("/history"),
-		profile: get("/profile"),
-		profileEdit: get("/profile/edit"),
-		settings: get("/settings"),
-		exportCsv: get("/export.csv"),
-	},
-
-	auth: {
-		login: get("/login"),
-		signIn: post("/login"),
-		signup: get("/signup"),
-		signUp: post("/signup"),
-		logout: post("/logout"),
-		googleLogin: get("/login/google"),
-		googleCallback: get("/auth/google/callback"),
-		deleteAccount: post("/account/delete"),
-	},
-
-	commands: {
-		buy: post("/buy"),
-		deleteBuy: post("/buy/delete"),
-		setBalance: post("/profile/balance"),
-		historyIncome: post("/history/income"),
-		addDebt: post("/debts"),
-		payDebt: post("/debts/pay"),
-		clearDebt: post("/debts/clear"),
-		addNote: post("/notes"),
-		deleteNote: post("/notes/delete"),
-		addWish: post("/goals"),
-		buyWish: post("/goals/buy"),
-		deleteWish: post("/goals/delete"),
-		editGoal: post("/goals/edit"),
-		editGoalItem: post("/goals/item/edit"),
-		addGoalItem: post("/goals/item"),
-		deleteGoalItem: post("/goals/item/delete"),
-		addSource: post("/income"),
-		addIncome: post("/income/add"),
-		setHours: post("/income/hours"),
-		addNamed: post("/income/named"),
-		deleteIncome: post("/income/delete"),
-		toggleSource: post("/income/toggle"),
-		editSource: post("/income/edit"),
-		deleteSource: post("/income/source/delete"),
-		tradeDeposit: post("/trading/deposit"),
-		tradeResult: post("/trading/result"),
-		tradeGame: post("/trading/game"),
-		tradeUndo: post("/trading/undo"),
-		tradeFinish: post("/trading/finish"),
-		tradeReopen: post("/trading/reopen"),
-		saveProfile: post("/profile/edit"),
-		saveSettings: post("/settings"),
-		setTheme: post("/settings/theme"),
-		padAddSpace: post("/pad/space"),
-		padDelSpace: post("/pad/space/delete"),
-		padEditSpace: post("/pad/space/edit"),
-		padAdd: post("/pad/add"),
-		padToggle: post("/pad/toggle"),
-		padDel: post("/pad/delete"),
-		padEdit: post("/pad/edit"),
-	},
-
-	assets: {
-		manifest: get("/manifest.webmanifest"),
-		favicon: get("/favicon.svg"),
-		faviconIco: get("/favicon.ico"),
-		icon192: get("/icon-192.png"),
-		icon512: get("/icon-512.png"),
-		iconMaskable: get("/icon-maskable.png"),
-		appleIcon: get("/apple-touch-icon.png"),
-		sw: get("/sw.js"),
-		robots: get("/robots.txt"),
-		sitemap: get("/sitemap.xml"),
-		css: get("/assets/app.css"),
-		js: get("/assets/app.js"),
-		authCss: get("/assets/auth.css"),
-	},
-})
-MT_EOF_3
-cat > app/commands.ts <<'MT_EOF_4'
-import * as act from "./lib/actions.ts"
-import * as inc from "./lib/income.ts"
-import { toMinor } from "./lib/money.ts"
-import * as pad from "./lib/pad.ts"
-import * as trading from "./lib/trading.ts"
-import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts"
-
-export type Command = {
-	run: (user: User, f: FormData) => Promise<unknown>
-	to: string
-	back?: boolean
-	fail?: string
-	empty?: boolean
-}
-
-const field = (f: FormData, key: string) => String(f.get(key) ?? "")
-
-const quiet = (fn: (u: User, f: FormData) => Promise<unknown>) => async (u: User, f: FormData) => {
-	await fn(u, f)
-}
-
-export const commands = {
-	buy: { run: (u, f) => act.addBuy(u.id, f), to: "/home" },
-	deleteBuy: { run: (u, f) => act.deleteBuy(u.id, f), to: "/home" },
-	setBalance: { run: (u, f) => act.setBalance(u.id, f), to: "/profile" },
-	historyIncome: { run: (u, f) => act.addDayIncome(u.id, f), to: "/history" },
-	addDebt: { run: (u, f) => act.addDebt(u.id, f), to: "/debts" },
-	payDebt: { run: (u, f) => act.payDebt(u.id, f), to: "/debts" },
-	clearDebt: { run: (u, f) => act.clearDebt(u.id, f), to: "/debts" },
-	addNote: { run: quiet((u, f) => act.saveNote(u.id, f)), to: "/notes" },
-	deleteNote: { run: quiet((u, f) => act.deleteNote(u.id, f)), to: "/notes" },
-	addWish: { run: (u, f) => act.addGoal(u.id, f), to: "/goals" },
-	buyWish: { run: (u, f) => act.buyWish(u.id, f), to: "/goals" },
-	deleteWish: { run: (u, f) => act.deleteWish(u.id, f), to: "/goals" },
-	editGoal: { run: (u, f) => act.editGoal(u.id, f), to: "/goals" },
-	editGoalItem: { run: (u, f) => act.editGoalItem(u.id, f), to: "/goals" },
-	addGoalItem: { run: (u, f) => act.addGoalItem(u.id, f), to: "/goals" },
-	deleteGoalItem: { run: (u, f) => act.deleteGoalItem(u.id, f), to: "/goals" },
-	addSource: { run: (u, f) => inc.addSource(u.id, f), to: "/income" },
-	setHours: { run: (u, f) => inc.setHours(u.id, f), to: "/home" },
-	addNamed: { run: (u, f) => inc.addNamed(u.id, f), to: "/home" },
-	addIncome: { run: (u, f) => act.addIncome(u.id, f), to: "/income" },
-	deleteIncome: { run: (u, f) => act.deleteIncome(u.id, f), to: "/income" },
-	toggleSource: { run: (u, f) => act.toggleSource(u.id, f), to: "/income" },
-	editSource: { run: (u, f) => inc.editSource(u.id, f), to: "/income" },
-	deleteSource: { run: (u, f) => act.deleteSource(u.id, f), to: "/income" },
-	tradeDeposit: { run: (u) => trading.startTrade(u), to: "/trading" },
-	tradeResult: { run: (u, f) => trading.saveResult(u.id, f), to: "/trading" },
-	tradeGame: { run: (u, f) => trading.saveGame(u.id, f), to: "/trading" },
-	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
-	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
-	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },
-	saveProfile: { run: (u, f) => updateProfile(u.id, { name: field(f, "name"), email: field(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
-	saveSettings: {
-		run: quiet((u, f) => updatePrefs(u.id, { currency: field(f, "currency"), run_at: field(f, "run_at"), day_start: parseInt(field(f, "day_start"), 10), week_start: field(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")), usd_rate_minor: toMinor(f.get("usd_rate")) })),
-		to: "/settings",
-	},
-	setTheme: { run: quiet((u, f) => setTheme(u.id, field(f, "theme"))), to: "/settings", empty: true },
-	padAddSpace: { run: (u, f) => pad.addSpace(u.id, f), to: "/pad", fail: "/pad/new" },
-	padEditSpace: { run: (u, f) => pad.editSpace(u.id, f), to: "/pad", fail: "/pad" },
-	padDelSpace: { run: quiet((u, f) => pad.deleteSpace(u.id, f)), to: "/pad" },
-	padAdd: { run: (u, f) => pad.addEntry(u.id, f), to: "/pad" },
-	padToggle: { run: quiet((u, f) => pad.toggleEntry(u.id, f)), to: "/pad" },
-	padEdit: { run: (u, f) => pad.editEntry(u.id, f), to: "/pad" },
-	padDel: { run: quiet((u, f) => pad.deleteEntry(u.id, f)), to: "/pad" },
-} satisfies Record<string, Command>
-
-export type CommandName = keyof typeof commands
-
-export const errorOf = (r: unknown) => (typeof r === "string" && r ? r : "")
-MT_EOF_4
-cat > app/components/trading.tsx <<'MT_EOF_5'
+cat > app/components/trading.tsx <<'MT_EOF_3'
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { dayLabel, today } from "../lib/time.ts"
@@ -463,6 +296,27 @@ const SessionHid = view<{ s: State; t: TradeSession }>(({ s, t }) => (
 		<Back s={s} />
 		<input type="hidden" name="session_id" value={t.id} />
 	</>
+))
+
+const PnlField = view(() => (
+	<div class="fld">
+		<div class="ferr" role="alert" hidden></div>
+		<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
+	</div>
+))
+
+const Outcomes = view(() => (
+	<div class="pbt p3">
+		<Submit class="btn win" name="outcome" value="win">
+			Won
+		</Submit>
+		<Submit class="btn lost" name="outcome" value="lose">
+			Lost
+		</Submit>
+		<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
+			Miss
+		</Submit>
+	</div>
 ))
 
 const MethodRows = view<{ stakes: number[] }>(({ stakes }) => (
@@ -489,26 +343,11 @@ const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
 		<div class="lb tbn">{`Open the 5 min BTC or ETH. Use only ${fmt(f.base)} USDT in total. Follow the method below, nothing else.`}</div>
 		<div class="lb tbn">Method</div>
 		<MethodRows stakes={f.stakes} />
-		<form method="post" action="/trading/result" class="pres">
+		<form method="post" action="/trading/result" class="pres" data-pnl novalidate>
 			<SessionHid s={s} t={t} />
-			<select class="in" name="coin" style={{ width: "100%" }}>
-				<option value="">Which 5 min? BTC or ETH</option>
-				<option value="btc">5 min BTC</option>
-				<option value="eth">5 min ETH</option>
-			</select>
-			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
+			<PnlField />
 			<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost, what is left stays for the next try. Miss: all ${fmt(f.base)} USDT is gone.`}</div>
-			<div class="pbt p3">
-				<Submit class="btn win" name="outcome" value="win">
-					Won
-				</Submit>
-				<Submit class="btn lost" name="outcome" value="lose">
-					Lost
-				</Submit>
-				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
-					Miss
-				</Submit>
-			</div>
+			<Outcomes />
 		</form>
 		{t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
@@ -534,30 +373,39 @@ const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s,
 	const x = gameOf(t.results, g)
 	if (x) {
 		return (
-			<div class="rw">
+			<div class="rw gdn">
 				<span>{`Game ${n}`}</span>
-				<b class={tone(x.pnl)}>{`${word(x)} ${sg(x.pnl)} USDT`}</b>
+				{x.asset === "skip" ? <b class="mu">Skipped</b> : <b class={tone(x.pnl)}>{`${word(x)} ${sg(x.pnl)} USDT`}</b>}
 			</div>
 		)
 	}
 	return (
-		<form method="post" action="/trading/game" class="pres gm">
+		<form method="post" action="/trading/game" class="gm" data-pnl novalidate>
 			<SessionHid s={s} t={t} />
 			<input type="hidden" name="game" value={g} />
 			<div class="gmh">
 				<span>{`Game ${n}`}</span>
 				<b>{`${fmt(GAME)} USDT`}</b>
 			</div>
-			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
-			<div class="pbt p3">
-				<Submit class="btn win" name="outcome" value="win">
-					Won
-				</Submit>
-				<Submit class="btn lost" name="outcome" value="lose">
-					Lost
-				</Submit>
-				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
-					Miss
+			<div class="gq">Did you predict this game?</div>
+			<div class="gseg">
+				<label>
+					<input type="radio" name="did" value="yes" />
+					<span>Yes, I predicted</span>
+				</label>
+				<label>
+					<input type="radio" name="did" value="no" />
+					<span>No, I skipped</span>
+				</label>
+			</div>
+			<div class="gyes">
+				<PnlField />
+				<Outcomes />
+			</div>
+			<div class="gno">
+				<div class="lb tbn">{`No prediction, no loss. The ${fmt(GAME)} USDT stays with you.`}</div>
+				<Submit class="btn o full gsk" name="outcome" value="skip" formnovalidate>
+					Save as skipped
 				</Submit>
 			</div>
 		</form>
@@ -568,7 +416,6 @@ const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, un
 	<Card title="Matches / vote predict · 2 games">
 		<GameRow s={s} t={t} g="ga" n={1} />
 		<GameRow s={s} t={t} g="gb" n={2} />
-		<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost. Miss: all ${fmt(GAME)} USDT is gone.`}</div>
 		{undo && t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
 				<SessionHid s={s} t={t} />
@@ -586,7 +433,7 @@ const Plan = view(() => {
 			<MethodRows stakes={st} />
 			<div class="lb tbn">When the 5 min ends, enter the PnL: Won, Lost or Miss. Lost with something left: one more 5 min try with what is left. Miss or a second loss: stop for the day.</div>
 			<div class="lb tbn">{`Matches / vote predict · 2 games · ${fmt(GAME)} USDT each`}</div>
-			<div class="lb tbn">Enter the PnL for each: Won, Lost or Miss.</div>
+			<div class="lb tbn">For each game say if you predicted it, then enter the PnL: Won, Lost or Miss.</div>
 		</Card>
 	)
 })
@@ -754,469 +601,705 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 		</div>
 	)
 })
-MT_EOF_5
-cat > app/components/home.tsx <<'MT_EOF_6'
-import type { State } from "../lib/data.ts"
-import { fmt } from "../lib/money.ts"
-import { today } from "../lib/time.ts"
-import { DEPOSIT, flowOf, resOf, TRIES } from "../lib/trade-math.ts"
-import { calc } from "../lib/view.ts"
-import { Icon, Submit, view } from "./ui.tsx"
+MT_EOF_3
+cat > app/client/app.js <<'MT_EOF_4'
+(function () {
+	if (window.__mt) return
+	window.__mt = 1
+	var d = document
+	var r = d.documentElement
+	var all = function (sel, root) {
+		return [].slice.call((root || d).querySelectorAll(sel))
+	}
+	var focusFirst = function (box) {
+		var i = box.querySelector("input:not([type=hidden])")
+		if (i) i.focus()
+	}
 
-export type PadProject = { id: string; title: string; color: string; left: number; total: number }
-export type PadLeft = { projects: PadProject[]; home: { left: number; total: number } }
+	function setTheme(t) {
+		r.setAttribute("data-theme", t)
+		try {
+			localStorage.setItem("mtheme", t)
+		} catch (e) {}
+		try {
+			fetch("/settings/theme", { method: "POST", body: new URLSearchParams({ theme: t }), credentials: "same-origin", redirect: "manual" })
+		} catch (e) {}
+	}
 
-export const HomeBalance = view<{ s: State }>(({ s }) => (
-	<div class="hm-c hm-bal">
-		<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
-			••••••
-		</b>
-		<div class="hm-ba">
-			<button type="button" class="ib" data-eye aria-label="Show balance">
-				<Icon name="eye" />
-			</button>
-		</div>
-		<div class="hm-m">Total balance</div>
-	</div>
-))
+	function endEdit(c) {
+		var id = c.querySelector("[data-eid]")
+		if (id) id.value = ""
+		var eb = c.querySelector(".eb")
+		if (eb) eb.hidden = true
+		c.querySelector("textarea").value = ""
+	}
 
-const Stat = view<{ label: string; sign: string; value: number; cur: string }>(({ label, sign, value, cur }) => (
-	<div class="hm-c hm-bal">
-		<b class="hm-dots">{`${sign}${fmt(value)}`} <small>{cur}</small></b>
-		<div class="hm-m">{label}</div>
-	</div>
-))
+	var open = {}
+	try {
+		open = JSON.parse(localStorage.getItem("mt:open") || "{}")
+	} catch (e) {}
 
-export const HomeToday = view<{ s: State }>(({ s }) => {
-	const c = calc(s)
-	return (
-		<div class="hm-two">
-			<Stat label="Earned today" sign="+" value={c.earned} cur={s.user.currency} />
-			<Stat label="Bought today" sign="−" value={c.bought} cur={s.user.currency} />
-		</div>
+	d.addEventListener(
+		"toggle",
+		function (e) {
+			var x = e.target
+			if (x.matches && x.matches("details[data-keep-open]")) {
+				open[x.getAttribute("data-keep-open")] = x.open
+				try {
+					localStorage.setItem("mt:open", JSON.stringify(open))
+				} catch (err) {}
+			}
+			if (x.matches && x.matches(".xd") && !x.open) {
+				var xf = x.querySelector("[data-adp]")
+				var xb = x.parentNode.querySelector("[data-xplus]")
+				if (xf) xf.hidden = true
+				if (xb) xb.classList.remove("on")
+			}
+		},
+		true,
 	)
-})
 
-export const HomePredict = view<{ s: State }>(({ s }) => {
-	const day = today(s.user.day_start)
-	const open = s.trades.find((t) => t.status === "open")
-	const done = s.trades.find((t) => t.day === day && t.status === "settled")
-	const f = open ? flowOf(open.deposit, open.results) : null
-	const won = !!done && resOf(done.results).some((x) => x.won)
-	const title = f
-		? f.over
-			? f.won
-				? "5 min done · finish the games"
-				: "Stop trading · finish the games"
-			: f.tryNo > 1
-				? `Second try · ${fmt(f.left)} USDT left`
-				: `Predict is open · try ${f.tryNo} of ${TRIES}`
-		: done
-			? won
-				? "Won today · predict ended"
-				: "Done for today"
-			: "You can predict today"
-	const tag = f ? "running" : done ? "done" : "available"
-	return (
-		<div class="hm-c hm-gc hm-pc">
-			<div class="hm-gr">
-				<span class="hm-m">Predict</span>
-				<span class={f || !done ? "hm-tag" : "hm-tag no"}>{tag}</span>
-			</div>
-			<div class="hm-gt2">{title}</div>
-			{f ? (
-				<a class="hm-go" href="/trading">
-					Continue predict
-				</a>
-			) : !done ? (
-				<form method="post" action="/trading/deposit" style={{ margin: 0 }}>
-					<input type="hidden" name="back" value="/trading" />
-					<Submit class="hm-go">{`Start predict · ${fmt(DEPOSIT)} USDT`}</Submit>
-				</form>
-			) : null}
-		</div>
+	d.addEventListener("click", function (e) {
+		var t = e.target
+		if (t.closest && !t.closest("[data-xplus]") && t.closest("details[data-fixed] > summary")) {
+			e.preventDefault()
+			return
+		}
+		var q = t.closest("button[name][value]")
+		if (q && q.form) {
+			var sh = q.form.querySelector('input[type=hidden][data-sub="' + q.name + '"]')
+			if (!sh) {
+				sh = d.createElement("input")
+				sh.type = "hidden"
+				sh.name = q.name
+				sh.setAttribute("data-sub", q.name)
+				q.form.appendChild(sh)
+			}
+			sh.value = q.value
+		}
+		if ((q = t.closest("[data-close]"))) {
+			var cd = q.closest("details")
+			if (cd) cd.open = false
+			return
+		}
+		if (t.closest("[data-theme-toggle]")) return setTheme(r.getAttribute("data-theme") === "dark" ? "light" : "dark")
+		if ((q = t.closest("[data-set-theme]"))) return setTheme(q.getAttribute("data-set-theme"))
+		if ((q = t.closest("[data-pw]"))) {
+			var pwi = q.parentNode.querySelector("input")
+			if (pwi) {
+				var pwShow = pwi.type === "password"
+				pwi.type = pwShow ? "text" : "password"
+				q.setAttribute("aria-pressed", pwShow ? "true" : "false")
+				q.setAttribute("aria-label", pwShow ? "Hide password" : "Show password")
+			}
+			return
+		}
+		if ((q = t.closest("[data-eye]"))) {
+			var v = q.closest(".hm-bal").querySelector(".hm-dots")
+			var hide = q.getAttribute("data-s") !== "1"
+			q.setAttribute("data-s", hide ? "1" : "0")
+			v.innerHTML = hide ? v.getAttribute("data-bal") + " <small>" + v.getAttribute("data-cur") + "</small>" : "••••••"
+			return
+		}
+		if ((q = t.closest("[data-edit-bal]"))) {
+			var bf = q.closest(".cd,.sc").querySelector("[data-balf]")
+			bf.hidden = !bf.hidden
+			q.setAttribute("aria-label", bf.hidden ? "Edit balance" : "Cancel")
+			q.classList.toggle("hi", !bf.hidden)
+			if (!bf.hidden) {
+				var bi = bf.querySelector("input:not([type=hidden])")
+				if (bi) {
+					bi.focus()
+					bi.select()
+				}
+			}
+			return
+		}
+		if ((q = t.closest("[data-all]"))) {
+			var af = q.closest(".iw").querySelector("input")
+			af.value = q.getAttribute("data-all")
+			af.focus()
+			return
+		}
+		if ((q = t.closest("[data-tg],[data-pay]"))) {
+			var add = q.hasAttribute("data-tg")
+			var w = q.closest(".dbw")
+			var p = w.querySelector(add ? "[data-addp]" : "[data-payp]")
+			var o = w.querySelector(add ? "[data-payp]" : "[data-addp]")
+			if (o) o.hidden = true
+			p.hidden = !p.hidden
+			if (!p.hidden) {
+				var i = p.querySelector("input[name=amount]")
+				if (i) i.focus()
+			}
+			return
+		}
+		if ((q = t.closest("[data-xplus]"))) {
+			e.preventDefault()
+			var xc = q.closest(".xc")
+			var xd = xc.querySelector("details")
+			var xm = xc.querySelector("[data-adp]")
+			if (xm) {
+				if (xd && !xd.open) {
+					xd.open = true
+					xm.hidden = false
+				} else xm.hidden = !xm.hidden
+				q.classList.toggle("on", !xm.hidden)
+				if (!xm.hidden) focusFirst(xm)
+			}
+			return
+		}
+		if ((q = t.closest("[data-nm]"))) {
+			var nf = q.closest("form")
+			nf.querySelector("[data-name]").value = q.getAttribute("data-nm")
+			var pin = nf.querySelector("[data-price]")
+			if (pin) pin.focus()
+			return
+		}
+		if ((q = t.closest("[data-bigadd]"))) {
+			var tf = q.getAttribute("data-for")
+			var ap = tf ? d.getElementById(tf) : q.closest(".bgc").querySelector("[data-adp]")
+			ap.hidden = !ap.hidden
+			q.classList.toggle("on", !ap.hidden)
+			if (!ap.hidden) focusFirst(ap)
+			return
+		}
+		if ((q = t.closest("[data-mode]"))) {
+			var form = q.closest("form")
+			var mode = q.getAttribute("data-mode")
+			all("[data-mode]", form).forEach(function (c) {
+				c.classList.toggle("on", c === q)
+			})
+			form.querySelector("[data-mode-input]").value = mode
+			form.setAttribute("data-kind", mode)
+			form.setAttribute("data-m", mode)
+			return
+		}
+		if ((q = t.closest(".bub"))) {
+			q.classList.toggle("sel")
+			var a = q.parentNode.querySelector(".acts")
+			a.hidden = !a.hidden
+			return
+		}
+		if ((q = t.closest("[data-act]"))) {
+			var m = q.closest(".msg")
+			var act = q.getAttribute("data-act")
+			var body = m.querySelector(".bub").textContent
+			if (act === "copy") {
+				try {
+					navigator.clipboard.writeText(body)
+				} catch (x) {}
+			} else if (act === "edit") {
+				var c = d.querySelector('[data-comp="' + m.parentNode.getAttribute("data-list") + '"]')
+				c.querySelector("[data-eid]").value = m.getAttribute("data-id")
+				c.querySelector(".eb").hidden = false
+				var ta = c.querySelector("textarea")
+				ta.value = body
+				ta.focus()
+			}
+			return
+		}
+		if ((q = t.closest("[data-cancel]"))) endEdit(q.closest("[data-comp]"))
+	})
+
+	d.addEventListener(
+		"click",
+		function (e) {
+			var b = e.target.closest && e.target.closest("[data-confirm-btn]")
+			if (b && !confirm(b.getAttribute("data-confirm-btn"))) e.preventDefault()
+		},
+		true,
 	)
-})
 
-const Prog = view<{ href: string; title: string; color: string; left: number; total: number }>(({ href, title, color, left, total }) => (
-	<a class="hm-c hm-gc" href={href}>
-		<div class="hm-gr">
-			<span class="hm-gt">
-				<i style={{ background: color }}></i>
-				{title}
-			</span>
-			<span class="hm-m">{`${left} left of ${total}`}</span>
-		</div>
-		<div class="hm-pb">
-			<i style={{ width: `${total ? Math.round(((total - left) / total) * 100) : 0}%`, background: color }}></i>
-		</div>
-	</a>
-))
+	// Fallback spinner for any submit button that is not the shared Submit component.
+	var SPIN = '<span class="sb-i" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>'
+	d.addEventListener("submit", function (e) {
+		var f = e.target
+		var msg = f.getAttribute && f.getAttribute("data-confirm")
+		if (msg && !confirm(msg)) return e.preventDefault()
+		var sub = e.submitter
+		setTimeout(function () {
+			if (e.defaultPrevented) return
+			all("button", f).forEach(function (b) {
+				if (b.disabled) return
+				b.disabled = true
+				if (!sub || b === sub) {
+					b.setAttribute("data-busy", "1")
+					b.setAttribute("aria-busy", "true")
+					if (!b.querySelector(".sb-i")) b.insertAdjacentHTML("beforeend", SPIN)
+				} else b.setAttribute("data-lock", "1")
+			})
+		}, 0)
+	})
 
-export const HomeTasks = view<{ p: PadLeft }>(({ p }) => (
-	<>
-		{p.projects.map((x) => (
-			<Prog key={x.id} href={`/pad?p=${x.id}`} title={x.title} color={x.color} left={x.left} total={x.total} />
-		))}
-		{p.home.left > 0 ? <Prog href="/pad/home" title="Home" color="#8b979e" left={p.home.left} total={p.home.total} /> : null}
-	</>
-))
-MT_EOF_6
-cat > app/components/pad.tsx <<'MT_EOF_7'
-import { COLORS, type Entry, type PadData, type Space } from "../lib/padmeta.ts"
-import { timeAgo } from "../lib/time.ts"
-import { Icon, Submit, view } from "./ui.tsx"
+	function unbusy() {
+		all("button[data-busy],button[data-lock]").forEach(function (b) {
+			b.disabled = false
+			b.removeAttribute("data-busy")
+			b.removeAttribute("data-lock")
+			b.removeAttribute("aria-busy")
+		})
+	}
+	window.addEventListener("pageshow", function (e) {
+		if (e.persisted) unbusy()
+	})
 
-export type PadTab = "projects" | "said" | "home" | "new" | "edit"
+	d.addEventListener("keydown", function (e) {
+		var t = e.target
+		if (e.key !== "Enter" || e.shiftKey || !(t.matches && t.matches("[data-comp] textarea"))) return
+		e.preventDefault()
+		if (t.value.trim()) t.closest("form").requestSubmit()
+	})
 
-type Props = { d: PadData; tab: PadTab; f: string }
+	var zone = "Africa/Casablanca"
+	var fmt = function (loc, o) {
+		o.timeZone = zone
+		return new Intl.DateTimeFormat(loc, o)
+	}
+	var tf = fmt("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+	var df = fmt("en-GB", { weekday: "long", day: "numeric", month: "long" })
+	var nf = fmt("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+	var af = fmt("ar-MA", { weekday: "long" })
+	function tick() {
+		var now = new Date()
+		var sub = '<span class="clock-num">' + nf.format(now) + '</span> <span class="clock-dot">·</span> <span class="clock-ar">' + af.format(now) + "</span>"
+		all("[data-clock-time]").forEach(function (el) {
+			el.textContent = tf.format(now)
+		})
+		all("[data-clock-date]").forEach(function (el) {
+			el.textContent = df.format(now)
+		})
+		all("[data-clock-subdate]").forEach(function (el) {
+			el.innerHTML = sub
+		})
+	}
+	setInterval(tick, 1000)
 
-const SEG = [
-	{ key: "projects", label: "Projects", href: "/pad" },
-	{ key: "said", label: "Said", href: "/pad/said" },
-	{ key: "home", label: "Home", href: "/pad/home" },
-]
+	all("details[data-keep-open]").forEach(function (x) {
+		var k = x.getAttribute("data-keep-open")
+		if (k in open) x.open = !!open[k]
+	})
 
-export const padBack = (d: PadData, tab: PadTab, f: string) =>
-	tab === "said" ? `/pad/said${f ? `?f=${f}` : ""}` : tab === "home" ? "/pad/home" : d.space ? `/pad?p=${d.space.id}${f ? `&f=${f}` : ""}` : "/pad"
+	var rb = false
+	try {
+		rb = sessionStorage.getItem("mt:rb") === "1"
+		sessionStorage.removeItem("mt:rb")
+	} catch (e) {}
+	if (rb) all("[data-eye]").forEach(function (q) {
+		q.setAttribute("data-s", "1")
+		var v = q.parentNode.firstChild
+		v.innerHTML = v.getAttribute("data-bal") + " <small>" + v.getAttribute("data-cur") + "</small>"
+	})
 
-const Seg = view<{ tab: PadTab }>(({ tab }) => (
-	<div class="nt-seg">
-		{SEG.map((x) => (
-			<a key={x.key} href={x.href} class={x.key === tab || ((tab === "new" || tab === "edit") && x.key === "projects") ? "on" : ""}>
-				{x.label}
-			</a>
-		))}
-	</div>
-))
+	all("[data-list]").forEach(function (L) {
+		var last = L.lastElementChild
+		if (L.getAttribute("data-list") !== "dash" && last && last.scrollIntoView) last.scrollIntoView({ block: "end" })
+	})
 
-const Filters = view<{ base: string; f: string; items: [string, string][] }>(({ base, f, items }) => (
-	<div class="nt-fl">
-		{items.map(([label, key]) => (
-			<a key={key} href={key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base} class={f === key ? "on" : ""}>
-				{label}
-			</a>
-		))}
-	</div>
-))
+	var loaded = Date.now()
+	setInterval(function () {
+		if (!d.querySelector("[data-exo]") || d.hidden || Date.now() - loaded < 240000) return
+		var a = d.activeElement
+		if (a && a.matches && a.matches("input,textarea,select")) return
+		if (d.querySelector("[data-adp]:not([hidden]),[data-addp]:not([hidden])")) return
+		try {
+			if (d.querySelector('[data-eye][data-s="1"]')) sessionStorage.setItem("mt:rb", "1")
+		} catch (e) {}
+		location.reload()
+	}, 30000)
+})()
 
-const Bar = view<{ pct: number }>(({ pct }) => (
-	<div class="nt-bar2">
-		<i style={{ width: `${pct}%` }}></i>
-	</div>
-))
-
-const Hid = view<{ id: string; back: string }>(({ id, back }) => (
-	<>
-		<input type="hidden" name="id" value={id} />
-		<input type="hidden" name="back" value={back} />
-	</>
-))
-
-// Edit uses the same look as the add bar, pre-filled with the current text.
-const EditForm = view<{ e: Entry; back: string }>(({ e, back }) => (
-	<form method="post" action="/pad/edit" class="nt-edit" data-edit hidden>
-		<Hid id={e.id} back={back} />
-		<div class="nt-c nt-cin">
-			<input name="body" value={e.body} maxlength="2000" aria-label="Edit" autocomplete="off" required />
-			<button type="button" class="nt-xc" data-edit-x aria-label="Cancel edit">
-				<Icon name="plus" />
-			</button>
-			<Submit class="nt-sd" aria-label="Save">
-				<Icon name="send" />
-			</Submit>
-		</div>
-	</form>
-))
-
-// Settings icon with a dropdown: Edit and Delete.
-const RowMenu = view<{ e: Entry; back: string }>(({ e, back }) => (
-	<div class="nt-mn">
-		<button type="button" class="nt-x" data-menu aria-label="Options" aria-haspopup="menu" aria-expanded="false">
-			<Icon name="gear" />
-		</button>
-		<div class="nt-dd" role="menu" hidden>
-			<button type="button" role="menuitem" data-menu-edit>
-				<Icon name="edit" />
-				Edit
-			</button>
-			<form method="post" action="/pad/delete" class="nt-f" data-confirm="Delete this?">
-				<Hid id={e.id} back={back} />
-				<Submit role="menuitem" class="dg">
-					<Icon name="trash" />
-					Delete
-				</Submit>
-			</form>
-		</div>
-	</div>
-))
-
-const Row = view<{ e: Entry; back: string }>(({ e, back }) => {
-	const note = e.kind === "note"
-	const done = e.kind === "done"
-	return (
-		<div class={done ? "nt-it dn" : note ? "nt-it nt" : "nt-it"} data-pad-item>
-			{note ? null : (
-				<form method="post" action="/pad/toggle" class="nt-f">
-					<Hid id={e.id} back={back} />
-					<Submit class={done ? "nt-ck d" : "nt-ck"} aria-label={done ? "Mark as open" : "Mark as done"}>
-						{done ? <Icon name="check" /> : null}
-					</Submit>
-				</form>
-			)}
-			<div class="nt-b" data-copy>
-				<p>{e.body}</p>
-				{note ? <div class="nt-m">{`note · ${timeAgo(e.at)}`}</div> : null}
-			</div>
-			<EditForm e={e} back={back} />
-			<RowMenu e={e} back={back} />
-		</div>
-	)
-})
-
-const Empty = view<{ children?: unknown }>(({ children }) => <div class="nt-m nt-em">{children as never}</div>)
-
-const Projects = view<Props>(({ d, f }) => {
-	const sp = d.space
-	if (!sp) {
+;(function () {
+	var d = document
+	var K = "mt:pad:v1"
+	var TABS = {
+		projects: { space: "project", entry: "note", head: "Projects", add: "New project", ph: "Write a note", empty: "No projects yet. Add your first one above.", noun: "notes" },
+		people: { space: "person", entry: "quote", head: "People", add: "Add a person", ph: "What did they say?", empty: "No one yet. Add a person, then what they said.", noun: "things said" },
+		books: { space: "book", entry: "lesson", head: "Books", add: "Book name", sub: "Author (optional)", ref: "Chapter or page (optional)", ph: "What did you learn?", empty: "No books yet. Add a book, then what you learned from it.", noun: "lessons" },
+		tips: { entry: "tip", flat: true, ph: "Something useful to remember", ref: "Where from (optional)", empty: "Nothing saved yet." },
+	}
+	var data = { spaces: [], entries: [] }
+	var load = function () {
+		try {
+			var v = JSON.parse(localStorage.getItem(K) || "null")
+			if (v && v.spaces && v.entries) data = v
+		} catch (e) {}
+	}
+	var save = function () {
+		try {
+			localStorage.setItem(K, JSON.stringify(data))
+		} catch (e) {}
+	}
+	var uid = function () {
+		return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+	}
+	var esc = function (s) {
+		return String(s).replace(/[&<>"']/g, function (c) {
+			return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+		})
+	}
+	var when = function (t) {
+		return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+	}
+	var spaceOf = function (id) {
+		return data.spaces.filter(function (s) {
+			return s.id === id
+		})[0]
+	}
+	var entriesOf = function (fn) {
+		return data.entries
+			.filter(fn)
+			.sort(function (a, b) {
+				return b.at - a.at
+			})
+	}
+	var entryHtml = function (e, label) {
 		return (
-			<div class="nt-c nt-ph">
-				<b>No projects yet</b>
-				<div class="nt-m" style={{ margin: "4px 0 10px" }}>
-					Make one for each thing you work on.
-				</div>
-				<a class="nt-go" href="/pad/new">
-					New project
-				</a>
-			</div>
+			'<div class="pdn" data-id="' + e.id + '"><div class="pdt">' + esc(e.body) + "</div>" +
+			'<div class="pdm"><span class="lb">' + (label ? esc(label) + " · " : "") + (e.ref ? esc(e.ref) + " · " : "") + when(e.at) + "</span>" +
+			'<span class="pda"><button type="button" class="chip' + (e.home ? " on" : "") + '" data-pd="home">Home</button>' +
+			'<button type="button" class="chip" data-pd="edit">Edit</button>' +
+			'<button type="button" class="chip" data-pd="del">Delete</button></span></div></div>'
 		)
 	}
-	const all = d.entries.filter((e) => e.space === sp.id && e.kind !== "said").reverse()
-	const open = all.filter((e) => e.kind === "task").length
-	const done = all.filter((e) => e.kind === "done").length
-	const list = all.filter((e) => (f === "tasks" ? e.kind !== "note" : f === "notes" ? e.kind === "note" : true))
-	const back = padBack(d, "projects", f)
-	return (
-		<>
-			<div class="nt-pj">
-				{d.spaces.map((x) => (
-					<a key={x.id} class={x.id === sp.id ? "nt-pc on" : "nt-pc"} href={`/pad?p=${x.id}`}>
-						<i class="nt-dot" style={{ background: x.color }}></i>
-						{x.title} <small>{d.entries.filter((e) => e.space === x.id && e.kind === "task").length}</small>
-					</a>
-				))}
-				<a class="nt-pc" href="/pad/new">
-					+ New
-				</a>
-			</div>
-			<div class="nt-c nt-ph nt-pg">
-				{sp.bar && sp.type !== "notes" ? <i class={open + done > 0 && done === open + done ? "nt-pgf full" : "nt-pgf"} style={{ width: `${open + done ? Math.round((done / (open + done)) * 100) : 0}%` }}></i> : null}
-				<b>{sp.title}</b>
-				<span class="nt-m">{`${open} open · ${done} done`}</span>
-				<a class="nt-gs" href={`/pad/project?p=${sp.id}`} aria-label="Project settings">
-					<Icon name="gear" />
-				</a>
-			</div>
-			{sp.type === "mix" ? <Filters base={`/pad?p=${sp.id}`} f={f} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]} /> : null}
-			<div class="nt-c nt-list nt-scr" data-bottom>{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
-		</>
+	var composer = function (c, spaceId) {
+		return (
+			'<form class="pdf" data-pd="entry" data-space="' + (spaceId || "") + '">' +
+			'<textarea class="pdi" name="body" rows="3" placeholder="' + esc(c.ph) + '" required></textarea>' +
+			(c.ref ? '<input class="pdi" name="ref" placeholder="' + esc(c.ref) + '" autocomplete="off">' : "") +
+			'<button class="btn xs">Add</button></form>'
+		)
+	}
+	var tabHtml = function (key) {
+		var c = TABS[key]
+		var id = decodeURIComponent(location.hash.slice(1))
+		if (c.flat) return composer(c, "") + (entriesOf(function (e) { return e.kind === c.entry }).map(function (e) { return entryHtml(e, "") }).join("") || '<div class="lb pde">' + c.empty + "</div>")
+		var sp = id && spaceOf(id)
+		if (sp && sp.kind === c.space) {
+			var list = entriesOf(function (e) { return e.space === sp.id })
+			return (
+				'<div class="pdhd"><a class="chip" href="#" data-pd="back">‹ ' + c.head + "</a>" +
+				'<button type="button" class="chip" data-pd="delspace" data-id="' + sp.id + '">Delete</button></div>' +
+				'<h2 class="pdtt">' + esc(sp.title) + "</h2>" + (sp.sub ? '<div class="lb">' + esc(sp.sub) + "</div>" : "") +
+				composer(c, sp.id) +
+				(list.map(function (e) { return entryHtml(e, "") }).join("") || '<div class="lb pde">Nothing here yet.</div>')
+			)
+		}
+		var spaces = data.spaces
+			.filter(function (s) { return s.kind === c.space })
+			.sort(function (a, b) { return b.at - a.at })
+		return (
+			'<form class="pdf" data-pd="space"><input class="pdi" name="title" placeholder="' + esc(c.add) + '" autocomplete="off" required>' +
+			(c.sub ? '<input class="pdi" name="sub" placeholder="' + esc(c.sub) + '" autocomplete="off">' : "") +
+			'<button class="btn xs">Add</button></form>' +
+			(spaces.map(function (s) {
+				var n = data.entries.filter(function (e) { return e.space === s.id }).length
+				return '<a class="pdc" href="#' + encodeURIComponent(s.id) + '"><span><b>' + esc(s.title) + '</b><span class="lb">' + (s.sub ? esc(s.sub) + " · " : "") + n + " " + c.noun + '</span></span><span class="mu">›</span></a>'
+			}).join("") || '<div class="lb pde">' + c.empty + "</div>")
+		)
+	}
+	var homeHtml = function () {
+		var list = entriesOf(function (e) { return e.home }).slice(0, 6)
+		return (
+			'<div class="sh"><span>Pinned notes</span><span class="lb">' + list.length + "</span></div>" +
+			'<form class="pdf" data-pd="entry" data-space="" data-home="1"><input class="pdi" name="body" placeholder="Add a note to home" autocomplete="off" required><button class="btn xs">Add</button></form>' +
+			(list.map(function (e) {
+				var s = e.space && spaceOf(e.space)
+				return '<div class="pdn" data-id="' + e.id + '"><div class="pdt">' + esc(e.body) + '</div><div class="pdm"><span class="lb">' + (s ? esc(s.title) + " · " : "") + when(e.at) + '</span><span class="pda"><button type="button" class="chip" data-pd="home">Unpin</button></span></div></div>'
+			}).join("") || '<div class="lb pde">Pin any note with the Home button.</div>')
+		)
+	}
+	var paint = function () {
+		[].slice.call(d.querySelectorAll("[data-pad]")).forEach(function (r) {
+			var a = d.activeElement
+			if (a && r.contains(a) && a.value) return
+			r.innerHTML = tabHtml(r.getAttribute("data-pad"))
+		})
+		var h = d.activeElement
+		;[].slice.call(d.querySelectorAll("[data-pad-home]")).forEach(function (r) {
+			if (h && r.contains(h) && h.value) return
+			r.innerHTML = homeHtml()
+		})
+	}
+	var repaint = function () {
+		save()
+		;[].slice.call(d.querySelectorAll("[data-pad],[data-pad-home]")).forEach(function (r) {
+			r.innerHTML = r.hasAttribute("data-pad") ? tabHtml(r.getAttribute("data-pad")) : homeHtml()
+		})
+	}
+	d.addEventListener("submit", function (e) {
+		var f = e.target
+		var kind = f.getAttribute && f.getAttribute("data-pd")
+		if (kind !== "space" && kind !== "entry") return
+		e.preventDefault()
+		var root = f.closest("[data-pad]")
+		var tab = root && root.getAttribute("data-pad")
+		var c = tab && TABS[tab]
+		var v = function (n) {
+			var i = f.elements[n]
+			return i ? i.value.trim() : ""
+		}
+		var now = Date.now()
+		if (kind === "space" && c) {
+			if (!v("title")) return
+			data.spaces.push({ id: uid(), kind: c.space, title: v("title").slice(0, 120), sub: v("sub").slice(0, 120), at: now })
+		} else if (kind === "entry") {
+			if (!v("body")) return
+			var home = f.getAttribute("data-home") === "1"
+			data.entries.push({ id: uid(), space: f.getAttribute("data-space") || null, kind: c ? c.entry : "note", body: v("body").slice(0, 4000), ref: v("ref").slice(0, 120), home: home, at: now })
+		}
+		repaint()
+	})
+	d.addEventListener("click", function (e) {
+		var b = e.target.closest && e.target.closest("[data-pd]")
+		if (!b || b.tagName === "FORM") return
+		var act = b.getAttribute("data-pd")
+		var row = b.closest("[data-id]")
+		var id = row ? row.getAttribute("data-id") : b.getAttribute("data-id")
+		var en = id && data.entries.filter(function (x) { return x.id === id })[0]
+		if (act === "back") {
+			e.preventDefault()
+			history.pushState("", "", location.pathname)
+			return repaint()
+		}
+		if (act === "home" && en) en.home = !en.home
+		else if (act === "edit" && en) {
+			var t = prompt("Edit", en.body)
+			if (t === null || !t.trim()) return
+			en.body = t.trim().slice(0, 4000)
+		} else if (act === "del" && en) {
+			if (!confirm("Delete this?")) return
+			data.entries = data.entries.filter(function (x) { return x.id !== id })
+		} else if (act === "delspace" && id) {
+			if (!confirm("Delete this and everything inside it?")) return
+			data.spaces = data.spaces.filter(function (x) { return x.id !== id })
+			data.entries = data.entries.filter(function (x) { return x.space !== id })
+			history.pushState("", "", location.pathname)
+		} else return
+		repaint()
+	})
+	addEventListener("hashchange", paint)
+	addEventListener("storage", function (e) {
+		if (e.key !== K) return
+		load()
+		paint()
+	})
+	load()
+	paint()
+})()
+
+/* file20 */
+;(function () {
+	var d = document
+	var hold = 0
+	var fired = false
+	var sx = 0
+	var sy = 0
+	var toast = function (t) {
+		var x = d.createElement("div")
+		x.className = "nt-toast"
+		x.textContent = t
+		d.body.appendChild(x)
+		setTimeout(function () {
+			x.remove()
+		}, 1100)
+	}
+	var copy = function (t) {
+		try {
+			if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t)
+		} catch (e) {}
+		var a = d.createElement("textarea")
+		a.value = t
+		a.style.cssText = "position:fixed;opacity:0"
+		d.body.appendChild(a)
+		a.select()
+		try {
+			d.execCommand("copy")
+		} catch (e) {}
+		a.remove()
+		return Promise.resolve()
+	}
+	var edit = function (it) {
+		var f = it && it.querySelector("[data-edit]")
+		var b = it && it.querySelector("[data-copy]")
+		if (!f || !b) return
+		f.hidden = false
+		b.hidden = true
+		var mn = it.querySelector(".nt-mn")
+		if (mn) mn.hidden = true
+		var ta = f.querySelector("input[name=body],textarea")
+		if (!ta.value) ta.value = ta.defaultValue || it.querySelector("[data-copy] p").textContent.trim()
+		ta.focus()
+		ta.setSelectionRange(ta.value.length, ta.value.length)
+		it.scrollIntoView({ block: "center", behavior: "smooth" })
+	}
+	d.addEventListener("pointerdown", function (e) {
+		var b = e.target.closest && e.target.closest("[data-copy]")
+		if (!b) return
+		fired = false
+		sx = e.clientX
+		sy = e.clientY
+		clearTimeout(hold)
+		hold = setTimeout(function () {
+			fired = true
+			if (navigator.vibrate) navigator.vibrate(15)
+			edit(b.closest("[data-pad-item]"))
+		}, 450)
+	})
+	d.addEventListener("pointermove", function (e) {
+		if (hold && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) clearTimeout(hold)
+	})
+	;["pointerup", "pointercancel", "pointerleave"].forEach(function (n) {
+		d.addEventListener(n, function () {
+			clearTimeout(hold)
+		}, true)
+	})
+	d.addEventListener("contextmenu", function (e) {
+		if (e.target.closest && e.target.closest("[data-copy]")) e.preventDefault()
+	})
+	var closeMenus = function () {
+		[].slice.call(d.querySelectorAll(".nt-dd:not([hidden])")).forEach(function (m) {
+			m.hidden = true
+			var o = m.parentNode.querySelector("[data-menu]")
+			if (o) o.setAttribute("aria-expanded", "false")
+		})
+	}
+	d.addEventListener("keydown", function (e) {
+		if (e.key === "Escape") closeMenus()
+	})
+	d.addEventListener("click", function (e) {
+		var t = e.target
+		var mb = t.closest && t.closest("[data-menu]")
+		if (mb) {
+			var dd = mb.parentNode.querySelector(".nt-dd")
+			var was = !dd.hidden
+			closeMenus()
+			if (!was) {
+				dd.classList.remove("up")
+				dd.hidden = false
+				mb.setAttribute("aria-expanded", "true")
+				var box = mb.closest(".nt-scr")
+				if (box) {
+					var br = box.getBoundingClientRect()
+					var dr = dd.getBoundingClientRect()
+					if (dr.bottom > br.bottom) dd.classList.add("up")
+				}
+			}
+			return
+		}
+		var me = t.closest && t.closest("[data-menu-edit]")
+		if (me) {
+			closeMenus()
+			edit(me.closest("[data-pad-item]"))
+			return
+		}
+		if (!(t.closest && t.closest(".nt-dd"))) closeMenus()
+		var b = t.closest && t.closest("[data-copy]")
+		if (b) {
+			if (fired) {
+				fired = false
+				return
+			}
+			var p = b.querySelector("p")
+			copy((p || b).textContent.trim()).then(function () {
+				toast("Copied")
+			})
+			return
+		}
+		var x = t.closest && t.closest("[data-edit-x]")
+		if (x) {
+			var it = x.closest("[data-pad-item]")
+			it.querySelector("[data-edit]").hidden = true
+			it.querySelector("[data-copy]").hidden = false
+			var mn2 = it.querySelector(".nt-mn")
+			if (mn2) mn2.hidden = false
+			return
+		}
+		var a = t.closest && t.closest("[data-xplus],[data-tg],[data-pay],[data-bigadd]")
+		if (a) {
+			setTimeout(function () {
+				var box = a.closest(".xc,.dbw,.sc,.cd") || d
+				var f = [].slice.call(box.querySelectorAll("[data-adp],[data-addp],[data-payp]")).filter(function (n) {
+					return !n.hidden && n.offsetParent
+				})[0]
+				if (!f) return
+				var i = f.querySelector("input:not([type=hidden]),textarea")
+				if (i) i.focus({ preventScroll: true })
+				f.scrollIntoView({ block: "center", behavior: "smooth" })
+			}, 60)
+		}
+	})
+
+	var dis = {}
+	try {
+		dis = JSON.parse(localStorage.getItem("mt:inv") || "{}")
+	} catch (e) {}
+	;[].slice.call(d.querySelectorAll("[data-inv]")).forEach(function (n) {
+		if (dis[n.getAttribute("data-inv")]) n.hidden = true
+	})
+	d.addEventListener("click", function (e) {
+		var x = e.target.closest && e.target.closest("[data-inv-x]")
+		if (!x) return
+		var n = x.closest("[data-inv]")
+		dis[n.getAttribute("data-inv")] = 1
+		try {
+			localStorage.setItem("mt:inv", JSON.stringify(dis))
+		} catch (err) {}
+		n.hidden = true
+	})
+})()
+
+// Notes list: scroll to the newest (bottom) on load.
+;(function () {
+	var run = function () {
+		;[].slice.call(document.querySelectorAll("[data-bottom]")).forEach(function (l) {
+			l.scrollTop = l.scrollHeight
+		})
+	}
+	run()
+	window.addEventListener("load", run)
+	window.addEventListener("pageshow", run)
+})()
+
+;(function () {
+	var MSG = { win: "Enter how much you won in USDT", lose: "Enter how much you lost in USDT" }
+	var clear = function (f) {
+		var i = f.querySelector("[name=pnl]")
+		var e = f.querySelector(".ferr")
+		if (i) i.classList.remove("bad")
+		if (e) {
+			e.hidden = true
+			e.textContent = ""
+		}
+	}
+	document.addEventListener(
+		"submit",
+		function (e) {
+			var f = e.target
+			if (!f.hasAttribute || !f.hasAttribute("data-pnl")) return
+			var o = e.submitter && e.submitter.value
+			if (o !== "win" && o !== "lose") return
+			var i = f.querySelector("[name=pnl]")
+			var n = parseFloat(String(i.value).replace(",", "."))
+			if (isFinite(n) && n > 0) return
+			e.preventDefault()
+			e.stopImmediatePropagation()
+			var er = f.querySelector(".ferr")
+			i.classList.add("bad")
+			er.textContent = MSG[o]
+			er.hidden = false
+			;(er.parentNode || i).scrollIntoView({ block: "center", behavior: "smooth" })
+			i.focus({ preventScroll: true })
+		},
+		true,
 	)
-})
-
-const Said = view<Props>(({ d, f }) => {
-	const all = d.entries.filter((e) => e.kind === "said").reverse()
-	const list = all.filter((e) => !f || e.tag.toLowerCase() === f)
-	const back = padBack(d, "said", f)
-	const title = (id: string) => d.spaces.find((x) => x.id === id)?.title
-	return (
-		<>
-			<Filters base="/pad/said" f={f} items={[["All", ""], ["Tips", "tip"], ["Info", "info"]]} />
-			<div class="nt-c nt-list nt-scr" data-bottom>
-				{list.length ? (
-					list.map((e) => (
-						<div key={e.id} class="nt-q" data-pad-item>
-							<div class="nt-b" data-copy>
-								<p>{e.body}</p>
-							</div>
-							<EditForm e={e} back={back} />
-							<div class="nt-who">
-								<span class="nt-av">{(e.who[0] ?? "?").toUpperCase()}</span>
-								<div>
-									<b>{e.who}</b>
-									<span class="nt-m">{timeAgo(e.at)}</span>
-								</div>
-								<span class="nt-tag t">{e.tag}</span>
-								<RowMenu e={e} back={back} />
-							</div>
-							{title(e.space) ? <div class="nt-m" style={{ marginTop: "8px" }}>{`→ ${title(e.space)}`}</div> : null}
-						</div>
-					))
-				) : (
-					<Empty>Nothing yet. Write what someone told you below.</Empty>
-				)}
-			</div>
-		</>
-	)
-})
-
-const HomeTasks = view<Props>(({ d }) => {
-	const all = d.entries.filter((e) => !e.space && (e.kind === "task" || e.kind === "done")).reverse()
-	const done = all.filter((e) => e.kind === "done").length
-	const back = padBack(d, "home", "")
-	const group = (label: string, rows: Entry[]) =>
-		rows.length ? (
-			<>
-				<div class="nt-gl">{label}</div>
-				<div class="nt-c nt-list">{rows.map((e) => <Row key={e.id} e={e} back={back} />)}</div>
-			</>
-		) : null
-	return (
-		<>
-			<div class="nt-c nt-ph">
-				<div class="nt-spread">
-					<b>Home</b>
-					<span class="nt-m">{`${done} of ${all.length} done`}</span>
-				</div>
-				<Bar pct={all.length ? Math.round((done / all.length) * 100) : 0} />
-			</div>
-			<div class="nt-wrap nt-scr" data-bottom>
-				{group("Today", all.filter((e) => e.today))}
-				{group("Later", all.filter((e) => !e.today))}
-				{all.length ? null : <Empty>No home tasks yet. Add one below.</Empty>}
-			</div>
-		</>
-	)
-})
-
-const TYPE_OPTS = [
-	{ key: "mix", title: "Mixed", sub: "Notes and tasks together in one list", rows: ["o", "x"] },
-	{ key: "notes", title: "Notes only", sub: "Just writing, no checkboxes", rows: ["x", "x"] },
-	{ key: "tasks", title: "Tasks only", sub: "A clean checklist with progress, like Home", rows: ["o", "o"] },
-]
-
-const Sheet = view<{ sp?: Space | null }>(({ sp }) => {
-	const nid = sp ? sp.id : crypto.randomUUID()
-	const close = sp ? `/pad?p=${sp.id}` : "/pad"
-	return (
-		<>
-			<a class="nt-ov" href={close} aria-label="Close"></a>
-			<form class="nt-sht" method="post" action={sp ? "/pad/space/edit" : "/pad/space"}>
-				{sp ? <input type="hidden" name="id" value={sp.id} /> : <input type="hidden" name="nid" value={nid} />}
-				<input type="hidden" name="back" value={`/pad?p=${nid}`} />
-				<span class="nt-gr"></span>
-				<div class="nt-shh">
-					<b>{sp ? "Edit project" : "New project"}</b>
-					<a class="nt-m" href={close}>
-						Cancel
-					</a>
-				</div>
-				<label class="nt-fi">
-					<span class="nt-m">Name</span>
-					<input name="title" value={sp?.title} placeholder="Library website" maxlength="60" autocomplete="off" required />
-				</label>
-				<div class="nt-cl">
-					{COLORS.map((c, i) => (
-						<label key={c}>
-							<input type="radio" name="color" value={c} checked={(sp ? sp.color === c : i === 0) ? true : undefined} />
-							<i style={{ background: c }}></i>
-						</label>
-					))}
-				</div>
-				<div class="nt-m">What is it for?</div>
-				{TYPE_OPTS.map((o, i) => (
-					<label key={o.key} class="nt-op">
-						<input type="radio" name="type" value={o.key} checked={(sp ? sp.type === o.key : i === 0) ? true : undefined} />
-						<span class="nt-pv">
-							{o.rows.map((r, j) => (
-								<div key={j} class="nt-pr2">
-									{r === "o" ? <u></u> : null}
-									<i></i>
-								</div>
-							))}
-						</span>
-						<div>
-							<b>{o.title}</b>
-							<span class="d">{o.sub}</span>
-						</div>
-						<span class="nt-rd"></span>
-					</label>
-				))}
-				<label class="nt-tr2">
-					<span>Progress bar</span>
-					<input type="checkbox" name="bar" value="1" checked={!sp || sp.bar ? true : undefined} class="nt-tgl" />
-				</label>
-				<Submit class="nt-go">{sp ? "Save project" : "Create project"}</Submit>
-				{sp ? (
-					<Submit class="nt-go dg" formaction="/pad/space/delete" formnovalidate data-confirm-btn={`Delete ${sp.title} and everything in it?`}>
-						Delete project
-					</Submit>
-				) : (
-					<div class="nt-m" style={{ textAlign: "center" }}>
-						You can delete it any time
-					</div>
-				)}
-			</form>
-		</>
-	)
-})
-
-export const PadBody = view<Props & { error?: string }>(({ d, tab, f, error }) => (
-	<div class="nt-page">
-		<Seg tab={tab} />
-		{error ? (
-			<div class="neg" role="alert" style={{ fontSize: "13px" }}>
-				{error}
-			</div>
-		) : null}
-		{tab === "said" ? <Said d={d} tab={tab} f={f} /> : tab === "home" ? <HomeTasks d={d} tab={tab} f={f} /> : <Projects d={d} tab={tab} f={f} />}
-		{tab === "new" ? <Sheet /> : tab === "edit" && d.space ? <Sheet sp={d.space} /> : null}
-	</div>
-))
-
-const Mode = view<{ opts: [string, string][] }>(({ opts }) => (
-	<div class="nt-tg2">
-		{opts.map(([k, label], i) => (
-			<label key={k}>
-				<input type="radio" name="mode" value={k} checked={i === 0 ? true : undefined} />
-				<span>{label}</span>
-			</label>
-		))}
-	</div>
-))
-
-export const PadComposer = view<Props>(({ d, tab, f }) => {
-	if ((tab === "projects" || tab === "new" || tab === "edit") && !d.space) return null
-	const said = tab === "said"
-	const home = tab === "home"
-	const type = d.space?.type
-	return (
-		<form class="nt-cmp" method="post" action="/pad/add">
-			<input type="hidden" name="tab" value={said ? "said" : home ? "home" : "projects"} />
-			<input type="hidden" name="back" value={padBack(d, tab, f)} />
-			{said || home ? null : <input type="hidden" name="space" value={d.space!.id} />}
-			<div class="nt-c nt-cin">
-				{said ? <input class="nt-who-i" name="who" placeholder="Who" maxlength="40" autocomplete="off" /> : null}
-				<input name="body" placeholder={said ? "What did they say…" : home ? "Add a home task…" : type === "notes" ? "Write a note…" : "Write a note or task…"} aria-label="Add" autocomplete="off" required />
-				{said ? <Mode opts={[["tip", "Tip"], ["info", "Info"]]} /> : home ? <Mode opts={[["today", "Today"], ["later", "Later"]]} /> : type === "mix" ? <Mode opts={[["task", "Task"], ["note", "Note"]]} /> : null}
-				<Submit class="nt-sd" aria-label="Add">
-					<Icon name="send" />
-				</Submit>
-			</div>
-			{said && d.spaces.length ? (
-				<select name="space" class="nt-sel" aria-label="Project">
-					<option value="">No project</option>
-					{d.spaces.map((x) => (
-						<option key={x.id} value={x.id}>
-							{x.title}
-						</option>
-					))}
-				</select>
-			) : null}
-		</form>
-	)
-})
-MT_EOF_7
-cat > app/client/app.css <<'MT_EOF_8'
+	document.addEventListener("input", function (e) {
+		var f = e.target.closest && e.target.closest("[data-pnl]")
+		if (f && e.target.name === "pnl") clear(f)
+	})
+})()
+MT_EOF_4
+cat > app/client/app.css <<'MT_EOF_5'
 :root:root:root{--pico-font-family:var(--font-sys);--pico-font-size:100%;--pico-line-height:1.45;--pico-background-color:var(--bg);--pico-color:var(--ink);--pico-muted-color:var(--mu);--pico-muted-border-color:var(--ln);--pico-primary:var(--ac);--pico-primary-background:var(--ac);--pico-primary-border:var(--ac);--pico-primary-hover:var(--ac);--pico-primary-hover-background:var(--ac);--pico-primary-hover-border:var(--ac);--pico-primary-focus:var(--acs);--pico-primary-inverse:var(--on);--pico-border-radius:12px;--pico-border-width:1px;--pico-outline-width:3px;--pico-block-spacing-vertical:0px;--pico-block-spacing-horizontal:0px;--pico-form-element-background-color:var(--s1);--pico-form-element-border-color:var(--ln);--pico-form-element-color:var(--ink);--pico-form-element-placeholder-color:var(--mu);--pico-form-element-active-background-color:var(--s1);--pico-form-element-active-border-color:var(--ac);--pico-form-element-focus-color:var(--ac);--pico-form-element-disabled-background-color:var(--s2);--pico-form-element-spacing-vertical:.8rem;--pico-form-element-spacing-horizontal:1rem;--pico-form-element-invalid-border-color:var(--neg);--pico-form-element-invalid-active-border-color:var(--neg);--pico-form-element-invalid-focus-color:var(--neg)}
 html input:not([type=checkbox]):not([type=radio]):not([type=hidden]),html select,html textarea,form,h1,h2,h3{margin:0}
 button:not(:focus-visible):focus{box-shadow:none}
@@ -2083,5 +2166,33 @@ button.hm-go{width:100%;border:0;margin-bottom:0;cursor:pointer;font-family:inhe
 .nt-cmp .nt-c{border-radius:26px;box-shadow:var(--sh1)}
 .nt-cmp{padding-top:10px}
 .nt-list.nt-scr>:last-child{padding-bottom:14px}
-MT_EOF_8
-echo "file21 done"
+
+/* file22: field errors, game picker, trading page polish */
+.fld{display:flex;flex-direction:column;gap:6px}
+.ferr{font-size:13px;font-weight:600;color:var(--neg);line-height:1.3}
+.in.bad,.hm .in.bad{border-color:var(--neg)!important;box-shadow:0 0 0 3px rgba(255,90,77,.18)}
+.gm{display:flex;flex-direction:column;gap:10px;margin:10px 0 0;padding:14px;border:1px solid var(--ln);border-radius:18px;background:var(--s2)}
+.gm:first-of-type{margin-top:0}
+.gmh{margin:0}
+.gmh span{font-size:15px}
+.gq{font-size:13px;color:var(--mu)}
+.gseg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:3px;border-radius:14px;background:var(--bg);border:1px solid var(--ln)}
+.gseg label{position:relative;display:block;margin:0;cursor:pointer}
+.gseg input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.gseg span{display:flex;align-items:center;justify-content:center;min-height:40px;padding:0 8px;border-radius:11px;font-size:14px;font-weight:600;color:var(--mu);text-align:center}
+.gseg input:checked+span{background:var(--acs);color:var(--ac);box-shadow:inset 0 0 0 1px var(--acl)}
+.gyes,.gno{display:none}
+.gm:has(input[value=yes]:checked) .gyes{display:flex;flex-direction:column;gap:8px}
+.gm:has(input[value=no]:checked) .gno{display:block}
+.gm .pbt{margin:0}
+.gm .btn.full.gsk{margin-top:0;min-height:46px;font-size:15px}
+.rw.gdn{padding:12px 14px;margin-bottom:8px;border:1px solid var(--ln);border-radius:14px;background:var(--s2)}
+.rw.gdn:last-of-type{margin-bottom:0}
+.trd{display:flex;flex-direction:column;gap:0}
+.trd .cd{margin-top:0;margin-bottom:12px}
+.trd .cd .tg{font-weight:600;letter-spacing:.01em;margin-bottom:6px}
+.trd .cb>.rw{padding:10px 0}
+.trd .cb>.rw:first-of-type{padding-top:2px}
+.trd .pres .in{min-height:48px;font-size:16px}
+MT_EOF_5
+echo "file22 done"

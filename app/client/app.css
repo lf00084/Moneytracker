@@ -864,3 +864,31 @@ button.hm-go{width:100%;border:0;margin-bottom:0;cursor:pointer;font-family:inhe
 .nt-cmp .nt-c{border-radius:26px;box-shadow:var(--sh1)}
 .nt-cmp{padding-top:10px}
 .nt-list.nt-scr>:last-child{padding-bottom:14px}
+
+/* file22: field errors, game picker, trading page polish */
+.fld{display:flex;flex-direction:column;gap:6px}
+.ferr{font-size:13px;font-weight:600;color:var(--neg);line-height:1.3}
+.in.bad,.hm .in.bad{border-color:var(--neg)!important;box-shadow:0 0 0 3px rgba(255,90,77,.18)}
+.gm{display:flex;flex-direction:column;gap:10px;margin:10px 0 0;padding:14px;border:1px solid var(--ln);border-radius:18px;background:var(--s2)}
+.gm:first-of-type{margin-top:0}
+.gmh{margin:0}
+.gmh span{font-size:15px}
+.gq{font-size:13px;color:var(--mu)}
+.gseg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:3px;border-radius:14px;background:var(--bg);border:1px solid var(--ln)}
+.gseg label{position:relative;display:block;margin:0;cursor:pointer}
+.gseg input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.gseg span{display:flex;align-items:center;justify-content:center;min-height:40px;padding:0 8px;border-radius:11px;font-size:14px;font-weight:600;color:var(--mu);text-align:center}
+.gseg input:checked+span{background:var(--acs);color:var(--ac);box-shadow:inset 0 0 0 1px var(--acl)}
+.gyes,.gno{display:none}
+.gm:has(input[value=yes]:checked) .gyes{display:flex;flex-direction:column;gap:8px}
+.gm:has(input[value=no]:checked) .gno{display:block}
+.gm .pbt{margin:0}
+.gm .btn.full.gsk{margin-top:0;min-height:46px;font-size:15px}
+.rw.gdn{padding:12px 14px;margin-bottom:8px;border:1px solid var(--ln);border-radius:14px;background:var(--s2)}
+.rw.gdn:last-of-type{margin-bottom:0}
+.trd{display:flex;flex-direction:column;gap:0}
+.trd .cd{margin-top:0;margin-bottom:12px}
+.trd .cd .tg{font-weight:600;letter-spacing:.01em;margin-bottom:6px}
+.trd .cb>.rw{padding:10px 0}
+.trd .cb>.rw:first-of-type{padding-top:2px}
+.trd .pres .in{min-height:48px;font-size:16px}

@@ -655,3 +655,41 @@
 	window.addEventListener("load", run)
 	window.addEventListener("pageshow", run)
 })()
+
+;(function () {
+	var MSG = { win: "Enter how much you won in USDT", lose: "Enter how much you lost in USDT" }
+	var clear = function (f) {
+		var i = f.querySelector("[name=pnl]")
+		var e = f.querySelector(".ferr")
+		if (i) i.classList.remove("bad")
+		if (e) {
+			e.hidden = true
+			e.textContent = ""
+		}
+	}
+	document.addEventListener(
+		"submit",
+		function (e) {
+			var f = e.target
+			if (!f.hasAttribute || !f.hasAttribute("data-pnl")) return
+			var o = e.submitter && e.submitter.value
+			if (o !== "win" && o !== "lose") return
+			var i = f.querySelector("[name=pnl]")
+			var n = parseFloat(String(i.value).replace(",", "."))
+			if (isFinite(n) && n > 0) return
+			e.preventDefault()
+			e.stopImmediatePropagation()
+			var er = f.querySelector(".ferr")
+			i.classList.add("bad")
+			er.textContent = MSG[o]
+			er.hidden = false
+			;(er.parentNode || i).scrollIntoView({ block: "center", behavior: "smooth" })
+			i.focus({ preventScroll: true })
+		},
+		true,
+	)
+	document.addEventListener("input", function (e) {
+		var f = e.target.closest && e.target.closest("[data-pnl]")
+		if (f && e.target.name === "pnl") clear(f)
+	})
+})()

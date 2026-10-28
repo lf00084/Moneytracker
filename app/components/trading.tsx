@@ -16,6 +16,27 @@ const SessionHid = view<{ s: State; t: TradeSession }>(({ s, t }) => (
 	</>
 ))
 
+const PnlField = view(() => (
+	<div class="fld">
+		<div class="ferr" role="alert" hidden></div>
+		<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
+	</div>
+))
+
+const Outcomes = view(() => (
+	<div class="pbt p3">
+		<Submit class="btn win" name="outcome" value="win">
+			Won
+		</Submit>
+		<Submit class="btn lost" name="outcome" value="lose">
+			Lost
+		</Submit>
+		<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
+			Miss
+		</Submit>
+	</div>
+))
+
 const MethodRows = view<{ stakes: number[] }>(({ stakes }) => (
 	<>
 		<div class="rw">
@@ -40,26 +61,11 @@ const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
 		<div class="lb tbn">{`Open the 5 min BTC or ETH. Use only ${fmt(f.base)} USDT in total. Follow the method below, nothing else.`}</div>
 		<div class="lb tbn">Method</div>
 		<MethodRows stakes={f.stakes} />
-		<form method="post" action="/trading/result" class="pres">
+		<form method="post" action="/trading/result" class="pres" data-pnl novalidate>
 			<SessionHid s={s} t={t} />
-			<select class="in" name="coin" style={{ width: "100%" }}>
-				<option value="">Which 5 min? BTC or ETH</option>
-				<option value="btc">5 min BTC</option>
-				<option value="eth">5 min ETH</option>
-			</select>
-			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
+			<PnlField />
 			<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost, what is left stays for the next try. Miss: all ${fmt(f.base)} USDT is gone.`}</div>
-			<div class="pbt p3">
-				<Submit class="btn win" name="outcome" value="win">
-					Won
-				</Submit>
-				<Submit class="btn lost" name="outcome" value="lose">
-					Lost
-				</Submit>
-				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
-					Miss
-				</Submit>
-			</div>
+			<Outcomes />
 		</form>
 		{t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
@@ -85,30 +91,39 @@ const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s,
 	const x = gameOf(t.results, g)
 	if (x) {
 		return (
-			<div class="rw">
+			<div class="rw gdn">
 				<span>{`Game ${n}`}</span>
-				<b class={tone(x.pnl)}>{`${word(x)} ${sg(x.pnl)} USDT`}</b>
+				{x.asset === "skip" ? <b class="mu">Skipped</b> : <b class={tone(x.pnl)}>{`${word(x)} ${sg(x.pnl)} USDT`}</b>}
 			</div>
 		)
 	}
 	return (
-		<form method="post" action="/trading/game" class="pres gm">
+		<form method="post" action="/trading/game" class="gm" data-pnl novalidate>
 			<SessionHid s={s} t={t} />
 			<input type="hidden" name="game" value={g} />
 			<div class="gmh">
 				<span>{`Game ${n}`}</span>
 				<b>{`${fmt(GAME)} USDT`}</b>
 			</div>
-			<input class="in" name="pnl" placeholder="PnL in USDT" inputmode="decimal" autocomplete="off" />
-			<div class="pbt p3">
-				<Submit class="btn win" name="outcome" value="win">
-					Won
-				</Submit>
-				<Submit class="btn lost" name="outcome" value="lose">
-					Lost
-				</Submit>
-				<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
-					Miss
+			<div class="gq">Did you predict this game?</div>
+			<div class="gseg">
+				<label>
+					<input type="radio" name="did" value="yes" />
+					<span>Yes, I predicted</span>
+				</label>
+				<label>
+					<input type="radio" name="did" value="no" />
+					<span>No, I skipped</span>
+				</label>
+			</div>
+			<div class="gyes">
+				<PnlField />
+				<Outcomes />
+			</div>
+			<div class="gno">
+				<div class="lb tbn">{`No prediction, no loss. The ${fmt(GAME)} USDT stays with you.`}</div>
+				<Submit class="btn o full gsk" name="outcome" value="skip" formnovalidate>
+					Save as skipped
 				</Submit>
 			</div>
 		</form>
@@ -119,7 +134,6 @@ const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, un
 	<Card title="Matches / vote predict · 2 games">
 		<GameRow s={s} t={t} g="ga" n={1} />
 		<GameRow s={s} t={t} g="gb" n={2} />
-		<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost. Miss: all ${fmt(GAME)} USDT is gone.`}</div>
 		{undo && t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
 				<SessionHid s={s} t={t} />
@@ -137,7 +151,7 @@ const Plan = view(() => {
 			<MethodRows stakes={st} />
 			<div class="lb tbn">When the 5 min ends, enter the PnL: Won, Lost or Miss. Lost with something left: one more 5 min try with what is left. Miss or a second loss: stop for the day.</div>
 			<div class="lb tbn">{`Matches / vote predict · 2 games · ${fmt(GAME)} USDT each`}</div>
-			<div class="lb tbn">Enter the PnL for each: Won, Lost or Miss.</div>
+			<div class="lb tbn">For each game say if you predicted it, then enter the PnL: Won, Lost or Miss.</div>
 		</Card>
 	)
 })

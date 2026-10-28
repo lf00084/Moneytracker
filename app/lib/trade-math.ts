@@ -7,7 +7,7 @@ export const PARTS = 3
 
 export type GameKey = "ga" | "gb"
 export type Game = "step" | "res" | GameKey
-export type Kind = "won" | "lost" | "miss"
+export type Kind = "won" | "lost" | "miss" | "skip"
 export type TradeResult = { id: string; game: Game; idx: number; won: boolean; pnl: number; state: "set" | "done"; asset: string; tf: number }
 export type TradeSession = {
 	id: string
@@ -38,9 +38,9 @@ export const resOf = (r: TradeResult[]) => r.filter((x) => x.game === "res" && i
 export const totalPnl = (r: TradeResult[]) => doneOf(r).reduce((a, x) => a + x.pnl, 0)
 export const backUsdt = (deposit: number, pnl: number) => Math.max(0, deposit + pnl)
 export const toMad = (usdtMinor: number, rateMinor: number) => Math.round((usdtMinor * rateMinor) / 100)
-export const kindOf = (x: TradeResult): Kind => (x.won ? "won" : x.tf <= 0 || 0 - x.pnl >= x.tf ? "miss" : "lost")
-export const letter = (x: TradeResult) => (kindOf(x) === "won" ? "W" : kindOf(x) === "lost" ? "L" : "M")
-export const word = (x: TradeResult) => (kindOf(x) === "won" ? "Won" : kindOf(x) === "lost" ? "Lost" : "Miss")
+export const kindOf = (x: TradeResult): Kind => (x.asset === "skip" ? "skip" : x.won ? "won" : x.tf <= 0 || 0 - x.pnl >= x.tf ? "miss" : "lost")
+export const letter = (x: TradeResult) => ({ won: "W", lost: "L", miss: "M", skip: "S" })[kindOf(x)]
+export const word = (x: TradeResult) => ({ won: "Won", lost: "Lost", miss: "Miss", skip: "Skipped" })[kindOf(x)]
 export const strip = (r: TradeResult[]) => doneOf(r).map(letter).join(" ")
 export const hasGames = (deposit: number) => deposit > FIVE
 export const gameOf = (r: TradeResult[], g: GameKey) => r.find((x) => x.game === g && isDone(x))

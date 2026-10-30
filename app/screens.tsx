@@ -1,15 +1,16 @@
-import { BuysDesktop, BuysExpand, Hero, TodayCards } from "./components/buys.tsx"
+import { BuysDesktop, BuysExpand, Hero } from "./components/buys.tsx"
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
 import { HistoryDesktop, HistoryMobile } from "./components/history.tsx"
-import { HomeBalance, HomePredict, HomeTasks, HomeToday, type PadLeft } from "./components/home.tsx"
+import { HomePredict, HomeTasks, HomeToday, type PadLeft } from "./components/home.tsx"
 import { HomeIncome, IncomeDesktop, IncomeExpand, InvoiceCard } from "./components/income.tsx"
+import { BalanceCard } from "./components/balancecard.tsx"
+import { DateCard } from "./components/datecard.tsx"
 import { AppLayout, AuthLayout } from "./components/layout.tsx"
-import { ChatHead, Composer, NoteCard, NoteList } from "./components/notes.tsx"
 import { PadBody, PadComposer, type PadTab } from "./components/pad.tsx"
 import type { PadData } from "./lib/padmeta.ts"
 import type { User } from "./lib/users.ts"
-import { BalanceCard, EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
+import { EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
 import { ErrorBanner, FloatField, GoogleMark, Logo, PageHeader, Section, Submit, view } from "./components/ui.tsx"
 import type { State } from "./lib/data.ts"
@@ -25,7 +26,10 @@ export const HomeScreen = view<{ s: State; p: PadLeft }>(({ s, p }) => (
 		mobile={
 			<div class="hm hm-f">
 				<ErrorBanner s={s} />
-				<HomeBalance s={s} />
+				<div class="hm-top">
+					<BalanceCard s={s} />
+					<DateCard />
+				</div>
 				<HomeToday s={s} />
 				<HomePredict s={s} />
 				<HomeTasks p={p} />
@@ -46,7 +50,6 @@ export const HomeScreen = view<{ s: State; p: PadLeft }>(({ s, p }) => (
 					<div>
 						<OweDesktop s={s} open={false} storeKey="owe" />
 						<IncomeDesktop s={s} bare />
-						<NoteCard s={s} />
 					</div>
 				</div>
 			</>
@@ -181,31 +184,6 @@ export const IncomeScreen = view<{ s: State }>(({ s }) => {
 		/>
 	)
 })
-
-export const NotesScreen = view<{ s: State }>(({ s }) => (
-	<AppLayout
-		title="Notes"
-		theme={s.user.theme}
-		mobileTab="notes"
-		desktopTab="notes"
-		mobile={
-			<>
-				<ChatHead />
-				<NoteList s={s} listKey="m" />
-			</>
-		}
-		dock={<Composer s={s} listKey="m" />}
-		desktop={
-			<div class="chat" data-x>
-				<ChatHead />
-				<NoteList s={s} listKey="d" />
-				<div style={{ margin: "30px 0 0" }}>
-					<Composer s={s} listKey="d" />
-				</div>
-			</div>
-		}
-	/>
-))
 
 export const PadScreen = view<{ u: User; d: PadData; tab: PadTab; f: string; error: string }>(({ u, d, tab, f, error }) => (
 	<AppLayout

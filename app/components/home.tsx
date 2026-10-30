@@ -1,26 +1,12 @@
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { today } from "../lib/time.ts"
-import { DEPOSIT, flowOf, resOf, TRIES } from "../lib/trade-math.ts"
+import { flowOf, resOf, TRIES } from "../lib/trade-math.ts"
 import { calc } from "../lib/view.ts"
-import { Icon, Submit, view } from "./ui.tsx"
+import { Submit, view } from "./ui.tsx"
 
 export type PadProject = { id: string; title: string; color: string; left: number; total: number }
 export type PadLeft = { projects: PadProject[]; home: { left: number; total: number } }
-
-export const HomeBalance = view<{ s: State }>(({ s }) => (
-	<div class="hm-c hm-bal">
-		<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
-			••••••
-		</b>
-		<div class="hm-ba">
-			<button type="button" class="ib" data-eye aria-label="Show balance">
-				<Icon name="eye" />
-			</button>
-		</div>
-		<div class="hm-m">Total balance</div>
-	</div>
-))
 
 const Stat = view<{ label: string; sign: string; value: number; cur: string }>(({ label, sign, value, cur }) => (
 	<div class="hm-c hm-bal">
@@ -38,6 +24,13 @@ export const HomeToday = view<{ s: State }>(({ s }) => {
 		</div>
 	)
 })
+
+const PredictRow = view<{ title: string; action?: string }>(({ title, action }) => (
+	<>
+		<span class="hm-pt">{title}</span>
+		{action ? <span class="hm-pg">{action}</span> : null}
+	</>
+))
 
 export const HomePredict = view<{ s: State }>(({ s }) => {
 	const day = today(s.user.day_start)
@@ -58,48 +51,47 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 				? "Won today · predict ended"
 				: "Done for today"
 			: "You can predict today"
-	const tag = f ? "running" : done ? "done" : "available"
-	return (
-		<div class="hm-c hm-gc hm-pc">
-			<div class="hm-gr">
-				<span class="hm-m">Predict</span>
-				<span class={f || !done ? "hm-tag" : "hm-tag no"}>{tag}</span>
+	if (f)
+		return (
+			<a class="hm-c hm-pd" href="/trading">
+				<PredictRow title={title} action="Continue" />
+			</a>
+		)
+	if (done)
+		return (
+			<div class="hm-c hm-pd">
+				<PredictRow title={title} />
 			</div>
-			<div class="hm-gt2">{title}</div>
-			{f ? (
-				<a class="hm-go" href="/trading">
-					Continue predict
-				</a>
-			) : !done ? (
-				<form method="post" action="/trading/deposit" style={{ margin: 0 }}>
-					<input type="hidden" name="back" value="/trading" />
-					<Submit class="hm-go">{`Start predict · ${fmt(DEPOSIT)} USDT`}</Submit>
-				</form>
-			) : null}
-		</div>
+		)
+	return (
+		<form method="post" action="/trading/deposit" style={{ margin: 0 }}>
+			<input type="hidden" name="back" value="/trading" />
+			<Submit class="hm-c hm-pd">
+				<PredictRow title={title} action="Start" />
+			</Submit>
+		</form>
 	)
 })
 
-const Prog = view<{ href: string; title: string; color: string; left: number; total: number }>(({ href, title, color, left, total }) => (
-	<a class="hm-c hm-gc" href={href}>
-		<div class="hm-gr">
-			<span class="hm-gt">
-				<i style={{ background: color }}></i>
-				{title}
-			</span>
-			<span class="hm-m">{`${left} left of ${total}`}</span>
-		</div>
-		<div class="hm-pb">
+const TaskRow = view<{ href: string; title: string; color: string; left: number; total: number }>(({ href, title, color, left, total }) => (
+	<a class="hm-tr" href={href}>
+		<i class="hm-td" style={{ background: color }}></i>
+		<span class="hm-tn">{title}</span>
+		<span class="hm-m">{`${left} left`}</span>
+		<span class="hm-tb">
 			<i style={{ width: `${total ? Math.round(((total - left) / total) * 100) : 0}%`, background: color }}></i>
-		</div>
+		</span>
 	</a>
 ))
 
-export const HomeTasks = view<{ p: PadLeft }>(({ p }) => (
-	<>
-		{p.projects.map((x) => (
-			<Prog key={x.id} href={`/pad?p=${x.id}`} title={x.title} color={x.color} left={x.left} total={x.total} />
-		))}
-		{p.home.left > 0 ? <Prog href="/pad/home" title="Home" color="#8b979e" left={p.home.left} total={p.home.total} /> : null}
-	</>
-))
+export const HomeTasks = view<{ p: PadLeft }>(({ p }) => {
+	if (!p.projects.length && p.home.left < 1) return null
+	return (
+		<div class="hm-c hm-tl">
+			{p.projects.map((x) => (
+				<TaskRow key={x.id} href={`/pad?p=${x.id}`} title={x.title} color={x.color} left={x.left} total={x.total} />
+			))}
+			{p.home.left > 0 ? <TaskRow href="/pad/home" title="Home" color="#8b979e" left={p.home.left} total={p.home.total} /> : null}
+		</div>
+	)
+})

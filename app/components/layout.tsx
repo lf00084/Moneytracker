@@ -3,6 +3,7 @@ import { env } from "../env.ts"
 import { SITE } from "../lib/assets.ts"
 import { liveClockNow } from "../lib/time.ts"
 import { V } from "../lib/static.ts"
+import { BottomBar, type MobileTab } from "./bottombar.tsx"
 import { Icon, Logo, Submit, ThemeIcons, view } from "./ui.tsx"
 
 type DocumentProps = {
@@ -105,31 +106,16 @@ export const ClockWidget = view(() => {
 	)
 })
 
-export const TopBar = view<{ split?: boolean; left?: RemixNode }>(({ split, left }) => {
-	if (!split) {
-		return (
-			<div class="top-status-bar">
-				<ClockWidget />
-			</div>
-		)
-	}
-	const { numDate, arabicDay } = liveClockNow()
-	return (
-		<div class="top-status-bar tsplit">
-			{left}
-			<ClockWidget />
-			<div class="clock-subdate" dir="ltr">
-				<SubDate numDate={numDate} arabicDay={arabicDay} />
-			</div>
-		</div>
-	)
-})
+export const TopBar = view(() => (
+	<div class="top-status-bar">
+		<ClockWidget />
+	</div>
+))
 
-export type DesktopTab = "home" | "notes" | "plan" | "income" | "trading" | "pad" | "history" | "settings" | ""
+export type DesktopTab = "home" | "plan" | "income" | "trading" | "pad" | "history" | "settings" | ""
 
 const LINKS = [
 	{ key: "home", label: "Home", icon: "home", href: "/home" },
-	{ key: "notes", label: "Notes", icon: "notes", href: "/notes" },
 	{ key: "plan", label: "Plan", icon: "goal", href: "/plan" },
 	{ key: "income", label: "Income", icon: "coin", href: "/income" },
 	{ key: "trading", label: "Predict", icon: "trade", href: "/trading" },
@@ -161,28 +147,6 @@ export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 	</aside>
 ))
 
-export type MobileTab = "home" | "notes" | "goals" | "income" | "trading" | "pad" | "history" | "profile" | ""
-
-const TABS = [
-	{ key: "home", label: "Home", icon: "bhome", href: "/home" },
-	{ key: "trading", label: "Predict", icon: "btrade", href: "/trading" },
-	{ key: "pad", label: "Pad", icon: "bdoc", href: "/pad" },
-	{ key: "income", label: "Income", icon: "bsun", href: "/income" },
-	{ key: "notes", label: "Notes", icon: "bchat", href: "/notes" },
-	{ key: "profile", label: "Profile", icon: "buser", href: "/profile" },
-] as const
-
-export const BottomBar = view<{ active: MobileTab }>(({ active }) => (
-	<nav class="bt" aria-label="Main">
-		{TABS.map((t) => (
-			<a key={t.key} href={t.href} class={active === t.key ? "on" : ""} aria-label={t.label}>
-				<Icon name={t.icon} />
-				<span class="bl">{t.label}</span>
-			</a>
-		))}
-	</nav>
-))
-
 type AppLayoutProps = {
 	title: string
 	theme?: string
@@ -192,17 +156,13 @@ type AppLayoutProps = {
 	desktopTab?: DesktopTab
 	dock?: RemixNode
 	full?: boolean
-	topLeft?: RemixNode
 }
 
-export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, mobileTab = "", desktopTab = "", dock, full, topLeft }) => (
+export const AppLayout = view<AppLayoutProps>(({ title, theme, mobile, desktop, mobileTab = "", desktopTab = "", dock, full }) => (
 	<Document title={title} theme={theme}>
 		<div class="app">
 			<Sidebar active={desktopTab} />
 			<main>
-				<div class="m">
-					<TopBar split left={topLeft} />
-				</div>
 				<div class="m mm hm">{mobile}</div>
 				<div class="d">
 					<TopBar />

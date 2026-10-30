@@ -2,7 +2,7 @@ import type { Buy, State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { hhmm } from "../lib/time.ts"
 import { calc } from "../lib/view.ts"
-import { Back, Card, Empty, ExpandCard, Icon, ListCard, NameChips, Submit, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, ListCard, NameChips, Submit, view } from "./ui.tsx"
 
 export const buyName = (b: Buy) => (b.qty > 1 ? `${b.name} ×${b.qty}` : b.name)
 
@@ -74,33 +74,6 @@ export const BuysDesktop = view<{ s: State }>(({ s }) => (
 			<BuyRows s={s} />
 		</ListCard>
 	</>
-))
-
-export const TodayCards = view<{ s: State }>(({ s }) => {
-	const c = calc(s)
-	return (
-		<div class="two">
-			<Card title="Earned today">
-				<div class="big2" style={{ whiteSpace: "nowrap" }}>
-					+{fmt(c.earned)} <small>{s.user.currency}</small>
-				</div>
-			</Card>
-			<Card title="Bought today">
-				<div class="big2" style={{ whiteSpace: "nowrap" }}>
-					−{fmt(c.bought)} <small>{s.user.currency}</small>
-				</div>
-			</Card>
-		</div>
-	)
-})
-
-export const EarnedTop = view<{ s: State }>(({ s }) => (
-	<div class="earn-top">
-		<div class="lb">Earned today</div>
-		<b class="ea">
-			+{fmt(calc(s).earned)} <small>{s.user.currency}</small>
-		</b>
-	</div>
 ))
 
 export const Hero = view<{ s: State }>(({ s }) => {

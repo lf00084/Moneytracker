@@ -1,5 +1,5 @@
 import { sql } from "remix/data-table"
-import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases } from "../db/index.ts"
+import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, people, purchases } from "../db/index.ts"
 import { settleAuto } from "./auto.ts"
 import { exoStatus, latestInvoice, liveExo, settleExo, type Invoice } from "./exoclick.ts"
 import type { TradeSession } from "./trade-math.ts"
@@ -14,9 +14,8 @@ export type Source = { id: string; name: string; mode: string; every: string; am
 export type DebtView = { id: string; person: string; kind: "money" | "item"; item: string; owed: number; paid: number; at: number; delta: number }
 export type GoalItem = { id: string; name: string; price: number; done: boolean }
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] }
-export type Note = { id: string; body: string; at: number; edited: boolean }
 export type DayRow = { day: string; label: string; earned: number; bought: number; buys: Buy[]; incomes: Income[] }
-export type Part = "today" | "sources" | "debts" | "goals" | "notes" | "history" | "balance" | "avatar" | "invoice" | "names" | "incnames" | "trading"
+export type Part = "today" | "sources" | "debts" | "goals" | "history" | "balance" | "avatar" | "invoice" | "names" | "incnames" | "trading"
 
 export type State = {
 	user: User
@@ -33,7 +32,6 @@ export type State = {
 	sources: Source[]
 	debts: DebtView[]
 	goals: Goal[]
-	notes: Note[]
 	days: DayRow[]
 	balance: number
 	invoice: Invoice | null
@@ -117,7 +115,6 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 		sources: [],
 		debts: [],
 		goals: [],
-		notes: [],
 		days: [],
 		balance: 0,
 		invoice: null,
@@ -216,13 +213,6 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 					const left = items.filter((i) => !i.done)
 					return { id: g.id, title: g.title, target: left.reduce((a, i) => a + i.price, 0), saved: g.saved_minor, done: items.length > 0 && left.length === 0, items }
 				})
-			}),
-		)
-
-	if (need.has("notes"))
-		jobs.push(
-			db.findMany(notes, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 500 }).then((rows) => {
-				s.notes = rows.reverse().map((n) => ({ id: n.id, body: n.body, at: n.created_at, edited: n.updated_at - n.created_at > 1000 }))
 			}),
 		)
 

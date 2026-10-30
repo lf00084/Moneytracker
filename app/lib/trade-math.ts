@@ -3,7 +3,6 @@ export const GAME = 400
 export const GAMES = 2
 export const DEPOSIT = FIVE + GAME * GAMES
 export const TRIES = 2
-export const PARTS = 3
 
 export type GameKey = "ga" | "gb"
 export type Game = "step" | "res" | GameKey
@@ -41,7 +40,6 @@ export const toMad = (usdtMinor: number, rateMinor: number) => Math.round((usdtM
 export const kindOf = (x: TradeResult): Kind => (x.asset === "skip" ? "skip" : x.won ? "won" : x.tf <= 0 || 0 - x.pnl >= x.tf ? "miss" : "lost")
 export const letter = (x: TradeResult) => ({ won: "W", lost: "L", miss: "M", skip: "S" })[kindOf(x)]
 export const word = (x: TradeResult) => ({ won: "Won", lost: "Lost", miss: "Miss", skip: "Skipped" })[kindOf(x)]
-export const strip = (r: TradeResult[]) => doneOf(r).map(letter).join(" ")
 export const hasGames = (deposit: number) => deposit > FIVE
 export const gameOf = (r: TradeResult[], g: GameKey) => r.find((x) => x.game === g && isDone(x))
 export const gamesDone = (r: TradeResult[]) => !!gameOf(r, "ga") && !!gameOf(r, "gb")

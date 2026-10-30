@@ -21,14 +21,6 @@
 		} catch (e) {}
 	}
 
-	function endEdit(c) {
-		var id = c.querySelector("[data-eid]")
-		if (id) id.value = ""
-		var eb = c.querySelector(".eb")
-		if (eb) eb.hidden = true
-		c.querySelector("textarea").value = ""
-	}
-
 	var open = {}
 	try {
 		open = JSON.parse(localStorage.getItem("mt:open") || "{}")
@@ -170,31 +162,6 @@
 			form.setAttribute("data-m", mode)
 			return
 		}
-		if ((q = t.closest(".bub"))) {
-			q.classList.toggle("sel")
-			var a = q.parentNode.querySelector(".acts")
-			a.hidden = !a.hidden
-			return
-		}
-		if ((q = t.closest("[data-act]"))) {
-			var m = q.closest(".msg")
-			var act = q.getAttribute("data-act")
-			var body = m.querySelector(".bub").textContent
-			if (act === "copy") {
-				try {
-					navigator.clipboard.writeText(body)
-				} catch (x) {}
-			} else if (act === "edit") {
-				var c = d.querySelector('[data-comp="' + m.parentNode.getAttribute("data-list") + '"]')
-				c.querySelector("[data-eid]").value = m.getAttribute("data-id")
-				c.querySelector(".eb").hidden = false
-				var ta = c.querySelector("textarea")
-				ta.value = body
-				ta.focus()
-			}
-			return
-		}
-		if ((q = t.closest("[data-cancel]"))) endEdit(q.closest("[data-comp]"))
 	})
 
 	d.addEventListener(
@@ -239,13 +206,6 @@
 		if (e.persisted) unbusy()
 	})
 
-	d.addEventListener("keydown", function (e) {
-		var t = e.target
-		if (e.key !== "Enter" || e.shiftKey || !(t.matches && t.matches("[data-comp] textarea"))) return
-		e.preventDefault()
-		if (t.value.trim()) t.closest("form").requestSubmit()
-	})
-
 	var zone = "Africa/Casablanca"
 	var fmt = function (loc, o) {
 		o.timeZone = zone
@@ -255,6 +215,9 @@
 	var df = fmt("en-GB", { weekday: "long", day: "numeric", month: "long" })
 	var nf = fmt("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
 	var af = fmt("ar-MA", { weekday: "long" })
+	var wf = fmt("en-GB", { weekday: "short" })
+	var yf = fmt("en-GB", { day: "numeric" })
+	var mf = fmt("en-GB", { month: "short" })
 	function tick() {
 		var now = new Date()
 		var sub = '<span class="clock-num">' + nf.format(now) + '</span> <span class="clock-dot">·</span> <span class="clock-ar">' + af.format(now) + "</span>"
@@ -266,6 +229,15 @@
 		})
 		all("[data-clock-subdate]").forEach(function (el) {
 			el.innerHTML = sub
+		})
+		all("[data-d-wd]").forEach(function (el) {
+			el.textContent = wf.format(now)
+		})
+		all("[data-d-day]").forEach(function (el) {
+			el.textContent = yf.format(now)
+		})
+		all("[data-d-mo]").forEach(function (el) {
+			el.textContent = mf.format(now)
 		})
 	}
 	setInterval(tick, 1000)
@@ -284,11 +256,6 @@
 		q.setAttribute("data-s", "1")
 		var v = q.parentNode.firstChild
 		v.innerHTML = v.getAttribute("data-bal") + " <small>" + v.getAttribute("data-cur") + "</small>"
-	})
-
-	all("[data-list]").forEach(function (L) {
-		var last = L.lastElementChild
-		if (L.getAttribute("data-list") !== "dash" && last && last.scrollIntoView) last.scrollIntoView({ block: "end" })
 	})
 
 	var loaded = Date.now()
@@ -644,7 +611,6 @@
 	})
 })()
 
-// Notes list: scroll to the newest (bottom) on load.
 ;(function () {
 	var run = function () {
 		;[].slice.call(document.querySelectorAll("[data-bottom]")).forEach(function (l) {

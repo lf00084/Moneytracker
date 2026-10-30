@@ -167,15 +167,6 @@ CREATE TABLE IF NOT EXISTS goal_items (
 CREATE INDEX IF NOT EXISTS goal_items_goal_idx ON goal_items(goal_id);
 CREATE INDEX IF NOT EXISTS goal_items_user_idx ON goal_items(user_id);
 
-CREATE TABLE IF NOT EXISTS notes (
-  id            TEXT PRIMARY KEY,
-  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  body          TEXT NOT NULL,
-  created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS notes_user_idx ON notes(user_id, created_at);
-
 CREATE TABLE IF NOT EXISTS trade_sessions (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

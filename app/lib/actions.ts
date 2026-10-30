@@ -1,5 +1,5 @@
 import { sql } from "remix/data-table"
-import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, notes, people, purchases } from "../db/index.ts"
+import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, people, purchases } from "../db/index.ts"
 import { balanceOf } from "./data.ts"
 import { fmt, toMinor, toSigned } from "./money.ts"
 import { todayFor } from "./users.ts"
@@ -231,19 +231,6 @@ export async function deleteIncome(uid: string, f: FormData): Result {
 	await db.deleteMany(incomes, { where: { id: row.id, user_id: uid } })
 }
 
-export async function saveNote(uid: string, f: FormData) {
-	const body = text(f.get("text"), 5000)
-	if (!body) return
-	const noteId = own(f)
-	const now = Date.now()
-	if (noteId) await db.updateMany(notes, { body, updated_at: now }, { where: { id: noteId, user_id: uid } })
-	else await db.create(notes, { id: id(), user_id: uid, body, created_at: now, updated_at: now })
-}
-
-export async function deleteNote(uid: string, f: FormData) {
-	await db.deleteMany(notes, { where: { id: own(f), user_id: uid } })
-}
-
 export async function deleteAccount(uid: string) {
 	await db.transaction(async (tx) => {
 		for (const stmt of [
@@ -259,7 +246,6 @@ export async function deleteAccount(uid: string) {
 			sql`delete from goals where user_id = ${uid}`,
 			sql`delete from pad_entries where user_id = ${uid}`,
 			sql`delete from pad_spaces where user_id = ${uid}`,
-			sql`delete from notes where user_id = ${uid}`,
 			sql`delete from quick_buys where user_id = ${uid}`,
 			sql`delete from user_images where user_id = ${uid}`,
 			sql`delete from oauth_accounts where user_id = ${uid}`,

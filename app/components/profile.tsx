@@ -16,7 +16,7 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 	</form>
 ))
 
-export const BalanceCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
+export const BalanceEditCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
 	<div class="cd hm-balc">
 		<div class="hm-bal">
 			<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
@@ -119,7 +119,7 @@ export const ProfileMobile = view<{ s: State }>(({ s }) => (
 				</div>
 			</div>
 		</div>
-		<BalanceCard s={s} edit />
+		<BalanceEditCard s={s} edit />
 		<Card title="Appearance">
 			<ThemeSwitch />
 		</Card>
@@ -169,7 +169,7 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 		<ErrorBanner s={s} />
 		<div class="g3">
 			<div>
-				<BalanceCard s={s} edit />
+				<BalanceEditCard s={s} edit />
 				<Section title="Profile">
 					<ProfileForm s={s} cancel="/home" />
 				</Section>

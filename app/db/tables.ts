@@ -167,11 +167,6 @@ export const goalItems = table({
 	columns: { id: c.varchar(36), user_id: c.varchar(36), goal_id: c.varchar(36), name: c.varchar(120), price_minor: c.integer(), done_at: c.integer(), created_at: c.integer() },
 })
 
-export const notes = table({
-	name: "notes",
-	columns: { id: c.varchar(36), user_id: c.varchar(36), body: c.varchar(5000), created_at: c.integer(), updated_at: c.integer() },
-})
-
 export const tradeSessions = table({
 	name: "trade_sessions",
 	columns: {

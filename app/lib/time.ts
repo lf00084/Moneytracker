@@ -36,6 +36,15 @@ export function timeAgo(ms: number) {
 
 const part = (locale: string, options: Intl.DateTimeFormatOptions, now: Date) => new Intl.DateTimeFormat(locale, { timeZone: TZ, ...options }).format(now)
 
+export function dateParts() {
+	const now = new Date()
+	return {
+		weekday: part("en-GB", { weekday: "short" }, now),
+		day: part("en-GB", { day: "numeric" }, now),
+		month: part("en-GB", { month: "short" }, now),
+	}
+}
+
 export function liveClockNow() {
 	const now = new Date()
 	return {

@@ -13,7 +13,7 @@ const SEG = [
 ]
 
 export const padBack = (d: PadData, tab: PadTab, f: string) =>
-	tab === "said" ? `/pad/said${f ? `?f=${f}` : ""}` : tab === "home" ? "/pad/home" : d.space ? `/pad?p=${d.space.id}${f ? `&f=${f}` : ""}` : "/pad"
+	tab === "said" ? `/pad/said${f ? `?f=${f}` : ""}` : tab === "home" ? "/pad/home" : d.space ? `/pad?p=${d.space.id}${f ? `&f=${f}` : ""}${d.done ? "&d=1" : ""}` : "/pad"
 
 const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	<div class="nt-seg">
@@ -25,13 +25,14 @@ const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	</div>
 ))
 
-const Filters = view<{ base: string; f: string; items: [string, string][] }>(({ base, f, items }) => (
+const Filters = view<{ base: string; f: string; items: [string, string][]; keep?: string; children?: unknown }>(({ base, f, items, keep = "", children }) => (
 	<div class="nt-fl">
 		{items.map(([label, key]) => (
-			<a key={key} href={key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base} class={f === key ? "on" : ""}>
+			<a key={key} href={`${key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base}${keep}`} class={f === key ? "on" : ""}>
 				{label}
 			</a>
 		))}
+		{children as never}
 	</div>
 ))
 
@@ -129,8 +130,16 @@ const Projects = view<Props>(({ d, f }) => {
 	const all = d.entries.filter((e) => e.space === sp.id && e.kind !== "said").reverse()
 	const open = all.filter((e) => e.kind === "task").length
 	const done = all.filter((e) => e.kind === "done").length
-	const list = all.filter((e) => (f === "tasks" ? e.kind !== "note" : f === "notes" ? e.kind === "note" : true))
+	const seen = d.done ? all : all.filter((e) => e.kind !== "done")
+	const list = seen.filter((e) => (f === "tasks" ? e.kind !== "note" : f === "notes" ? e.kind === "note" : true))
 	const back = padBack(d, "projects", f)
+	const keep = d.done ? "&d=1" : ""
+	const toggle =
+		done > 0 ? (
+			<a style={{ marginLeft: "auto" }} href={`/pad?p=${sp.id}${f ? `&f=${f}` : ""}${d.done ? "" : "&d=1"}`} class={d.done ? "on" : ""}>
+				{d.done ? "Hide done" : `Show done · ${done}`}
+			</a>
+		) : null
 	return (
 		<>
 			<div class="nt-pj">
@@ -152,8 +161,16 @@ const Projects = view<Props>(({ d, f }) => {
 					<Icon name="gear" />
 				</a>
 			</div>
-			{sp.type === "mix" ? <Filters base={`/pad?p=${sp.id}`} f={f} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]} /> : null}
-			<div class="nt-c nt-list nt-scr" data-bottom>{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : "Nothing here yet. Add one below."}</Empty>}</div>
+			{sp.type === "mix" ? (
+				<Filters base={`/pad?p=${sp.id}`} f={f} keep={keep} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]}>
+					{toggle}
+				</Filters>
+			) : sp.type === "tasks" && toggle ? (
+				<Filters base={`/pad?p=${sp.id}`} f={f} keep={keep} items={[]}>
+					{toggle}
+				</Filters>
+			) : null}
+			<div class="nt-c nt-list nt-scr" data-bottom>{list.length ? list.map((e) => <Row key={e.id} e={e} back={back} />) : <Empty>{sp.type === "notes" ? "No notes yet. Write one below." : done > 0 && !d.done && f !== "notes" ? "All done. Tap Show done to see them." : "Nothing here yet. Add one below."}</Empty>}</div>
 		</>
 	)
 })

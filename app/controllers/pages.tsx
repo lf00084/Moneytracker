@@ -47,7 +47,7 @@ const padPage = (tab: PadTab) => async (ctx: Ctx) => {
 	const q = url.searchParams
 	const p = q.get("p") ?? ""
 	await remember(user, `${url.pathname}${p ? `?p=${p}` : ""}`)
-	const d = await loadPad(user.id, p)
+	const d = await loadPad(user.id, p, q.get("d") === "1")
 	return ctx.render(<PadScreen u={user} d={d} tab={tab} f={q.get("f") ?? ""} error={takeError(ctx)} />)
 }
 

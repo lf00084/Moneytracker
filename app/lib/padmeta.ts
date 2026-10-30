@@ -3,4 +3,4 @@ export const TYPES = ["mix", "notes", "tasks"] as const
 
 export type Space = { id: string; title: string; color: string; type: string; bar: boolean }
 export type Entry = { id: string; space: string; kind: string; body: string; who: string; tag: string; today: boolean; at: number }
-export type PadData = { spaces: Space[]; space: Space | null; entries: Entry[] }
+export type PadData = { spaces: Space[]; space: Space | null; entries: Entry[]; done: boolean }

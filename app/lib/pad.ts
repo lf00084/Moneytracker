@@ -8,7 +8,7 @@ export type { Entry, PadData, Space }
 
 type Result = Promise<string | void>
 
-export async function loadPad(uid: string, pick: string): Promise<PadData> {
+export async function loadPad(uid: string, pick: string, done = false): Promise<PadData> {
 	const [sp, en] = await Promise.all([
 		db.findMany(padSpaces, { where: { user_id: uid, kind: "project" }, orderBy: ["sort", "asc"] }),
 		db.findMany(padEntries, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 3000 }),
@@ -23,7 +23,7 @@ export async function loadPad(uid: string, pick: string): Promise<PadData> {
 		const j = parseJson(x.ref)
 		return { id: x.id, space: x.space_id ?? "", kind: x.kind, body: x.body, who: String(j.n || ""), tag: String(j.t || ""), today: !!x.on_home, at: x.created_at }
 	})
-	return { spaces, space: spaces.find((x) => x.id === pick) ?? spaces[0] ?? null, entries }
+	return { spaces, space: spaces.find((x) => x.id === pick) ?? spaces[0] ?? null, entries, done }
 }
 
 const mine = async (uid: string, v: unknown) => {

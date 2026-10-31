@@ -11,5 +11,4 @@ git commit -m "update" || true
 git push -u origin main
 base="$(basename "$PWD")"
 rm -f "../$base.zip"
-cd ..
-zip -rq "$base.zip" "$base" -x "$base/.git/*"
+git ls-files -co --exclude-standard | grep -vE '(^|/)(wrangler\.jsonc|\.dev\.vars)$' | sed "s|^|$base/|" | (cd .. && zip -q "$base.zip" -@)

@@ -2,6 +2,7 @@ import { createController } from "remix/router"
 import type { RemixNode } from "remix/component"
 import * as act from "../lib/actions.ts"
 import { loadState, type Part, type State } from "../lib/data.ts"
+import { WalletScreen } from "../components/wallet.tsx"
 import { DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingScreen } from "../screens.tsx"
 import { routes } from "../routes.ts"
 import { go, takeError, userOf, type Ctx } from "../request.ts"
@@ -11,7 +12,7 @@ import { saveTab, type User } from "../lib/users.ts"
 import type { PadTab } from "../components/pad.tsx"
 import type { PadLeft } from "../components/home.tsx"
 
-const KEEP = /^\/(home|trading|income|profile|history|plan|settings|pad(\/(said|home))?)(\?p=[0-9a-f-]{36})?$/
+const KEEP = /^\/(home|trading|wallet|income|profile|history|plan|settings|pad(\/(said|home))?)(\?p=[0-9a-f-]{36})?$/
 
 const remember = async (user: User, path: string) => {
 	if (user.last_tab === path || !KEEP.test(path)) return
@@ -56,7 +57,7 @@ const homePage = async (ctx: Ctx) => {
 	if (!user) return go("/login")
 	await remember(user, "/home")
 	const [s, d] = await Promise.all([
-		loadState(user, ["today", "sources", "names", "incnames", "debts", "goals", "balance", "trading"], { back: "/home", error: takeError(ctx) }),
+		loadState(user, ["today", "sources", "names", "incnames", "debts", "goals", "balance", "trading", "wallet"], { back: "/home", error: takeError(ctx) }),
 		loadPad(user.id, ""),
 	])
 	return ctx.render(<HomeScreen s={s} p={padLeft(d)} />)
@@ -84,6 +85,7 @@ export default createController(routes.pages, {
 		padNew: padPage("new"),
 		padProject: padPage("edit"),
 		trading: page("/trading", ["trading"], (s) => <TradingScreen s={s} />),
+		wallet: page("/wallet", ["wallet"], (s) => <WalletScreen s={s} />),
 
 		async exportCsv(ctx: Ctx) {
 			const user = userOf(ctx)

@@ -32,7 +32,7 @@ const PredictRow = view<{ title: string; action?: string }>(({ title, action }) 
 	</>
 ))
 
-export const HomePredict = view<{ s: State }>(({ s }) => {
+const HomePredictCard = view<{ s: State }>(({ s }) => {
 	const day = today(s.user.day_start)
 	const open = s.trades.find((t) => t.status === "open")
 	const done = s.trades.find((t) => t.day === day && t.status === "settled")
@@ -72,6 +72,30 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 		</form>
 	)
 })
+
+const sg = (minor: number) => `${minor < 0 ? "−" : "+"}${fmt(Math.abs(minor))}`
+
+const HomeWallet = view<{ s: State }>(({ s }) => {
+	const w = s.wallet
+	if (!w || !w.connected)
+		return (
+			<a class="hm-c hm-pd" href="/wallet">
+				<PredictRow title="Predict wallet" action="Connect" />
+			</a>
+		)
+	return (
+		<a class="hm-c hm-pd" href="/wallet">
+			<PredictRow title={`Predict wallet · ${fmt(w.usdt)} USDT`} action={`${sg(w.today)} today`} />
+		</a>
+	)
+})
+
+export const HomePredict = view<{ s: State }>(({ s }) => (
+	<>
+		<HomePredictCard s={s} />
+		<HomeWallet s={s} />
+	</>
+))
 
 const TaskRow = view<{ href: string; title: string; color: string; left: number; total: number }>(({ href, title, color, left, total }) => (
 	<a class="hm-tr" href={href}>

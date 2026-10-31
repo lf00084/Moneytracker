@@ -2,6 +2,7 @@ import * as act from "./lib/actions.ts"
 import * as inc from "./lib/income.ts"
 import { toMinor } from "./lib/money.ts"
 import * as pad from "./lib/pad.ts"
+import * as predict from "./lib/predict.ts"
 import * as trading from "./lib/trading.ts"
 import { setTheme, updatePrefs, updateProfile, type User } from "./lib/users.ts"
 
@@ -48,6 +49,12 @@ export const commands = {
 	tradeUndo: { run: (u, f) => trading.undoResult(u.id, f), to: "/trading" },
 	tradeFinish: { run: (u, f) => trading.finishTrade(u.id, f), to: "/trading" },
 	tradeReopen: { run: (u, f) => trading.reopenTrade(u.id, f), to: "/trading" },
+	walletBuy: { run: (u, f) => predict.addMove(u.id, f, "buy"), to: "/wallet" },
+	walletSell: { run: (u, f) => predict.addMove(u.id, f, "sell"), to: "/wallet" },
+	walletKeys: { run: (u, f) => predict.saveKeys(u.id, f), to: "/wallet" },
+	walletSync: { run: (u) => predict.syncNow(u.id), to: "/wallet" },
+	walletForget: { run: (u) => predict.forgetKeys(u.id), to: "/wallet" },
+	walletDelete: { run: (u, f) => predict.deleteMove(u.id, f), to: "/wallet" },
 	saveProfile: { run: (u, f) => updateProfile(u.id, { name: field(f, "name"), email: field(f, "email") }), to: "/profile", back: false, fail: "/profile/edit" },
 	saveSettings: {
 		run: quiet((u, f) => updatePrefs(u.id, { currency: field(f, "currency"), run_at: field(f, "run_at"), day_start: parseInt(field(f, "day_start"), 10), week_start: field(f, "week"), usdt_rate_minor: toMinor(f.get("usdt")), usd_rate_minor: toMinor(f.get("usd_rate")) })),

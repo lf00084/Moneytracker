@@ -3,6 +3,7 @@ import { db, debtPayments, debts, goalItems, goals, incomes, incomeSources, peop
 import { settleAuto } from "./auto.ts"
 import { exoStatus, latestInvoice, liveExo, settleExo, type Invoice } from "./exoclick.ts"
 import type { TradeSession } from "./trade-math.ts"
+import { loadWallet, predictTotal, syncPredict, type WalletView } from "./predict.ts"
 import { loadTrades } from "./trading.ts"
 import { addDays, dayLabel, today } from "./time.ts"
 import { getActiveAvatar, type User } from "./users.ts"
@@ -15,7 +16,7 @@ export type DebtView = { id: string; person: string; kind: "money" | "item"; ite
 export type GoalItem = { id: string; name: string; price: number; done: boolean }
 export type Goal = { id: string; title: string; target: number; saved: number; done: boolean; items: GoalItem[] }
 export type DayRow = { day: string; label: string; earned: number; bought: number; buys: Buy[]; incomes: Income[] }
-export type Part = "today" | "sources" | "debts" | "goals" | "history" | "balance" | "avatar" | "invoice" | "names" | "incnames" | "trading"
+export type Part = "today" | "sources" | "debts" | "goals" | "history" | "balance" | "avatar" | "invoice" | "names" | "incnames" | "trading" | "wallet"
 
 export type State = {
 	user: User
@@ -27,6 +28,7 @@ export type State = {
 	exo: Record<string, string>
 	exoToday: Record<string, number>
 	trades: TradeSession[]
+	wallet: WalletView | null
 	buys: Buy[]
 	incomesToday: Income[]
 	sources: Source[]
@@ -37,7 +39,7 @@ export type State = {
 	invoice: Invoice | null
 }
 
-const settleAll = async (uid: string) => void (await Promise.all([settleAuto(uid), settleExo(uid)]))
+const settleAll = async (uid: string) => void (await Promise.all([settleAuto(uid), settleExo(uid), syncPredict(uid)]))
 
 const scalar = (r: unknown) => {
 	const row = rowsOf(r)[0]
@@ -45,11 +47,12 @@ const scalar = (r: unknown) => {
 }
 
 const total = async (uid: string) => {
-	const [i, p] = await Promise.all([
+	const [i, p, w] = await Promise.all([
 		db.exec(sql`select coalesce(sum(amount_minor), 0) as s from incomes where user_id = ${uid}`),
 		db.exec(sql`select coalesce(sum(total_minor), 0) as s from purchases where user_id = ${uid}`),
+		predictTotal(uid),
 	])
-	return scalar(i) - scalar(p)
+	return scalar(i) - scalar(p) + w
 }
 
 const names = (r: unknown) => rowsOf(r).map((x) => String(x.n ?? x[0] ?? "")).filter(Boolean)
@@ -110,6 +113,7 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 		exo: {},
 		exoToday: {},
 		trades: [],
+		wallet: null,
 		buys: [],
 		incomesToday: [],
 		sources: [],
@@ -201,6 +205,7 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 
 	if (need.has("debts")) jobs.push(loadDebts(uid).then((d) => void (s.debts = d)))
 	if (need.has("trading")) jobs.push(loadTrades(uid).then((x) => void (s.trades = x)))
+	if (need.has("wallet")) jobs.push(loadWallet(user).then((x) => void (s.wallet = x)))
 
 	if (need.has("goals"))
 		jobs.push(

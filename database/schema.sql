@@ -228,3 +228,38 @@ CREATE TABLE IF NOT EXISTS pad_entries (
 CREATE INDEX IF NOT EXISTS pad_entries_space_idx ON pad_entries(space_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS pad_entries_kind_idx ON pad_entries(user_id, kind, created_at DESC);
 CREATE INDEX IF NOT EXISTS pad_entries_home_idx ON pad_entries(user_id, created_at DESC) WHERE on_home = 1;
+
+CREATE TABLE IF NOT EXISTS predict_account (
+  user_id       TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  key_enc       TEXT NOT NULL DEFAULT '',
+  secret_enc    TEXT NOT NULL DEFAULT '',
+  wallet        TEXT NOT NULL DEFAULT '',
+  usdt_minor    INTEGER NOT NULL DEFAULT 0,
+  synced_at     INTEGER NOT NULL DEFAULT 0,
+  last_error    TEXT NOT NULL DEFAULT '',
+  updated_at    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS predict_moves (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL,
+  usdt_minor    INTEGER NOT NULL,
+  mad_minor     INTEGER NOT NULL,
+  day           TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS predict_moves_user_idx ON predict_moves(user_id, day);
+
+CREATE TABLE IF NOT EXISTS predict_days (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day           TEXT NOT NULL,
+  open_minor    INTEGER NOT NULL DEFAULT 0,
+  balance_minor INTEGER NOT NULL DEFAULT 0,
+  bought_minor  INTEGER NOT NULL DEFAULT 0,
+  sold_minor    INTEGER NOT NULL DEFAULT 0,
+  profit_minor  INTEGER NOT NULL DEFAULT 0,
+  saved_at      INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS predict_days_uq ON predict_days(user_id, day);

@@ -4,6 +4,7 @@ import { createTursoDatabase } from "@remix-kbn/data-table-sqlite-turso"
 import { env } from "../env.ts"
 
 export * from "./tables.ts"
+export * from "./predict-tables.ts"
 
 type Db = ReturnType<typeof createTursoDatabase>
 

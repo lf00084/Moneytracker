@@ -22,6 +22,12 @@ const guard = <T>(p: Promise<T>) =>
 	})
 
 export default {
+	async scheduled(_event: unknown, _env: unknown, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+		if (missingEnv().length) return
+		const { withDb } = await import("../app/db/index.ts")
+		const { syncAllPredict } = await import("../app/lib/predict.ts")
+		ctx.waitUntil(withDb(() => syncAllPredict()))
+	},
 	async fetch(request: Request) {
 		const missing = missingEnv()
 		if (missing.length) return page(`Missing config: ${missing.join(", ")}`, 500)

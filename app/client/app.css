@@ -956,3 +956,13 @@ div.hm-pd{cursor:default}
 .hm-tr .hm-m{font-weight:600;color:var(--h-ink)}
 .hm-tb{display:none}
 .hm-f{gap:8px}
+
+/* arabic day beside the day number on the home date widget */
+.hm-top{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.hm-date{gap:6px;padding:0 8px}
+.hm-ar{font:600 14px/1 "Noto Sans Arabic",var(--h-sans);color:var(--h-mu);white-space:nowrap}
+
+/* pad lists: keep the last item above the composer and bottom bar */
+.nt-list.nt-scr,.nt-wrap.nt-scr{max-height:calc(100dvh - 360px - env(safe-area-inset-bottom,0px));padding-bottom:24px;scroll-padding-bottom:24px}
+.nt-list.nt-scr::after,.nt-wrap.nt-scr::after{content:"";display:block;flex:none;height:12px}
+.nt-page{padding-bottom:20px}

@@ -233,6 +233,9 @@
 		all("[data-d-wd]").forEach(function (el) {
 			el.textContent = wf.format(now)
 		})
+		all("[data-d-ar]").forEach(function (el) {
+			el.textContent = af.format(now)
+		})
 		all("[data-d-day]").forEach(function (el) {
 			el.textContent = yf.format(now)
 		})
@@ -657,5 +660,91 @@
 	document.addEventListener("input", function (e) {
 		var f = e.target.closest && e.target.closest("[data-pnl]")
 		if (f && e.target.name === "pnl") clear(f)
+	})
+})()
+
+// Submit forms in place (fetch + swap) so the page does not reload.
+// Opt in with data-fetch on a form; every POST form inside the pad (.nt-page) is on by default.
+;(function () {
+	var d = document
+	var all = function (sel) {
+		return [].slice.call(d.querySelectorAll(sel))
+	}
+	var SEL = "form[data-fetch], .nt-page form[method=post]"
+	var seq = 0
+
+	function keep() {
+		var open = {}
+		all("details[data-keep-open]").forEach(function (x) {
+			open[x.getAttribute("data-keep-open")] = x.open
+		})
+		var scr = all(".nt-scr").map(function (x) {
+			return x.scrollTop
+		})
+		return { open: open, scr: scr }
+	}
+
+	function restore(k) {
+		all("details[data-keep-open]").forEach(function (x) {
+			var key = x.getAttribute("data-keep-open")
+			if (key in k.open) x.open = k.open[key]
+		})
+		all(".nt-scr").forEach(function (x, i) {
+			if (k.scr[i] !== undefined) x.scrollTop = k.scr[i]
+		})
+	}
+
+	function swap(html, k) {
+		var doc = new DOMParser().parseFromString(html, "text/html")
+		var next = doc.querySelector(".app")
+		var cur = d.querySelector(".app")
+		if (!next || !cur) return false
+		cur.innerHTML = next.innerHTML
+		restore(k)
+		return true
+	}
+
+	d.addEventListener("submit", function (e) {
+		var f = e.target
+		if (e.defaultPrevented || !f.matches || !f.matches(SEL) || f.target) return
+		if (String(f.enctype).indexOf("multipart") === 0) return
+		var sub = e.submitter
+		var action = (sub && sub.getAttribute("formaction")) || f.getAttribute("action")
+		if (!action) return
+		e.preventDefault()
+
+		var body = new URLSearchParams(new FormData(f))
+		if (sub && sub.name) body.append(sub.name, sub.value)
+
+		// instant feedback for the tick circle
+		if (action === "/pad/toggle") {
+			var item = f.closest("[data-pad-item]")
+			if (item) {
+				item.classList.toggle("dn")
+				var ck = f.querySelector(".nt-ck")
+				if (ck) ck.classList.toggle("d")
+			}
+		}
+
+		var mine = ++seq
+		var k = keep()
+		fetch(action, { method: "POST", body: body, credentials: "same-origin", headers: { "X-Requested-With": "fetch" } })
+			.then(function (r) {
+				var here = location.pathname + location.search
+				var there = new URL(r.url).pathname + new URL(r.url).search
+				if (!r.ok) throw new Error("bad")
+				if (there !== here) {
+					location.assign(r.url)
+					return null
+				}
+				return r.text()
+			})
+			.then(function (html) {
+				if (html === null || mine !== seq) return
+				if (!swap(html, k)) throw new Error("swap")
+			})
+			.catch(function () {
+				HTMLFormElement.prototype.submit.call(f)
+			})
 	})
 })()

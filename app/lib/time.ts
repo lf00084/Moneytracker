@@ -42,6 +42,7 @@ export function dateParts() {
 		weekday: part("en-GB", { weekday: "short" }, now),
 		day: part("en-GB", { day: "numeric" }, now),
 		month: part("en-GB", { month: "short" }, now),
+		arabic: part("ar-MA", { weekday: "long" }, now),
 	}
 }
 

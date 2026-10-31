@@ -2,7 +2,7 @@ import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { dayLabel, timeAgo, today } from "../lib/time.ts"
 import { AppLayout } from "./layout.tsx"
-import { Back, Card, ErrorBanner, Icon, PageHeader, Submit, view } from "./ui.tsx"
+import { Back, ErrorBanner, Icon, PageHeader, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 
@@ -10,82 +10,100 @@ const sg = (minor: number) => `${minor < 0 ? "−" : "+"}${fmt(Math.abs(minor))}
 const tone = (minor: number) => (minor < 0 ? "neg" : "pos")
 
 const KeysForm = view<{ s: State; open: boolean }>(({ s, open }) => (
-	<details open={open ? true : undefined}>
-		<summary class="lb">{open ? "Connect Binance" : "Change API keys"}</summary>
-		<form method="post" action="/wallet/keys" class="sf" novalidate>
+	<details class="wk" open={open ? true : undefined}>
+		<summary>
+			<span>{open ? "Connect Binance API" : "API keys"}</span>
+			<Icon name="chev" />
+		</summary>
+		<form method="post" action="/wallet/keys" class="wkf" novalidate>
 			<Back s={s} />
-			<input class="in" name="api_key" placeholder="Binance API key" autocomplete="off" />
-			<input class="in" name="api_secret" type="password" placeholder="Binance API secret" autocomplete="off" />
-			<div class="lb tbn">Turn on the prediction permission. Keep withdrawals off.</div>
-			<Submit class="btn full">Save keys</Submit>
+			<input class="in" name="api_key" placeholder="API key" autocomplete="off" />
+			<input class="in" name="api_secret" type="password" placeholder="API secret" autocomplete="off" />
+			<div class="wkn">Turn on the prediction permission. Keep withdrawals off.</div>
+			<div class="wkb">
+				<Submit class="btn">{open ? "Connect" : "Save keys"}</Submit>
+				{open ? null : (
+					<Submit class="btn o" formaction="/wallet/forget" formnovalidate data-confirm-btn="Remove the Binance keys?">
+						Remove
+					</Submit>
+				)}
+			</div>
 		</form>
 	</details>
 ))
 
-const Summary = view<{ s: State }>(({ s }) => {
+const Hero = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
-	if (!w) return null
+	if (!w || !w.connected) return null
 	return (
-		<Card title="Predict wallet">
-			<div class="rw">
-				<span>Balance</span>
-				<b>{`${fmt(w.usdt)} USDT`}</b>
-			</div>
-			<div class="rw">
-				<span>Worth</span>
-				<b>{`${fmt(w.valueMad)} ${s.user.currency}`}</b>
-			</div>
-			<div class="rw">
-				<span>Earned today</span>
-				<b class={tone(w.today)}>{`${sg(w.today)} USDT`}</b>
-			</div>
-			<div class="rw">
-				<span>Earned in total</span>
-				<b class={tone(w.total)}>{`${sg(w.total)} USDT`}</b>
-			</div>
-			<div class="lb tbn">{`1 USDT = ${fmt(w.rate)} ${s.user.currency}. ${w.syncedAt ? `Synced ${timeAgo(w.syncedAt)}` : "Not synced yet"}`}</div>
-			{w.error ? (
-				<div class="neg" role="alert" style={{ fontSize: "13px" }}>
-					{w.error}
+		<div class="wh">
+			<div class="whm">
+				<div class="whb">
+					<b>{fmt(w.usdt)}</b>
+					<small>USDT</small>
 				</div>
-			) : null}
-			{w.connected ? (
-				<form method="post" action="/wallet/sync" style={contents}>
-					<Back s={s} />
-					<Submit class="btn xs o">Refresh now</Submit>
-				</form>
-			) : null}
-		</Card>
+				<span class="lb">{`≈ ${fmt(w.valueMad)} ${s.user.currency}`}</span>
+			</div>
+			<form method="post" action="/wallet/sync" style={contents}>
+				<Back s={s} />
+				<Submit class="ib whr" aria-label="Refresh now">
+					<Icon name="revert" />
+				</Submit>
+			</form>
+			<div class="whs">
+				<div>
+					<span>Today</span>
+					<b class={tone(w.today)}>{sg(w.today)}</b>
+				</div>
+				<div>
+					<span>Total</span>
+					<b class={tone(w.total)}>{sg(w.total)}</b>
+				</div>
+				<div>
+					<span>Rate</span>
+					<b>{fmt(w.rate)}</b>
+				</div>
+			</div>
+			<div class="wsy">{w.syncedAt ? `Synced ${timeAgo(w.syncedAt)}` : "Not synced yet"}</div>
+		</div>
 	)
 })
 
-const MoveForm = view<{ s: State; kind: "buy" | "sell" }>(({ s, kind }) => (
-	<form method="post" action={kind === "buy" ? "/wallet/buy" : "/wallet/sell"} class="sf" novalidate>
+/** One compact form. Two buttons: Add USDT or Sell USDT. */
+const MoveForm = view<{ s: State }>(({ s }) => (
+	<form method="post" action="/wallet/buy" class="wm" novalidate>
 		<Back s={s} />
-		<input class="in" name="usdt" placeholder={kind === "buy" ? "USDT you got" : "USDT you sold"} inputmode="decimal" autocomplete="off" />
-		<input class="in" name="mad" placeholder={kind === "buy" ? `${s.user.currency} you paid` : `${s.user.currency} you got`} inputmode="decimal" autocomplete="off" />
-		<Submit class="btn full">{kind === "buy" ? "Add buy" : "Add sell"}</Submit>
+		<div class="wmi">
+			<input class="in" name="usdt" placeholder="USDT" inputmode="decimal" autocomplete="off" />
+			<input class="in" name="mad" placeholder={s.user.currency} inputmode="decimal" autocomplete="off" />
+		</div>
+		<div class="wmb">
+			<Submit class="btn">Add USDT</Submit>
+			<Submit class="btn o" formaction="/wallet/sell">
+				Sell USDT
+			</Submit>
+		</div>
 	</form>
 ))
 
 const Moves = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
-	if (!w) return null
+	if (!w || !w.moves.length) return null
 	const t = today(s.user.day_start)
+	const cur = s.user.currency
 	return (
-		<Card title="Buys and sells">
-			<div class="rw">
-				<span>Bought</span>
-				<b>{`${fmt(w.boughtUsdt)} USDT · ${fmt(w.madSpent)} ${s.user.currency}`}</b>
-			</div>
-			<div class="rw">
-				<span>Sold</span>
-				<b>{`${fmt(w.soldUsdt)} USDT · ${fmt(w.madGot)} ${s.user.currency}`}</b>
-			</div>
+		<details class="wl" open>
+			<summary>
+				<span>Moves</span>
+				<span class="lb">{`+${fmt(w.boughtUsdt)} · −${fmt(w.soldUsdt)} USDT`}</span>
+			</summary>
 			{w.moves.map((m) => (
-				<div key={m.id} class="rw">
-					<span>{`${m.kind === "buy" ? "Bought" : "Sold"} ${fmt(m.usdt)} USDT · ${dayLabel(m.day, t)}`}</span>
-					<span class="lb">{`${m.kind === "buy" ? "−" : "+"}${fmt(m.mad)} ${s.user.currency}`}</span>
+				<div key={m.id} class="wr">
+					<div>
+						<b>{`${m.kind === "buy" ? "Added" : "Sold"} ${fmt(m.usdt)} USDT`}</b>
+						<span class="lb">{dayLabel(m.day, t)}</span>
+					</div>
+					<span class="lb">{`${m.kind === "buy" ? "−" : "+"}${fmt(m.mad)} ${cur}`}</span>
 					<form method="post" action="/wallet/delete" style={contents} data-confirm="Delete this entry?">
 						<Back s={s} />
 						<input type="hidden" name="id" value={m.id} />
@@ -95,7 +113,7 @@ const Moves = view<{ s: State }>(({ s }) => {
 					</form>
 				</div>
 			))}
-		</Card>
+		</details>
 	)
 })
 
@@ -104,43 +122,43 @@ const Progress = view<{ s: State }>(({ s }) => {
 	if (!w || !w.days.length) return null
 	const t = today(s.user.day_start)
 	return (
-		<Card title="Daily progress">
+		<details class="wl">
+			<summary>
+				<span>Daily</span>
+				<span class="lb">{`${w.days.length} days`}</span>
+			</summary>
 			{w.days.map((d) => (
-				<div key={d.day} class="rw">
-					<span>{dayLabel(d.day, t)}</span>
+				<div key={d.day} class="wr">
+					<div>
+						<b>{dayLabel(d.day, t)}</b>
+					</div>
 					<span class="lb">{`${fmt(d.balance)} USDT`}</span>
-					<b class={tone(d.profit)}>{`${sg(d.profit)} USDT`}</b>
+					<b class={tone(d.profit)}>{sg(d.profit)}</b>
 				</div>
 			))}
-		</Card>
+		</details>
 	)
 })
 
-export const WalletBody = view<{ s: State }>(({ s }) => (
-	<>
-		<ErrorBanner s={s} />
-		{s.wallet?.connected ? <Summary s={s} /> : null}
-		<Card title="Binance">
-			<KeysForm s={s} open={!s.wallet?.connected} />
-			{s.wallet?.connected ? (
-				<form method="post" action="/wallet/forget" style={contents} data-confirm="Remove the Binance keys?">
-					<Back s={s} />
-					<Submit class="btn xs o">Remove keys</Submit>
-				</form>
+export const WalletBody = view<{ s: State }>(({ s }) => {
+	const w = s.wallet
+	const on = !!w?.connected
+	return (
+		<div class="wal">
+			<ErrorBanner s={s} />
+			{w?.error ? (
+				<div class="wer" role="alert">
+					{w.error}
+				</div>
 			) : null}
-		</Card>
-		<Card title="Bought USDT">
-			<div class="lb tbn">Type the USDT you got and the MAD you paid.</div>
-			<MoveForm s={s} kind="buy" />
-		</Card>
-		<Card title="Sold USDT">
-			<div class="lb tbn">Type the USDT you sold and the MAD you got.</div>
-			<MoveForm s={s} kind="sell" />
-		</Card>
-		<Moves s={s} />
-		<Progress s={s} />
-	</>
-))
+			<Hero s={s} />
+			<KeysForm s={s} open={!on} />
+			<MoveForm s={s} />
+			<Moves s={s} />
+			<Progress s={s} />
+		</div>
+	)
+})
 
 export const WalletScreen = view<{ s: State }>(({ s }) => {
 	const right = s.wallet?.connected ? `${fmt(s.wallet.usdt)} USDT` : ""

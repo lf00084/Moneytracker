@@ -1,5 +1,7 @@
 import { sql } from "remix/data-table"
-import { db, incomes, purchases, tradeResults, tradeSessions } from "../db/index.ts"
+import { db, incomes, predictAccount, tradeResults, tradeSessions } from "../db/index.ts"
+import { fmt } from "./money.ts"
+import { syncPredict } from "./predict.ts"
 import { today } from "./time.ts"
 import { todayFor } from "./users.ts"
 import { allDone, backUsdt, DEPOSIT, doneOf, flowOf, GAME, gameOf, hasGames, toMad, totalPnl, type TradeResult, type TradeSession } from "./trade-math.ts"
@@ -62,47 +64,35 @@ export async function startTrade(user: User): Promise<string | void> {
 	const day = today(user.day_start)
 	const already = await db.findOne(tradeSessions, { where: { user_id: uid, day } })
 	if (already) return `One predict a day. The next one opens at ${String(user.day_start).padStart(2, "0")}:00`
-	const cost = toMad(DEPOSIT, user.usdt_rate)
-	if (!cost) return "Set the USDT price in Settings first"
-	const now = Date.now()
-	const sessionId = id()
-	const purchaseId = id()
-	await db.transaction(async (tx) => {
-		await tx.create(purchases, {
-			id: purchaseId,
-			user_id: uid,
-			name: `Deposit ${DEPOSIT / 100} USDT`,
-			qty: 1,
-			unit_minor: cost,
-			total_minor: cost,
-			day,
-			created_at: now,
-		})
-		await tx.create(tradeSessions, {
-			id: sessionId,
-			user_id: uid,
-			day,
-			deposit_minor: DEPOSIT,
-			rate_minor: user.usdt_rate,
-			purchase_id: purchaseId,
-			status: "open",
-			pnl_minor: 0,
-			return_usdt_minor: 0,
-			return_mad_minor: 0,
-			created_at: now,
-		})
+	await syncPredict(uid, true)
+	const acc = await db.findOne(predictAccount, { where: { user_id: uid } })
+	if (!acc || !acc.key_enc) return "Connect Binance in Predict wallet and add USDT first"
+	if (acc.usdt_minor < DEPOSIT) return `Predict balance is ${fmt(acc.usdt_minor)} USDT. You need ${fmt(DEPOSIT)}. Add USDT in Predict wallet first`
+	await db.create(tradeSessions, {
+		id: id(),
+		user_id: uid,
+		day,
+		deposit_minor: DEPOSIT,
+		rate_minor: user.usdt_rate,
+		purchase_id: "",
+		status: "open",
+		pnl_minor: 0,
+		return_usdt_minor: 0,
+		return_mad_minor: 0,
+		created_at: Date.now(),
 	})
 }
 
-async function settle(uid: string, s: { id: string; deposit_minor: number; rate_minor: number }, results: TradeResult[]) {
+async function settle(uid: string, s: { id: string; deposit_minor: number; rate_minor: number; purchase_id: string }, results: TradeResult[]) {
 	const pnl = totalPnl(results)
 	const back = backUsdt(s.deposit_minor, pnl)
 	const mad = toMad(back, s.rate_minor)
 	const now = Date.now()
 	const t = await todayFor(uid)
-	const incomeId = mad > 0 ? id() : ""
+	// Money already sits in the predict wallet, so only old deposit-style predicts add an income
+	const incomeId = mad > 0 && s.purchase_id ? id() : ""
 	await db.transaction(async (tx) => {
-		if (mad > 0) {
+		if (incomeId) {
 			await tx.create(incomes, {
 				id: incomeId,
 				user_id: uid,
@@ -162,9 +152,9 @@ export async function saveGame(uid: string, f: FormData): Promise<string | void>
 	const rows = await resultsOf(uid, s.id)
 	if (gameOf(rows, g)) return "That game already has a result"
 	const outcome = text(f.get("outcome"), 4)
-	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME, true)
+	const r = pnlFor(outcome, usdtMinor(f.get("pnl")), GAME)
 	if ("error" in r) return r.error
-	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: outcome === "skip" ? "skip" : "", tf: GAME, created_at: Date.now() }
+	const row = { id: id(), user_id: uid, session_id: s.id, game: g, idx: 1, won: outcome === "win" ? 1 : 0, pnl_minor: r.pnl, state: "done", asset: "", tf: GAME, created_at: Date.now() }
 	await db.create(tradeResults, row)
 	const next = [...rows, toResult(row)]
 	if (allDone(s.deposit_minor, next)) await settle(uid, s, doneOf(next))

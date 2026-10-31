@@ -37,34 +37,43 @@ const Outcomes = view(() => (
 	</div>
 ))
 
-const MethodRows = view<{ stakes: number[] }>(({ stakes }) => (
-	<>
-		<div class="rw">
-			<span>1 · Follow the indicator. Pick Up or Down</span>
-			<b>{`${fmt(stakes[0]!)} USDT`}</b>
+/** The strategy, always in a box so it is easy to see. */
+const Strategy = view<{ base: number; note?: string }>(({ base, note }) => {
+	const st = stakesFor(base)
+	return (
+		<div class="stb">
+			<div class="stt">
+				<b>Strategy</b>
+				<span>{`5 min · BTC or ETH · ${fmt(base)} USDT`}</span>
+			</div>
+			<ol class="stl">
+				<li>
+					<i>1</i>
+					<span>Follow the indicator. Pick Up or Down</span>
+					<b>{fmt(st[0]!)}</b>
+				</li>
+				<li>
+					<i>2</i>
+					<span>Instantly, same side</span>
+					<b>{fmt(st[1]!)}</b>
+				</li>
+				<li>
+					<i>3</i>
+					<span>Won: same side. Lost: other side</span>
+					<b>{fmt(st[2]!)}</b>
+				</li>
+			</ol>
+			<div class="stn">{note ?? "Lost with some left: one more try with the rest. Miss or a second loss: stop for the day."}</div>
 		</div>
-		<div class="rw">
-			<span>2 · Instantly, same side</span>
-			<b>{`${fmt(stakes[1]!)} USDT`}</b>
-		</div>
-		<div class="rw">
-			<span>3 · Went your way: same side. If not: other side</span>
-			<b>{`${fmt(stakes[2]!)} USDT`}</b>
-		</div>
-	</>
-))
+	)
+})
 
 const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
-	<Card title={`5 min predict · try ${f.tryNo} of ${TRIES} · ${fmt(f.base)} USDT`}>
-		{f.tryNo > 1 ? <div class="lb tbn">{`First try lost. ${fmt(f.left)} USDT is left. Do a second 5 min predict with it. This is the last try today.`}</div> : null}
-		<div class="lb tbn">Instructions</div>
-		<div class="lb tbn">{`Open the 5 min BTC or ETH. Use only ${fmt(f.base)} USDT in total. Follow the method below, nothing else.`}</div>
-		<div class="lb tbn">Method</div>
-		<MethodRows stakes={f.stakes} />
+	<Card title={`5 min · try ${f.tryNo} of ${TRIES}`}>
+		<Strategy base={f.base} note={f.tryNo > 1 ? `First try lost. ${fmt(f.left)} USDT is left. This is the last try today.` : undefined} />
 		<form method="post" action="/trading/result" class="pres" data-pnl novalidate>
 			<SessionHid s={s} t={t} />
 			<PnlField />
-			<div class="lb tbn">{`Won: type how much you won. Lost: type how much you lost, what is left stays for the next try. Miss: all ${fmt(f.base)} USDT is gone.`}</div>
 			<Outcomes />
 		</form>
 		{t.results.length > 0 ? (
@@ -79,11 +88,7 @@ const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
 const StopCard = view<{ f: Flow; games: boolean }>(({ f, games }) => (
 	<div class="tstop" role="alert">
 		<b>Stop trading now</b>
-		<span>
-			{`Do not predict again. ${fmt(f.left)} USDT is left from the 5 min.`}
-			{games ? " If you feel like trading more, just wait for the other 2 games and close." : ""}
-			{" Wait for the next day and follow your method only."}
-		</span>
+		<span>{`${fmt(f.left)} USDT is left from the 5 min. Do not predict again today.${games ? " Finish the 2 games and close." : ""}`}</span>
 	</div>
 ))
 
@@ -105,33 +110,14 @@ const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s,
 				<span>{`Game ${n}`}</span>
 				<b>{`${fmt(GAME)} USDT`}</b>
 			</div>
-			<div class="gq">Did you predict this game?</div>
-			<div class="gseg">
-				<label>
-					<input type="radio" name="did" value="yes" />
-					<span>Yes, I predicted</span>
-				</label>
-				<label>
-					<input type="radio" name="did" value="no" />
-					<span>No, I skipped</span>
-				</label>
-			</div>
-			<div class="gyes">
-				<PnlField />
-				<Outcomes />
-			</div>
-			<div class="gno">
-				<div class="lb tbn">{`No prediction, no loss. The ${fmt(GAME)} USDT stays with you.`}</div>
-				<Submit class="btn o full gsk" name="outcome" value="skip" formnovalidate>
-					Save as skipped
-				</Submit>
-			</div>
+			<PnlField />
+			<Outcomes />
 		</form>
 	)
 })
 
 const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, undo }) => (
-	<Card title="Matches / vote predict · 2 games">
+	<Card title="Games · matches / vote">
 		<GameRow s={s} t={t} g="ga" n={1} />
 		<GameRow s={s} t={t} g="gb" n={2} />
 		{undo && t.results.length > 0 ? (
@@ -143,95 +129,84 @@ const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, un
 	</Card>
 ))
 
-const Plan = view(() => {
-	const st = stakesFor(FIVE)
-	return (
-		<Card title="The way">
-			<div class="lb tbn">{`5 min predict · BTC or ETH · ${fmt(FIVE)} USDT`}</div>
-			<MethodRows stakes={st} />
-			<div class="lb tbn">When the 5 min ends, enter the PnL: Won, Lost or Miss. Lost with something left: one more 5 min try with what is left. Miss or a second loss: stop for the day.</div>
-			<div class="lb tbn">{`Matches / vote predict · 2 games · ${fmt(GAME)} USDT each`}</div>
-			<div class="lb tbn">For each game say if you predicted it, then enter the PnL: Won, Lost or Miss.</div>
-		</Card>
-	)
-})
-
-const Note = view(() => (
-	<div class="tnote">
-		<b>Note</b>
-		<span>Only predict through this app. Don't predict random.</span>
-	</div>
-))
-
-const OpenSummary = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => {
+const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	const cur = s.user.currency
 	const pnl = totalPnl(t.results)
 	const back = backUsdt(t.deposit, pnl)
 	const net = toMad(pnl, t.rate)
+	const any = t.results.some(isDone)
 	return (
-		<Card title="Open predict">
-			<div class="ow" style={{ margin: "0 0 8px" }}>
-				<b class={`big2 ${t.results.some(isDone) ? tone(pnl) : ""}`}>
-					{t.results.some(isDone) ? sg(pnl) : "0"} <small>USDT PnL</small>
-				</b>
-				<span class="lb">{dayLabel(t.day)}</span>
+		<div class="pds">
+			<div class="pdb">
+				<b class={any ? tone(pnl) : ""}>{any ? sg(pnl) : "0.00"}</b>
+				<small>USDT PnL</small>
 			</div>
-			<div class="rw">
-				<span class="mu">Deposit</span>
-				<span>{`${fmt(t.deposit)} USDT · ${fmt(toMad(t.deposit, t.rate))} ${cur}`}</span>
+			<div class="pdm">
+				<span>{`${dayLabel(t.day)} · back ${fmt(back)} USDT`}</span>
+				<span class={any ? tone(net) : ""}>{`${sg(net)} ${cur}`}</span>
 			</div>
-			<div class="rw">
-				<span class="mu">You get back</span>
-				<span>{`${fmt(back)} USDT · ${fmt(toMad(back, t.rate))} ${cur}`}</span>
-			</div>
-			<div class="rw">
-				<span class="mu">Net for your balance</span>
-				<b class={tone(net)}>{`${sg(net)} ${cur}`}</b>
-			</div>
-			{t.results.some(isDone) && !allDone(t.deposit, t.results) ? (
-				<form method="post" action="/trading/finish" data-confirm="Finish now and skip what is left?">
+			{any && !allDone(t.deposit, t.results) ? (
+				<form method="post" action="/trading/finish" style={contents} data-confirm="Finish now and skip what is left?">
 					<SessionHid s={s} t={t} />
-					<Submit class="btn o full">Finish now</Submit>
+					<Submit class="btn xs o">Finish now</Submit>
 				</form>
 			) : null}
-			<div class="lb tbn">When the predict ends, the money is added to your balance by itself.</div>
-		</Card>
+		</div>
 	)
 })
 
 const LockedCard = view<{ s: State }>(({ s }) => (
-	<Card title="Today's predict">
-		<div class="lb tbn">{`Done for today. One predict a day. The next one opens at ${String(s.user.day_start).padStart(2, "0")}:00.`}</div>
-	</Card>
+	<div class="pdn">{`Done for today. The next predict opens at ${String(s.user.day_start).padStart(2, "0")}:00.`}</div>
 ))
 
-const StartCard = view<{ s: State }>(({ s }) => {
-	const cur = s.user.currency
-	const rate = s.user.usdt_rate
-	const cost = toMad(DEPOSIT, rate)
+const Balance = view<{ s: State; ready: boolean }>(({ s, ready }) => {
+	const w = s.wallet
+	const have = w?.connected ? w.usdt : 0
+	return (
+		<div class={ready ? "pbal ok" : "pbal no"}>
+			<div class="pbn">
+				<span>Predict balance</span>
+				<b>{`${fmt(have)} USDT`}</b>
+			</div>
+			<div class="pbn r">
+				<span>Needed</span>
+				<b>{`${fmt(DEPOSIT)} USDT`}</b>
+			</div>
+			{ready ? (
+				<span class="pbi">
+					<Icon name="check" />
+				</span>
+			) : (
+				<a class="pba" href="/wallet">
+					{w?.connected ? "Add balance" : "Connect"}
+				</a>
+			)}
+		</div>
+	)
+})
+
+const StartCard = view<{ s: State; ready: boolean }>(({ s, ready }) => {
+	const w = s.wallet
+	const miss = w?.connected ? `You need ${fmt(Math.max(0, DEPOSIT - w.usdt))} USDT more in your predict balance. Add it in Predict wallet.` : "Connect Binance in Predict wallet and add USDT first."
 	return (
 		<>
-			<Card title="Today's predict">
-				<div class="ow" style={{ margin: "0 0 6px" }}>
-					<b class="big2">
-						{fmt(DEPOSIT)} <small>USDT</small>
-					</b>
-					<span class="lb">{`${fmt(cost)} ${cur}`}</span>
-				</div>
-				<div class="lb">{`${fmt(FIVE)} for the 5 min predict + ${fmt(GAME)} + ${fmt(GAME)} for two games. 1 USDT = ${fmt(rate)} ${cur}. You can change it in Settings.`}</div>
-				<form method="post" action="/trading/deposit">
+			<Balance s={s} ready={ready} />
+			{ready ? (
+				<form method="post" action="/trading/deposit" style={contents}>
 					<Back s={s} />
-					<Submit class="btn full">Start predict</Submit>
+					<Submit class="btn full pgo">Start predict</Submit>
 				</form>
-				<div class="lb tbn">{`Tapping start puts in the ${fmt(DEPOSIT)} USDT deposit by itself. It counts as a buy of ${fmt(cost)} ${cur}. One predict a day.`}</div>
-			</Card>
-			<Plan />
+			) : (
+				<div class="pdn">{miss}</div>
+			)}
+			<div class="pdn">{`Uses ${fmt(FIVE)} for the 5 min and ${fmt(GAME)} + ${fmt(GAME)} for the 2 games. Your balance is checked, nothing is bought.`}</div>
+			<Strategy base={FIVE} />
 		</>
 	)
 })
 
 const PastRow = view<{ s: State; t: TradeSession; reopen: boolean }>(({ s, t, reopen }) => {
-	const net = t.returnMad - toMad(t.deposit, t.rate)
+	const net = toMad(t.pnl, t.rate)
 	const five = resOf(t.results).map((x) => `${letter(x)}${x.asset ? ` ${x.asset.toUpperCase()}` : ""}`).join(" · ")
 	const games = hasGames(t.deposit) ? gamesStrip(t.results) : ""
 	const label = `${five ? `5 min ${five}` : ""}${five && games ? " · " : ""}${games ? `Games ${games}` : ""}`
@@ -245,7 +220,7 @@ const PastRow = view<{ s: State; t: TradeSession; reopen: boolean }>(({ s, t, re
 				<span class="lb">{`${sg(t.pnl)} USDT`}</span>
 				<b class={tone(net)}>{sg(net)}</b>
 				{reopen ? (
-					<form method="post" action="/trading/reopen" style={contents} data-confirm="Open this predict again? The money it added is taken back.">
+					<form method="post" action="/trading/reopen" style={contents} data-confirm="Open this predict again?">
 						<SessionHid s={s} t={t} />
 						<Submit class="ub" aria-label="Open this predict again">
 							<Icon name="undo" />
@@ -259,9 +234,9 @@ const PastRow = view<{ s: State; t: TradeSession; reopen: boolean }>(({ s, t, re
 
 const PastCard = view<{ s: State; list: TradeSession[]; canReopen: boolean }>(({ s, list, canReopen }) => {
 	if (!list.length) return null
-	const total = list.reduce((a, t) => a + (t.returnMad - toMad(t.deposit, t.rate)), 0)
+	const total = list.reduce((a, t) => a + toMad(t.pnl, t.rate), 0)
 	return (
-		<Card title={`Past predicts · ${sg(total)} ${s.user.currency}`}>
+		<Card title={`Past · ${sg(total)} ${s.user.currency}`}>
 			{list.map((t, i) => (
 				<PastRow key={t.id} s={s} t={t} reopen={canReopen && i === 0} />
 			))}
@@ -270,14 +245,10 @@ const PastCard = view<{ s: State; list: TradeSession[]; canReopen: boolean }>(({
 })
 
 const Status = view<{ ok: boolean; title: string; sub: string }>(({ ok, title, sub }) => (
-	<div class={ok ? "tst ok" : "tst no"} role="status">
-		<span class="tsi">
-			<Icon name={ok ? "check" : "plus"} />
-		</span>
-		<div>
-			<b>{title}</b>
-			<div class="lb">{sub}</div>
-		</div>
+	<div class={ok ? "tsl ok" : "tsl no"} role="status">
+		<i></i>
+		<b>{title}</b>
+		<span>{sub}</span>
 	</div>
 ))
 
@@ -289,23 +260,24 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 	const at = `${String(s.user.day_start).padStart(2, "0")}:00`
 	const f = open ? flowOf(open.deposit, open.results) : null
 	const stop = !!f?.stop
-	const ok = (!!open || !tradedToday) && !stop
+	const ready = !!s.wallet?.connected && s.wallet.usdt >= DEPOSIT
+	const ok = !stop && (!!open || (!tradedToday && ready))
+	const title = stop ? "Stop trading now" : open ? "Predict open" : tradedToday ? "Done for today" : ready ? "You can predict" : "Add balance first"
 	const sub = open
 		? f!.over
-			? f!.won
-				? "5 min is done. Finish the games below."
-				: "5 min is done. Do not predict again. Finish the games below."
-			: `Try ${f!.tryNo} of ${TRIES}. Follow the method below.`
+			? "Finish the games"
+			: `Try ${f!.tryNo} of ${TRIES}`
 		: tradedToday
-			? `One predict a day. You can predict again at ${at}.`
-			: `Deposit ${fmt(DEPOSIT)} USDT to start today's predict.`
+			? `Again at ${at}`
+			: ready
+				? "Balance is in predict"
+				: "Not enough in predict"
 	return (
 		<div class="trd">
-			<Status ok={ok} title={stop ? "Stop trading now" : ok ? "You can predict" : "You cannot predict"} sub={sub} />
-			<Note />
+			<Status ok={ok} title={title} sub={sub} />
 			{open && f ? (
 				<>
-					<OpenSummary s={s} t={open} f={f} />
+					<OpenSummary s={s} t={open} />
 					{f.stop ? <StopCard f={f} games={hasGames(open.deposit) && !allDone(open.deposit, open.results)} /> : null}
 					{f.over ? null : <Steps s={s} t={open} f={f} />}
 					{hasGames(open.deposit) ? <GamesCard s={s} t={open} undo={f.over} /> : null}
@@ -313,7 +285,7 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 			) : tradedToday ? (
 				<LockedCard s={s} />
 			) : (
-				<StartCard s={s} />
+				<StartCard s={s} ready={ready} />
 			)}
 			<PastCard s={s} list={settled} canReopen={!open} />
 		</div>

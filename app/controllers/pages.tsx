@@ -84,7 +84,7 @@ export default createController(routes.pages, {
 		padHome: padPage("home"),
 		padNew: padPage("new"),
 		padProject: padPage("edit"),
-		trading: page("/trading", ["trading"], (s) => <TradingScreen s={s} />),
+		trading: page("/trading", ["trading", "wallet"], (s) => <TradingScreen s={s} />),
 		wallet: page("/wallet", ["wallet"], (s) => <WalletScreen s={s} />),
 
 		async exportCsv(ctx: Ctx) {

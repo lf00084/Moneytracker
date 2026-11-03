@@ -1,0 +1,7 @@
+node_modules
+build
+dist
+.dev.vars
+.wrangler
+bun.lock
+

@@ -1,0 +1,8 @@
+{
+  "name": "Moneytracker",
+  "description": "Moneytracker is a quiet personal money tracker. Log what you spend and earn, track debts and wishes, and watch your road to your goals.",
+  "prompt": "This app was imported from GitHub repository lf00084/Moneytracker.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

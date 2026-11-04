@@ -320,6 +320,7 @@ export const HomeTimeline = view<{ s: State }>(({ s }) => {
 			open={false}
 			title="Today's moves"
 			label="Moves"
+			class="card-grey xc-grey"
 			head={<span class="lb">{events.length ? `${events.length} entries` : "No moves"}</span>}
 		>
 			{events.length ? (

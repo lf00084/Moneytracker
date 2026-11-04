@@ -100,6 +100,7 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey, manage = false }) 
 			open={open}
 			title="I owe"
 			label="Add debt"
+			class="card-grey xc-grey"
 			head={
 				<>
 					<b class="big2 sp">
@@ -123,7 +124,7 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey, manage = false }) 
 export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false }) => {
 	const c = calc(s)
 	return (
-		<div class="sc bgc">
+		<div class="sc sc-grey card-grey bgc">
 			<BigAdd label="Add debt" />
 			<div class="ct">
 				<details data-keep-open={storeKey} open={open ? true : undefined}>

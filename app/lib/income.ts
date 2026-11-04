@@ -140,14 +140,31 @@ export async function setHours(uid: string, f: FormData): Promise<string | void>
 	let h = raw === "" ? 0 : Number(raw)
 	if (!Number.isFinite(h) || h < 0 || h > 24) return "Hours must be between 0 and 24"
 	h = Math.round(h * 100) / 100
-	const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, await todayFor(uid)) } })
-	if (!row) return `Add ${s.name} first`
-	const meta = parseJson(row.meta)
+	const t = await todayFor(uid)
 	const cfg = parseJson(s.config)
-	if (f.get("toggle") && Number(meta.hours) === h) h = 0
-	const fixed = Number(meta.fixed_minor) || Number(cfg.fixed_minor) || 0
+	const fixed = Number(cfg.fixed_minor) || 0
 	const rate = Number(cfg.rate_minor) || 0
-	await db.update(incomes, row.id, { amount_minor: fixed + Math.round(h * rate), meta: JSON.stringify({ ...meta, fixed_minor: fixed, hours: h, rate_minor: rate }) })
+	const row = await db.findOne(incomes, { where: { user_id: uid, ext_key: extKey(s.id, t) } })
+	if (!row) {
+		const instant = Number(cfg.instant) === 1
+		await db.create(incomes, {
+			id: id(),
+			user_id: uid,
+			source_id: s.id,
+			amount_minor: fixed + Math.round(h * rate),
+			day: t,
+			created_at: Date.now(),
+			meta: JSON.stringify({ fixed_minor: fixed, hours: h, rate_minor: rate, instant: instant ? 1 : 0, to: cfg.to ?? "" }),
+			ext_key: extKey(s.id, t),
+		})
+		return
+	}
+	const meta = parseJson(row.meta)
+	if (f.get("toggle") && Number(meta.hours) === h) h = 0
+	await db.update(incomes, row.id, {
+		amount_minor: fixed + Math.round(h * rate),
+		meta: JSON.stringify({ ...meta, fixed_minor: fixed, hours: h, rate_minor: rate }),
+	})
 }
 
 export async function addNamed(uid: string, f: FormData): Promise<string | void> {

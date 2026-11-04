@@ -4,7 +4,7 @@ import { SITE } from "../lib/assets.ts"
 import { liveClockNow } from "../lib/time.ts"
 import { V } from "../lib/static.ts"
 import { BottomBar, type MobileTab } from "./bottombar.tsx"
-import { Icon, Logo, Submit, ThemeIcons, view } from "./ui.tsx"
+import { Icon, Link, Logo, Submit, ThemeIcons, view } from "./ui.tsx"
 
 type DocumentProps = {
 	title: string
@@ -126,10 +126,10 @@ export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 	<aside class="sb d">
 		<Logo href="/home" />
 		{LINKS.map((l) => (
-			<a key={l.key} class={active === l.key ? "sbl on" : "sbl"} href={l.href}>
+			<Link key={l.key} class={active === l.key ? "sbl on" : "sbl"} href={l.href}>
 				<Icon name={l.icon} />
 				{l.label}
-			</a>
+			</Link>
 		))}
 		<div class="sp"></div>
 		<button type="button" class="sbl" data-theme-toggle>

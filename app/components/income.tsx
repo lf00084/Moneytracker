@@ -42,52 +42,46 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 	</div>
 ))
 
-const HoursPanel = view<{ s: State; x: Source; row: Income; compact?: boolean }>(({ s, x, row, compact = false }) => {
+export const ExtraHoursControl = view<{ s: State; x: Source; row?: Income }>(({ s, x, row }) => {
 	const rate = rateOf(x)
-	const h = row.hours
+	if (rate <= 0 && !isFixed(x.type)) return null
+	const h = row?.hours ?? 0
 	const cur = s.user.currency
 	const opts = [1, 2, 3, 4]
 	return (
-		<details class="hx" data-keep-open={`hx-${x.id}-${row.day}`}>
-			<summary class={compact ? (h ? "hxc on" : "hxc") : undefined} aria-label="Extra hours">
-				{compact ? (
+		<div class="hx-better">
+			<div class="hx-top">
+				<span class="hx-badge">
 					<Icon name="clock" />
-				) : (
-					<>
-						<span>Extra hours</span>
-						<span>{h ? `+${h}h · +${fmt(Math.round(h * rate))} ${cur}` : `${fmt(rate)} ${cur} / hour`}</span>
-						<span class="chev">
-							<Icon name="chev" />
-						</span>
-					</>
-				)}
-			</summary>
-			<div class="hxb">
-				<div class="hxg">
-					{opts.map((n) => (
-						<form key={n} method="post" action="/income/hours" style={contents}>
-							<Back s={s} />
-							<input type="hidden" name="source_id" value={x.id} />
-							<input type="hidden" name="hours" value={String(n)} />
-							<input type="hidden" name="toggle" value="1" />
-							<Submit class={h === n ? "chip hc on" : "chip hc"}>
-								<b>{n}h</b>
-								<small>+{fmt(n * rate)}</small>
-							</Submit>
-						</form>
-					))}
-				</div>
-				<form method="post" action="/income/hours" class="hxm">
+					<b>Extra hours</b>
+					{h > 0 ? (
+						<span class="hx-badge-val pos">+{h}h (+{fmt(Math.round(h * rate))} {cur})</span>
+					) : (
+						<span class="hx-badge-val mu">+{fmt(rate)} {cur} / hour</span>
+					)}
+				</span>
+			</div>
+			<div class="hx-chips-row">
+				{opts.map((n) => (
+					<form key={n} method="post" action="/income/hours" style={contents}>
+						<Back s={s} />
+						<input type="hidden" name="source_id" value={x.id} />
+						<input type="hidden" name="hours" value={String(n)} />
+						<input type="hidden" name="toggle" value="1" />
+						<Submit class={h === n ? "chip hc on" : "chip hc"} aria-label={`Add ${n} extra hours`}>
+							<b>+{n}h</b>
+							<small>+{fmt(n * rate)}</small>
+						</Submit>
+					</form>
+				))}
+				<form method="post" action="/income/hours" class="hx-custom-form">
 					<Back s={s} />
 					<input type="hidden" name="source_id" value={x.id} />
-					<input class="in" name="hours" value={h && !opts.includes(h) ? String(h) : ""} placeholder="Other hours" inputmode="decimal" autocomplete="off" />
-					<Submit class="btn xs o">Set</Submit>
-					<button type="button" class="btn xs o" data-close>
-						Close
-					</button>
+					<input class="in sm" name="hours" value={h && !opts.includes(h) ? String(h) : ""} placeholder="Custom h" inputmode="decimal" autocomplete="off" />
+					<Submit class="btn xs o">Save</Submit>
 				</form>
 			</div>
-		</details>
+		</div>
 	)
 })
 
@@ -202,7 +196,7 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					</div>
 				</form>
 			) : null}
-			{got && rate > 0 ? <HoursPanel s={s} x={x} row={got} /> : null}
+			{(rate > 0 || fixedSrc) ? <ExtraHoursControl s={s} x={x} row={got} /> : null}
 		</div>
 	)
 })
@@ -311,17 +305,17 @@ export const IncomeDesktop = view<{ s: State; title?: string; id?: string; bare?
 	const others = s.incomesToday.filter((i) => !i.sourceId)
 	if (bare) {
 		return (
-			<div class="sc incbare">
+			<div class="sc sc-grey card-grey incbare">
 				<TodayRows s={s} />
 			</div>
 		)
 	}
 	return (
 		<>
-			<form method="post" action="/income/named" id={id} class="sc spf" data-adp hidden>
+			<form method="post" action="/income/named" id={id} class="sc sc-grey card-grey spf" data-adp hidden>
 				<NamedFields s={s} />
 			</form>
-			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income">
+			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income" class="card-grey sc-grey">
 				{sources.length || others.length ? (
 					<>
 						{sources.map((x) => (
@@ -375,7 +369,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					<DeleteSource s={s} x={x} />
 				</span>
 			</div>
-			{got ? <HoursPanel s={s} x={x} row={got} /> : null}
+			{(rateOf(x) > 0 || fixedSrc) ? <ExtraHoursControl s={s} x={x} row={got} /> : null}
 			<form method="post" action="/income/edit" class="ad" data-addp hidden>
 				<Hid s={s} id={x.id} />
 				<label>Edit {x.name}</label>
@@ -418,7 +412,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 	const cur = s.user.currency
 
 	return (
-		<div class="cd">
+		<div class="cd cd-grey card-grey">
 			<div class="cb">
 				<div class="gl">
 					<div>
@@ -493,26 +487,42 @@ export const InvoiceCard = view<{ s: State }>(({ s }) => {
 	)
 })
 
-export const IncomeExpand = view<{ s: State; open?: boolean; storeKey?: string }>(({ s, open = true, storeKey = "income" }) => (
-	<ExpandCard
-		storeKey={storeKey}
-		open={open}
-		title="Income sources"
-		label="Add source"
-		head={
-			<>
-				<b class="big2">{s.sources.length}</b>
-				<span class="lb">{`${s.sources.filter((x) => x.active).length} active`}</span>
-			</>
-		}
-		form={<SourceForm s={s} />}
-	>
-		{s.sources.length ? <>{s.sources.map((x) => <ManageRow key={x.id} s={s} x={x} />)}</> : <Empty>No sources yet. Tap + to add one.</Empty>}
-	</ExpandCard>
-))
+export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
+	const active = s.sources.filter((x) => x.active).length
+	return (
+		<div class="cd cd-grey card-grey income-sources-card" id="income-sources-card">
+			<div class="cb">
+				<div class="gl">
+					<div>
+						<div class="tg">Income sources</div>
+						<div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "2px" }}>
+							<b class="big2">{s.sources.length}</b>
+							<span class="lb">{active} active</span>
+						</div>
+					</div>
+					<button type="button" class="btn xs o" data-bigadd data-for="sf-src-add">
+						<Icon name="plus" /> Add source
+					</button>
+				</div>
+				<div id="sf-src-add" class="adp" hidden>
+					<SourceForm s={s} />
+				</div>
+				<div class="income-sources-list" style={{ marginTop: "12px" }}>
+					{s.sources.length ? (
+						s.sources.map((x) => <ManageRow key={x.id} s={s} x={x} />)
+					) : (
+						<Empty>No sources yet. Tap "+ Add source" above.</Empty>
+					)}
+				</div>
+			</div>
+		</div>
+	)
+})
+
+export const IncomeExpand = IncomeSourcesCard
 
 export const HomeIncome = view<{ s: State }>(({ s }) => (
-	<div class="xc xbare">
+	<div class="xc xc-grey card-grey xbare">
 		<div class="xb">
 			<TodayRows s={s} />
 		</div>
@@ -591,7 +601,7 @@ const SrcTile = view<{ s: State; x: Source }>(({ s, x }) => {
 					</form>
 				</>
 			) : null}
-			{got && rate > 0 ? <HoursPanel s={s} x={x} row={got} compact /> : null}
+			{rate > 0 ? <ExtraHoursControl s={s} x={x} row={got} /> : null}
 		</div>
 	)
 })

@@ -1,3 +1,4 @@
+// @ts-nocheck
 (function () {
 	if (window.__mt) return
 	window.__mt = 1

@@ -33,7 +33,16 @@ export type WalletMove = {
 	profit?: number
 }
 
-export type WalletDay = { day: string; profit: number; balance: number }
+export type WalletDay = {
+	day: string
+	profit: number
+	predictProfitMad?: number
+	p2pProfitMad?: number
+	totalEarnedMad?: number
+	totalEarnedUsdt?: number
+	balance: number
+	transfersUsdt?: number
+}
 
 export type MoveHintView = {
 	id: string
@@ -92,6 +101,26 @@ const pct = (v: unknown) => {
 
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("")
 
+let timeOffset = 0
+let lastTimeSync = 0
+async function syncServerTime() {
+	const now = Date.now()
+	if (now - lastTimeSync < 300000 && lastTimeSync > 0) return
+	try {
+		const c = new AbortController()
+		const timer = setTimeout(() => c.abort(), 4000)
+		const r = await fetch(`${BASE}/api/v3/time`, { signal: c.signal })
+		clearTimeout(timer)
+		if (r.ok) {
+			const data: any = await r.json()
+			if (data?.serverTime) {
+				timeOffset = Number(data.serverTime) - Date.now()
+				lastTimeSync = Date.now()
+			}
+		}
+	} catch {}
+}
+
 async function sign(secret: string, query: string) {
 	const enc = new TextEncoder()
 	const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"])
@@ -99,7 +128,9 @@ async function sign(secret: string, query: string) {
 }
 
 async function call(apiKey: string, secret: string, path: string, params: Record<string, string> = {}, method: "GET" | "POST" = "GET"): Promise<{ data: any } | { error: string }> {
-	const query = new URLSearchParams({ ...params, recvWindow: "10000", timestamp: String(Date.now()) }).toString()
+	await syncServerTime()
+	const timestamp = String(Date.now() + timeOffset)
+	const query = new URLSearchParams({ ...params, recvWindow: "60000", timestamp }).toString()
 	const signature = await sign(secret, query)
 	const c = new AbortController()
 	const timer = setTimeout(() => c.abort(), 8000)
@@ -188,6 +219,8 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 	let todayProfit = 0
 	let totalFees = 0
 	const profitPerSell = new Map<string, number>()
+	const p2pProfitByDay = new Map<string, number>()
+	const transfersByDay = new Map<string, number>()
 
 	const sorted = [...moves].sort((a, b) => a.created_at - b.created_at)
 
@@ -207,6 +240,7 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 			heldMad -= takeMad
 			transferredOutUsdt += m.usdt_minor
 			transferredOutMad += takeMad
+			transfersByDay.set(m.day, (transfersByDay.get(m.day) || 0) + m.usdt_minor)
 		} else if (m.kind === "to_funding") {
 			const returnUsdt = Math.min(m.usdt_minor, transferredOutUsdt)
 			const extraUsdt = Math.max(0, m.usdt_minor - transferredOutUsdt)
@@ -216,6 +250,7 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 			heldMad += avgReturnMad + extraMad
 			transferredOutUsdt -= returnUsdt
 			transferredOutMad -= avgReturnMad
+			transfersByDay.set(m.day, (transfersByDay.get(m.day) || 0) + m.usdt_minor)
 		} else if (m.kind === "sell") {
 			const avg = heldUsdt > 0 ? heldMad / heldUsdt : 0
 			const coveredUsdt = Math.min(m.usdt_minor, heldUsdt)
@@ -223,6 +258,7 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 			const revenue = m.mad_minor
 			const profit = revenue - costBasis
 			if (m.id) profitPerSell.set(m.id, profit)
+			p2pProfitByDay.set(m.day, (p2pProfitByDay.get(m.day) || 0) + profit)
 			totalProfit += profit
 			if (m.day === t) todayProfit += profit
 			heldUsdt -= coveredUsdt
@@ -230,7 +266,7 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 		}
 	}
 
-	return { profit: totalProfit, today: todayProfit, fees: totalFees, profitPerSell }
+	return { profit: totalProfit, today: todayProfit, fees: totalFees, profitPerSell, p2pProfitByDay, transfersByDay }
 }
 
 async function fetchWallet(apiKey: string, secret: string, known: string): Promise<{ usdt: number; wallet: string } | string> {
@@ -249,14 +285,45 @@ async function fetchWallet(apiKey: string, secret: string, known: string): Promi
 }
 
 async function fetchFunding(apiKey: string, secret: string): Promise<number | string> {
-	const res = await call(apiKey, secret, "/sapi/v1/asset/get-funding-asset", { needBtcValuation: "false" }, "POST")
+	// Try 1: /sapi/v1/asset/get-funding-asset with asset filter
+	let res = await call(apiKey, secret, "/sapi/v1/asset/get-funding-asset", { asset: "USDT", needBtcValuation: "false" }, "POST")
+	if ("error" in res) {
+		res = await call(apiKey, secret, "/sapi/v1/asset/get-funding-asset", { needBtcValuation: "false" }, "POST")
+	}
+	if (!("error" in res)) {
+		const list: any[] = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : []
+		const usdt = list.find((x: any) => String(x.asset).toUpperCase() === "USDT")
+		if (usdt) {
+			const free = Number(usdt.free) || 0
+			const freeze = Number(usdt.freeze) || 0
+			return cents(free + freeze)
+		}
+	}
+	// Try 2: /sapi/v3/asset/getUserAsset
+	const userAsset = await call(apiKey, secret, "/sapi/v3/asset/getUserAsset", { asset: "USDT" }, "POST")
+	if (!("error" in userAsset)) {
+		const list: any[] = Array.isArray(userAsset.data) ? userAsset.data : []
+		const usdt = list.find((x: any) => String(x.asset).toUpperCase() === "USDT")
+		if (usdt) {
+			const free = Number(usdt.free) || 0
+			const freeze = Number(usdt.freeze) || 0
+			const locked = Number(usdt.locked) || 0
+			return cents(free + freeze + locked)
+		}
+	}
+	// Try 3: /api/v3/account spot balance
+	const spot = await call(apiKey, secret, "/api/v3/account")
+	if (!("error" in spot)) {
+		const balances: any[] = Array.isArray(spot.data?.balances) ? spot.data.balances : []
+		const usdt = balances.find((x: any) => String(x.asset).toUpperCase() === "USDT")
+		if (usdt) {
+			const free = Number(usdt.free) || 0
+			const locked = Number(usdt.locked) || 0
+			return cents(free + locked)
+		}
+	}
 	if ("error" in res) return res.error
-	const list: any[] = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : []
-	const usdt = list.find((x: any) => String(x.asset).toUpperCase() === "USDT")
-	if (!usdt) return 0
-	const free = Number(usdt.free) || 0
-	const freeze = Number(usdt.freeze) || 0
-	return cents(free + freeze)
+	return 0
 }
 
 async function importOrders(uid: string, apiKey: string, secret: string, from: number, bps: number, fiat: string, dayStart: number): Promise<{ upto: number } | string> {
@@ -382,32 +449,31 @@ export async function syncPredict(uid: string, force = false): Promise<void> {
 			fetchFunding(key, secret),
 		])
 
-		if (typeof rPredict === "string") {
-			await db.update(predictAccount, uid, { ...p2p, last_error: rPredict, updated_at: now })
-			await rebuild(uid)
-			return
-		}
+		const predictUsdt = typeof rPredict === "object" ? rPredict.usdt : (a.usdt_minor || 0)
+		const predictWallet = typeof rPredict === "object" ? rPredict.wallet : (a.wallet || "")
+		const fundingMinor = typeof rFunding === "number" ? rFunding : (a.funding_minor || 0)
 
-		const fundingMinor = typeof rFunding === "number" ? rFunding : a.funding_minor || 0
-		const prevP = a.prev_predict_minor || a.usdt_minor || rPredict.usdt
+		const prevP = a.prev_predict_minor || a.usdt_minor || predictUsdt
 		const prevF = a.prev_funding_minor || a.funding_minor || fundingMinor
-		const dP = rPredict.usdt - prevP
+		const dP = predictUsdt - prevP
 		const dF = fundingMinor - prevF
 
 		await checkMoveHints(uid, dP, dF, now)
 
+		const lastError = typeof rFunding === "string" ? `Funding: ${rFunding}` : (typeof rPredict === "string" && !predictWallet ? `Predict: ${rPredict}` : "")
+
 		await db.update(predictAccount, uid, {
 			...p2p,
-			wallet: rPredict.wallet,
-			usdt_minor: rPredict.usdt,
+			wallet: predictWallet,
+			usdt_minor: predictUsdt,
 			funding_minor: fundingMinor,
-			prev_predict_minor: rPredict.usdt,
+			prev_predict_minor: predictUsdt,
 			prev_funding_minor: fundingMinor,
 			synced_at: now,
-			last_error: typeof rFunding === "string" ? `Funding: ${rFunding}` : "",
+			last_error: lastError,
 			updated_at: now,
 		})
-		await saveDay(uid, rPredict.usdt, now)
+		await saveDay(uid, predictUsdt, now)
 	} catch {}
 }
 
@@ -476,6 +542,37 @@ export async function loadWallet(user: User): Promise<WalletView> {
 	const predictTodayMad = toMad(predictToday, market.rate)
 	const predictAllMad = toMad(predictAll, market.rate)
 
+	// Build daily earnings for all days with activity
+	const allDayKeys = new Set<string>()
+	for (const d of days) allDayKeys.add(d.day)
+	for (const m of moves) {
+		if (m.day) allDayKeys.add(m.day)
+	}
+	allDayKeys.add(t)
+
+	const sortedDayKeys = [...allDayKeys].sort().reverse().slice(0, 30)
+	const daysMap = new Map(days.map((d) => [d.day, d]))
+
+	const walletDays: WalletDay[] = sortedDayKeys.map((dayKey) => {
+		const d = daysMap.get(dayKey)
+		const p2pProfitMad = st.p2pProfitByDay.get(dayKey) || 0
+		const predictProfitUsdt = d?.profit_minor ?? 0
+		const predictProfitMad = toMad(predictProfitUsdt, market.rate)
+		const totalEarnedMad = predictProfitMad + p2pProfitMad
+		const totalEarnedUsdt = predictProfitUsdt + (market.rate > 0 ? Math.round((p2pProfitMad * 100) / market.rate) : 0)
+		const transfersUsdt = st.transfersByDay.get(dayKey) || 0
+		return {
+			day: dayKey,
+			profit: predictProfitUsdt,
+			predictProfitMad,
+			p2pProfitMad,
+			totalEarnedMad,
+			totalEarnedUsdt,
+			balance: d?.balance_minor ?? (dayKey === t ? predictUsdt : 0),
+			transfersUsdt,
+		}
+	})
+
 	return {
 		connected: !!a && !!a.key_enc,
 		error: a?.last_error ?? "",
@@ -504,7 +601,7 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		soldUsdt: sells.reduce((x, m) => x + m.usdt_minor, 0),
 		madSpent: buys.reduce((x, m) => x + m.mad_minor, 0),
 		madGot: sells.reduce((x, m) => x + m.mad_minor, 0),
-		days: days.slice(0, 30).map((d) => ({ day: d.day, profit: d.profit_minor, balance: d.balance_minor })),
+		days: walletDays,
 		moves: moves.slice(0, 40).map((m) => ({
 			id: m.id,
 			kind: m.kind as any,

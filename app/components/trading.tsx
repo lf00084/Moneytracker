@@ -424,6 +424,61 @@ const P2PBlock = view<{ s: State }>(({ s }) => {
 	)
 })
 
+const DailyEarningsSection = view<{ s: State }>(({ s }) => {
+	const w = s.wallet
+	if (!w) return null
+	const cur = s.user.currency
+	const days = w.days ?? []
+	if (!days.length) return null
+	const t = today(s.user.day_start)
+
+	return (
+		<div class="cd daily-earnings-card">
+			<div class="cb">
+				<div class="gl">
+					<div>
+						<div class="tg">Daily Earnings History</div>
+						<div class="lb">See exactly what you earned each day from P2P Funding and Binance Predict.</div>
+					</div>
+				</div>
+				<div class="daily-earnings-list" style={{ marginTop: "12px" }}>
+					{days.map((d) => {
+						const totalMad = d.totalEarnedMad ?? 0
+						const totalUsdt = d.totalEarnedUsdt ?? 0
+						const p2pMad = d.p2pProfitMad ?? 0
+						const predMad = d.predictProfitMad ?? 0
+						const predUsdt = d.profit ?? 0
+						const transfers = d.transfersUsdt ?? 0
+						const label = dayLabel(d.day, t)
+
+						return (
+							<div key={d.day} class="daily-earnings-row">
+								<div class="de-left">
+									<b class="de-date">{label}</b>
+									<div class="de-badges">
+										<span class="de-pill">P2P: <b class={tone(p2pMad)}>{sg(p2pMad)} {cur}</b></span>
+										<span class="de-pill">Predict: <b class={tone(predMad)}>{sg(predMad)} {cur}</b> ({sg(predUsdt)} USDT)</span>
+										{transfers > 0 ? (
+											<span class="de-pill de-transfer" title="Transfers between Funding and Predict are internal movements and never counted as earned">
+												Transfer: {fmt(transfers)} USDT (not earned)
+											</span>
+										) : null}
+										<span class="de-pill mu">Bal: {fmt(d.balance)} USDT</span>
+									</div>
+								</div>
+								<div class="de-right">
+									<b class={`de-total ${tone(totalMad)}`}>{sg(totalMad)} <small>{cur}</small></b>
+									<span class="lb">≈ {sg(totalUsdt)} USDT</span>
+								</div>
+							</div>
+						)
+					})}
+				</div>
+			</div>
+		</div>
+	)
+})
+
 export const TradingBody = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
 	const cur = s.user.currency
@@ -521,6 +576,8 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 					<PastCard s={s} list={settled} canReopen={!open} />
 				</div>
 			</div>
+
+			<DailyEarningsSection s={s} />
 
 			<P2PBlock s={s} />
 		</div>

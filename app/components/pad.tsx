@@ -1,6 +1,6 @@
 import { COLORS, type Entry, type PadData, type Space } from "../lib/padmeta.ts"
 import { timeAgo } from "../lib/time.ts"
-import { Icon, Submit, view } from "./ui.tsx"
+import { Icon, Link, Submit, view } from "./ui.tsx"
 
 export type PadTab = "projects" | "said" | "home" | "new" | "edit"
 
@@ -18,9 +18,9 @@ export const padBack = (d: PadData, tab: PadTab, f: string) =>
 const Seg = view<{ tab: PadTab }>(({ tab }) => (
 	<div class="nt-seg">
 		{SEG.map((x) => (
-			<a key={x.key} href={x.href} class={x.key === tab || ((tab === "new" || tab === "edit") && x.key === "projects") ? "on" : ""}>
+			<Link key={x.key} href={x.href} class={x.key === tab || ((tab === "new" || tab === "edit") && x.key === "projects") ? "on" : ""}>
 				{x.label}
-			</a>
+			</Link>
 		))}
 	</div>
 ))
@@ -28,9 +28,9 @@ const Seg = view<{ tab: PadTab }>(({ tab }) => (
 const Filters = view<{ base: string; f: string; items: [string, string][]; keep?: string; children?: unknown }>(({ base, f, items, keep = "", children }) => (
 	<div class="nt-fl">
 		{items.map(([label, key]) => (
-			<a key={key} href={`${key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base}${keep}`} class={f === key ? "on" : ""}>
+			<Link key={key} href={`${key ? `${base}${base.includes("?") ? "&" : "?"}f=${key}` : base}${keep}`} class={f === key ? "on" : ""}>
 				{label}
-			</a>
+			</Link>
 		))}
 		{children as never}
 	</div>
@@ -119,9 +119,9 @@ const Projects = view<Props>(({ d, f }) => {
 				<div class="nt-m" style={{ margin: "4px 0 10px" }}>
 					Make one for each thing you work on.
 				</div>
-				<a class="nt-go" href="/pad/new">
+				<Link class="nt-go" href="/pad/new">
 					New project
-				</a>
+				</Link>
 			</div>
 		)
 	}
@@ -135,9 +135,9 @@ const Projects = view<Props>(({ d, f }) => {
 	const pct = open + done ? Math.round((done / (open + done)) * 100) : 0
 	const toggle =
 		done > 0 ? (
-			<a style={{ marginLeft: "auto" }} href={`/pad?p=${sp.id}${f ? `&f=${f}` : ""}${d.done ? "" : "&d=1"}`} class={d.done ? "on" : ""} aria-pressed={d.done ? "true" : "false"}>
+			<Link style={{ marginLeft: "auto" }} href={`/pad?p=${sp.id}${f ? `&f=${f}` : ""}${d.done ? "" : "&d=1"}`} class={d.done ? "on" : ""} aria-pressed={d.done ? "true" : "false"}>
 				Done
-			</a>
+			</Link>
 		) : null
 	return (
 		<>
@@ -146,24 +146,24 @@ const Projects = view<Props>(({ d, f }) => {
 					x.id === sp.id ? (
 						<span key={x.id} class="nt-pc on" data-open={open}>
 							{x.bar && x.type !== "notes" ? <i class={open + done > 0 && done === open + done ? "nt-pgf full" : "nt-pgf"} style={{ width: `${pct}%` }}></i> : null}
-							<a class="nt-pt" href={`/pad?p=${x.id}`}>
+							<Link class="nt-pt" href={`/pad?p=${x.id}`}>
 								<i class="nt-dot" style={{ background: x.color }}></i>
 								{x.title} <small data-count>{open}</small>
-							</a>
-							<a class="nt-gs" href={`/pad/project?p=${x.id}`} aria-label="Edit project">
+							</Link>
+							<Link class="nt-gs" href={`/pad/project?p=${x.id}`} aria-label="Edit project">
 								<Icon name="edit" />
-							</a>
+							</Link>
 						</span>
 					) : (
-						<a key={x.id} class="nt-pc" href={`/pad?p=${x.id}`}>
+						<Link key={x.id} class="nt-pc" href={`/pad?p=${x.id}`}>
 							<i class="nt-dot" style={{ background: x.color }}></i>
 							{x.title} <small>{d.entries.filter((e) => e.space === x.id && e.kind === "task").length}</small>
-						</a>
+						</Link>
 					),
 				)}
-				<a class="nt-pc" href="/pad/new">
+				<Link class="nt-pc" href="/pad/new">
 					+ New
-				</a>
+				</Link>
 			</div>
 			{sp.type === "mix" ? (
 				<Filters base={`/pad?p=${sp.id}`} f={f} keep={keep} items={[["All", ""], ["Tasks", "tasks"], ["Notes", "notes"]]}>
@@ -267,16 +267,16 @@ const Sheet = view<{ sp?: Space | null }>(({ sp }) => {
 	const close = sp ? `/pad?p=${sp.id}` : "/pad"
 	return (
 		<>
-			<a class="nt-ov" href={close} aria-label="Close"></a>
+			<Link class="nt-ov" href={close} aria-label="Close"></Link>
 			<form class="nt-sht" method="post" action={sp ? "/pad/space/edit" : "/pad/space"}>
 				{sp ? <input type="hidden" name="id" value={sp.id} /> : <input type="hidden" name="nid" value={nid} />}
 				<input type="hidden" name="back" value={`/pad?p=${nid}`} />
 				<span class="nt-gr"></span>
 				<div class="nt-shh">
 					<b>{sp ? "Edit project" : "New project"}</b>
-					<a class="nt-m" href={close}>
+					<Link class="nt-m" href={close}>
 						Cancel
-					</a>
+					</Link>
 				</div>
 				<label class="nt-fi">
 					<span class="nt-m">Name</span>

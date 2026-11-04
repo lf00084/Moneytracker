@@ -1,4 +1,4 @@
-import { unsafeHTML, type Handle, type RemixNode } from "remix/component"
+import { link, unsafeHTML, type Handle, type RemixNode } from "remix/component"
 import type { State } from "../lib/data.ts"
 
 export function view<P extends Record<string, any> = {}>(render: (props: P) => RemixNode) {
@@ -6,6 +6,12 @@ export function view<P extends Record<string, any> = {}>(render: (props: P) => R
 		return () => render(handle.props)
 	}
 }
+
+export const Link = view<{ href: string; class?: string; children?: RemixNode; [k: string]: any }>(({ href, class: cls, children, ...rest }) => (
+	<a href={href} class={cls} mix={link(href)} {...rest}>
+		{children}
+	</a>
+))
 
 const ICONS: Record<string, string> = {
 	sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -75,21 +81,21 @@ const GOAT_INNER =
 const GoatMark = view(() => <svg viewBox="0 0 24 24" innerHTML={unsafeHTML(GOAT_INNER)} />)
 
 export const Logo = view<{ href: string }>(({ href }) => (
-	<a class="logo" href={href}>
+	<Link class="logo" href={href}>
 		<GoatMark />
 		<span>moneytracker</span>
-	</a>
+	</Link>
 ))
 
-export const Card = view<{ title: RemixNode; children?: RemixNode }>(({ title, children }) => (
-	<div class="cd">
+export const Card = view<{ title: RemixNode; class?: string; children?: RemixNode }>(({ title, class: cls = "", children }) => (
+	<div class={cls ? `cd ${cls}` : "cd"}>
 		<div class="tg">{title}</div>
 		<div class="cb">{children}</div>
 	</div>
 ))
 
-export const Section = view<{ title: RemixNode; right?: RemixNode; children?: RemixNode }>(({ title, right = "", children }) => (
-	<div class="sc">
+export const Section = view<{ title: RemixNode; right?: RemixNode; class?: string; children?: RemixNode }>(({ title, right = "", class: cls = "", children }) => (
+	<div class={cls ? `sc ${cls}` : "sc"}>
 		<div class="sh">
 			<span>{title}</span>
 			<span class="lb">{right}</span>
@@ -101,10 +107,10 @@ export const Section = view<{ title: RemixNode; right?: RemixNode; children?: Re
 export const PageHeader = view<{ title: string; right?: RemixNode; back?: string }>(({ title, right = "", back }) => (
 	<div class="hd">
 		{back ? (
-			<a class="back" href={back}>
+			<Link class="back" href={back}>
 				<Icon name="back" />
 				<h1 class="t">{title}</h1>
-			</a>
+			</Link>
 		) : (
 			<h1 class="t">{title}</h1>
 		)}
@@ -184,8 +190,8 @@ export const BigAdd = view<{ label: string; target?: string; right?: boolean }>(
 	</button>
 ))
 
-export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; children?: RemixNode }>(({ title, right, target, label, children }) => (
-	<div class="sc bgc rgt">
+export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; class?: string; children?: RemixNode }>(({ title, right, target, label, class: cls = "", children }) => (
+	<div class={cls ? `sc bgc rgt ${cls}` : "sc bgc rgt"}>
 		<div class="ct">
 			<div class="sh">
 				<span>{title}</span>
@@ -207,11 +213,12 @@ type ExpandProps = {
 	label?: string
 	jar?: number
 	fixed?: boolean
+	class?: string
 	children?: RemixNode
 }
 
-export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot, form, label = "", jar = -1, fixed = false, children }) => (
-	<div class={label ? "xc" : "xc xn"}>
+export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot, form, label = "", jar = -1, fixed = false, class: cls = "", children }) => (
+	<div class={label ? (cls ? `xc ${cls}` : "xc") : (cls ? `xc xn ${cls}` : "xc xn")}>
 		<details class="xd" data-keep-open={fixed ? undefined : storeKey} data-fixed={fixed ? "1" : undefined} open={open || fixed ? true : undefined}>
 			<summary class="xh osum">
 				{jar >= 0 ? <i class={jar >= 100 ? "xj full" : "xj"} style={{ width: `${jar}%` }}></i> : null}

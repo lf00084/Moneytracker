@@ -48,7 +48,7 @@ const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
 			</form>
 		</>
 	)
-	return wide ? <Section title="Add to any day">{body}</Section> : <Card title="Add to any day">{body}</Card>
+	return wide ? <Section title="Add to any day" class="card-grey sc-grey">{body}</Section> : <Card title="Add to any day" class="card-grey cd-grey">{body}</Card>
 })
 
 export const HistoryMobile = view<{ s: State }>(({ s }) => (
@@ -56,7 +56,7 @@ export const HistoryMobile = view<{ s: State }>(({ s }) => (
 		<ErrorBanner s={s} />
 		<DayForms s={s} wide={false} />
 		{s.days.map((d) => (
-			<Card key={d.day} title={d.label}>
+			<Card key={d.day} title={d.label} class="card-grey cd-grey">
 				<div class="l1">
 					<span>
 						<span class="lb">Earned</span> <b class="ea">+{fmt(d.earned)}</b>
@@ -80,7 +80,7 @@ export const HistoryDesktop = view<{ s: State }>(({ s }) => {
 			<PageHeader title="History" right="last 30 days" />
 			<ErrorBanner s={s} />
 			<DayForms s={s} wide />
-			<Section title="Last 30 days" right={`+${fmt(earned)} earned · −${fmt(bought)} bought`}>
+			<Section title="Last 30 days" right={`+${fmt(earned)} earned · −${fmt(bought)} bought`} class="card-grey sc-grey">
 				<div class="th">
 					<span>Day</span>
 					<span>Earned</span>

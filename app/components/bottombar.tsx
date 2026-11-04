@@ -1,4 +1,4 @@
-import { Icon, view } from "./ui.tsx"
+import { Icon, Link, view } from "./ui.tsx"
 
 export type MobileTab = "home" | "income" | "trading" | "pad" | "profile" | "history" | ""
 
@@ -13,12 +13,12 @@ const TABS = [
 export const BottomBar = view<{ active: MobileTab }>(({ active }) => (
 	<nav class="bt" aria-label="Main">
 		{TABS.map((t) => (
-			<a key={t.key} href={t.href} class={active === t.key ? "on" : ""} aria-label={t.label} aria-current={active === t.key ? "page" : undefined}>
+			<Link key={t.key} href={t.href} class={active === t.key ? "on" : ""} aria-label={t.label} aria-current={active === t.key ? "page" : undefined}>
 				<span class="bp">
 					<Icon name={t.icon} />
 				</span>
 				<span class="bl">{t.label}</span>
-			</a>
+			</Link>
 		))}
 	</nav>
 ))

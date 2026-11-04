@@ -1,3 +1,5 @@
+import { Frame } from "remix/component"
+import { routes } from "./routes.ts"
 import { BuysExpand } from "./components/buys.tsx"
 import { OweDesktop, OweMobile, RoadCard } from "./components/debts.tsx"
 import { GoalsExpand } from "./components/goals.tsx"
@@ -13,7 +15,7 @@ import type { PadData } from "./lib/padmeta.ts"
 import type { User } from "./lib/users.ts"
 import { EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
 import { TradingBody } from "./components/trading.tsx"
-import { ErrorBanner, GoogleMark, Logo, PageHeader, Section, Submit, view } from "./components/ui.tsx"
+import { ErrorBanner, GoogleMark, Link, Logo, PageHeader, Section, Submit, view } from "./components/ui.tsx"
 import type { State } from "./lib/data.ts"
 import { fmt } from "./lib/money.ts"
 import { calc } from "./lib/view.ts"
@@ -264,6 +266,16 @@ export const SettingsScreen = view<{ s: State }>(({ s }) => (
 	/>
 ))
 
+const PanelLoading = view<{ label: string }>(({ label }) => (
+	<div class="cd">
+		<div class="cb">
+			<div class="lb">{label}</div>
+		</div>
+	</div>
+))
+
+// The API page connects to Binance (network latency), so its body streams in
+// through a Frame while the shell renders instantly.
 export const ApiScreen = view<{ s: State }>(({ s }) => (
 	<AppLayout
 		title="API connections"
@@ -273,41 +285,68 @@ export const ApiScreen = view<{ s: State }>(({ s }) => (
 		mobile={
 			<>
 				<PageHeader title="API connections" back="/profile" />
-				<ApiBody s={s} />
+				<Frame src={routes.pages.apiPanel.href()} fallback={<PanelLoading label="Loading connections…" />}>
+				</Frame>
 			</>
 		}
 		desktop={
 			<>
 				<PageHeader title="API connections" />
-				<ApiBody s={s} />
+				<Frame src={routes.pages.apiPanel.href()} fallback={<PanelLoading label="Loading connections…" />}>
+				</Frame>
 			</>
 		}
 	/>
 ))
 
-export const TradingScreen = view<{ s: State }>(({ s }) => {
+export const ApiPanel = view<{ s: State }>(({ s }) => <ApiBody s={s} />)
+
+// The Predict page waits on Binance wallet sync, so its panel streams in
+// through a Frame: the shell (nav, header, error banner) paints immediately.
+export const TradingScreen = view<{ s: State }>(({ s }) => (
+	<AppLayout
+		title="Predict"
+		theme={s.user.theme}
+		mobileTab="trading"
+		desktopTab="trading"
+		mobile={
+			<>
+				<ErrorBanner s={s} />
+				<Frame
+					src={routes.pages.tradingPanel.href()}
+					fallback={
+						<>
+							<PageHeader title="Predict" />
+							<PanelLoading label="Syncing Binance…" />
+						</>
+					}
+				></Frame>
+			</>
+		}
+		desktop={
+			<>
+				<ErrorBanner s={s} />
+				<Frame
+					src={routes.pages.tradingPanel.href()}
+					fallback={
+						<>
+							<PageHeader title="Predict" />
+							<PanelLoading label="Syncing Binance…" />
+						</>
+					}
+				></Frame>
+			</>
+		}
+	/>
+))
+
+export const TradingPanel = view<{ s: State }>(({ s }) => {
 	const right = `1 USDT = ${fmt(s.wallet?.rate ?? s.user.usdt_rate)} ${s.user.currency}`
 	return (
-		<AppLayout
-			title="Predict"
-			theme={s.user.theme}
-			mobileTab="trading"
-			desktopTab="trading"
-			mobile={
-				<>
-					<ErrorBanner s={s} />
-					<PageHeader title="Predict" right={right} />
-					<TradingBody s={s} />
-				</>
-			}
-			desktop={
-				<>
-					<ErrorBanner s={s} />
-					<PageHeader title="Predict" right={right} />
-					<TradingBody s={s} />
-				</>
-			}
-		/>
+		<>
+			<PageHeader title="Predict" right={right} />
+			<TradingBody s={s} />
+		</>
 	)
 })
 
@@ -346,11 +385,11 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 		<p class="auth-switch">
 			{up ? (
 				<>
-					Already have an account? <a href="/login">Sign in</a>
+					Already have an account? <Link href="/login">Sign in</Link>
 				</>
 			) : (
 				<>
-					Don't have an account? <a href="/signup">Create account</a>
+					Don't have an account? <Link href="/signup">Create account</Link>
 				</>
 			)}
 		</p>

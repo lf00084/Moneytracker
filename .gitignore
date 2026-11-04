@@ -5,3 +5,4 @@ dist
 .wrangler
 bun.lock
 
+app/client/dist/

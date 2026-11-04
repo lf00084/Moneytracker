@@ -7,12 +7,13 @@
 		"node": ">=24.3.0"
 	},
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"deploy": "vite build && wrangler deploy",
+		"dev": "npm run build:client && vite dev",
+		"build": "npm run build:client && vite build",
+		"deploy": "npm run build && wrangler deploy",
 		"typecheck": "tsc --noEmit",
 		"lint": "tsc --noEmit",
-		"db:migrate": "tsx scripts/migrate.ts"
+		"db:migrate": "tsx scripts/migrate.ts",
+		"build:client": "vite build --config vite.client.config.ts"
 	},
 	"dependencies": {
 		"@libsql/client": "^0.15.0",

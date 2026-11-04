@@ -4,7 +4,7 @@ import * as act from "../../lib/actions.ts"
 import { loadState, type Part, type State } from "../../lib/data.ts"
 import { BanksScreen } from "../../components/banks.tsx"
 import { WalletScreen } from "../../components/wallet.tsx"
-import { ApiScreen, DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingScreen } from "../../screens.tsx"
+import { ApiPanel, ApiScreen, DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingPanel, TradingScreen } from "../../screens.tsx"
 import { routes } from "../../routes.ts"
 import { go, takeError, userOf, type Ctx } from "../../request.ts"
 import { loadPad } from "../../lib/pad.ts"
@@ -80,13 +80,15 @@ export default createController(routes.pages, {
 		profile: page("/profile", ["avatar", "balance"], (s) => <ProfileScreen s={s} />),
 		profileEdit: page("/profile/edit", ["avatar", "balance"], (s) => <ProfileEditScreen s={s} />),
 		settings: page("/settings", ["balance"], (s) => <SettingsScreen s={s} />),
-		apis: page("/profile/api", ["sources", "wallet"], (s) => <ApiScreen s={s} />),
+		apis: page("/profile/api", [], (s) => <ApiScreen s={s} />),
+		apiPanel: page("/profile/api", ["sources", "wallet"], (s) => <ApiPanel s={s} />),
 		pad: padPage("projects"),
 		padSaid: padPage("said"),
 		padHome: padPage("home"),
 		padNew: padPage("new"),
 		padProject: padPage("edit"),
-		trading: page("/trading", ["trading", "wallet", "money"], (s) => <TradingScreen s={s} />),
+		trading: page("/trading", [], (s) => <TradingScreen s={s} />),
+		tradingPanel: page("/trading", ["trading", "wallet", "money"], (s) => <TradingPanel s={s} />),
 		wallet: (ctx: Ctx) => {
 			const user = userOf(ctx)
 			if (!user) return go("/login")

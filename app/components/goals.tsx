@@ -1,7 +1,7 @@
 import type { Goal, GoalItem, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { canAfford, goalLeft, goalStat, pctOf } from "../lib/view.ts"
-import { Back, Empty, ExpandCard, Icon, Submit, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, Link, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 
@@ -200,9 +200,9 @@ export const GoalsExpand = view<{ s: State; open: boolean; storeKey: string; man
 			foot={
 				<div class="xl">
 					<span>{`Left to buy ${fmt(g.target)} ${s.user.currency}`}</span>
-					<a class="lnk" href="/goals">
+					<Link class="lnk" href="/goals">
 						Manage
-					</a>
+					</Link>
 				</div>
 			}
 		>

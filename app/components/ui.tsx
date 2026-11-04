@@ -8,7 +8,7 @@ export function view<P extends Record<string, any> = {}>(render: (props: P) => R
 }
 
 export const Link = view<{ href: string; class?: string; children?: RemixNode; [k: string]: any }>(({ href, class: cls, children, ...rest }) => (
-	<a href={href} class={cls} mix={link(href)} {...rest}>
+	<a href={href} class={cls} mix={link(href)} data-rmx-prefetch="intent" {...rest}>
 		{children}
 	</a>
 ))

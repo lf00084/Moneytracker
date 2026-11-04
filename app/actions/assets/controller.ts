@@ -25,7 +25,7 @@ export default createController(routes.assets, {
 		robots: () => assets.robots(),
 		sitemap: () => assets.sitemap(),
 		css: file(files.css, "text/css; charset=utf-8"),
-		js: file(files.js, "application/javascript; charset=utf-8"),
+		entry: file(files.js, "application/javascript; charset=utf-8"),
 		authCss: file(files.auth, "text/css; charset=utf-8"),
 	},
 })

@@ -4,6 +4,9 @@
 	"main": "./bootstrap/worker.ts",
 	"compatibility_date": "2026-09-02",
 	"compatibility_flags": ["nodejs_compat"],
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
 	"workers_dev": true,
 	"observability": {
 		"enabled": true

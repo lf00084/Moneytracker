@@ -1,7 +1,7 @@
 import type { State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { LANG } from "../lib/view.ts"
-import { Avatar, Back, Card, ErrorBanner, Field, Icon, PageHeader, Section, Submit, ThemeSwitch, view } from "./ui.tsx"
+import { Avatar, Back, Card, ErrorBanner, Field, Icon, Link, PageHeader, Section, Submit, ThemeSwitch, view } from "./ui.tsx"
 
 const BalanceForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/profile/balance">
@@ -27,9 +27,9 @@ export const BalanceEditCard = view<{ s: State; edit?: boolean }>(({ s, edit = f
 					<Icon name="eye" />
 				</button>
 				{edit && s.money ? (
-					<a class="ib" href="/banks" aria-label="Banks">
+					<Link class="ib" href="/banks" aria-label="Banks">
 						<Icon name="coin" />
-					</a>
+					</Link>
 				) : edit ? (
 					<button type="button" class="ib" data-edit-bal aria-label="Edit balance">
 						<Icon name="edit" />
@@ -55,9 +55,9 @@ const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s
 			<Submit class="btn" style={{ flex: "1" }}>
 				Save
 			</Submit>
-			<a class="btn o" style={{ flex: "1" }} href={cancel}>
+			<Link class="btn o" style={{ flex: "1" }} href={cancel}>
 				Cancel
-			</a>
+			</Link>
 		</div>
 	</form>
 ))
@@ -99,10 +99,10 @@ const DataButtons = view(() => (
 ))
 
 const LinkRow = view<{ href: string; label: string }>(({ href, label }) => (
-	<a class="li" href={href}>
+	<Link class="li" href={href}>
 		<span>{label}</span>
 		<span class="mu">›</span>
-	</a>
+	</Link>
 ))
 
 export const ProfileMobile = view<{ s: State }>(({ s }) => (
@@ -184,12 +184,12 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 					<ProfileForm s={s} cancel="/home" />
 				</Section>
 				<Section title="Account">
-					<a class="btn o" href="/banks" style={{ marginBottom: "10px" }}>
+					<Link class="btn o" href="/banks" style={{ marginBottom: "10px" }}>
 						Banks & pending
-					</a>
-					<a class="btn o" href="/profile/api" style={{ marginBottom: "10px" }}>
+					</Link>
+					<Link class="btn o" href="/profile/api" style={{ marginBottom: "10px" }}>
 						API connections
-					</a>
+					</Link>
 					<form method="post" action="/logout">
 						<Submit class="btn o">Log out</Submit>
 					</form>

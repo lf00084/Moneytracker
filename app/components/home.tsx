@@ -4,7 +4,7 @@ import { fmt } from "../lib/money.ts"
 import { hhmm, timeAgo, today } from "../lib/time.ts"
 import { DEPOSIT, flowOf, toMad, TRIES } from "../lib/trade-math.ts"
 import { calc } from "../lib/view.ts"
-import { BankIcon, Empty, ExpandCard, FlowBadge, Icon, NameChips, Submit, view } from "./ui.tsx"
+import { BankIcon, Empty, ExpandCard, FlowBadge, Icon, Link, NameChips, Submit, view } from "./ui.tsx"
 import { FromPicker } from "./buys.tsx"
 
 export type PadProject = { id: string; title: string; color: string; left: number; total: number }
@@ -33,11 +33,11 @@ export const NeedsYouChip = view<{ s: State }>(({ s }) => {
 	return (
 		<div class="hm-needs-wrap">
 			{items.map((it, idx) => (
-				<a key={idx} href={it.href} class="hm-needs-chip">
+				<Link key={idx} href={it.href} class="hm-needs-chip">
 					<span class="hm-needs-dot"></span>
 					<span>Needs you: {it.label}</span>
 					<Icon name="chev" />
-				</a>
+				</Link>
 			))}
 		</div>
 	)
@@ -87,7 +87,7 @@ export const MoneyTiles = view<{ s: State }>(({ s }) => {
 				))}
 
 				{m.unmatchedCount > 0 ? (
-					<a href="/trading#unmatched" class="hm-tile unmatched">
+					<Link href="/trading#unmatched" class="hm-tile unmatched">
 						<div class="hm-tile-top">
 							<span class="hm-tile-warn-icon">!</span>
 							<span class="hm-tile-tag warn">{m.unmatchedCount}</span>
@@ -97,7 +97,7 @@ export const MoneyTiles = view<{ s: State }>(({ s }) => {
 							<b>{fmt(m.unmatchedMad)}</b>
 							<small>{cur}</small>
 						</div>
-					</a>
+					</Link>
 				) : null}
 
 				<button type="button" class="hm-tile add-tile" data-sheet-trigger="add-bank">
@@ -192,9 +192,9 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 	}
 
 	return (
-		<a href="/trading" class="hm-wide">
+		<Link href="/trading" class="hm-wide">
 			{body}
-		</a>
+		</Link>
 	)
 })
 
@@ -350,11 +350,11 @@ export const HomeTimeline = view<{ s: State }>(({ s }) => {
 })
 
 const TaskRow = view<{ href: string; title: string; color: string; left: number }>(({ href, title, color, left }) => (
-	<a class="hm-tr" href={href}>
+	<Link class="hm-tr" href={href}>
 		<i class="hm-td" style={{ background: color }}></i>
 		<span class="hm-tn">{title}</span>
 		<span class="hm-m">{left}</span>
-	</a>
+	</Link>
 ))
 
 export const HomeTasks = view<{ p: PadLeft }>(({ p }) => {

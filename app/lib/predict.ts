@@ -3,7 +3,7 @@ import { banks, db, moveHints, payMaps, predictAccount, predictDays, predictMove
 import { bankResolver } from "./banks.ts"
 import { decryptSecret, encryptSecret } from "./crypto.ts"
 import { toMinor } from "./money.ts"
-import { dayOf, today } from "./time.ts"
+import { addDays, dayOf, today } from "./time.ts"
 import { toMad } from "./trade-math.ts"
 import { todayFor, type User } from "./users.ts"
 import { id, rowsOf, text } from "./util.ts"
@@ -274,14 +274,29 @@ async function fetchWallet(apiKey: string, secret: string, known: string): Promi
 	if (!wallet) {
 		const w = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/wallet/list")
 		if ("error" in w) return w.error
-		wallet = String(w.data?.wallets?.[0]?.walletAddress ?? "")
+		wallet = String(w.data?.wallets?.[0]?.walletAddress ?? w.data?.data?.wallets?.[0]?.walletAddress ?? "")
 		if (!wallet) return "No prediction wallet found on this Binance account"
 	}
-	const p = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/position/list", { walletAddress: wallet, limit: "1" })
+	const p = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/position/list", { walletAddress: wallet, limit: "100" })
 	if ("error" in p) return p.error
-	const total = p.data?.summary?.totalValue
-	if (total === undefined || total === null || !Number.isFinite(Number(total))) return "Binance did not return the wallet value"
-	return { usdt: cents(total), wallet }
+	// Binance nests the payload differently across API revisions: try the summary
+	// first, then sum the position values, then fall back to the portfolio view.
+	const body = p.data?.data ?? p.data
+	const pick = (v: unknown) => (v !== undefined && v !== null && Number.isFinite(Number(v)) ? cents(v) : null)
+	let total = pick(body?.summary?.totalValue) ?? pick(body?.totalValue) ?? pick(body?.summary?.totalUsdtValue)
+	if (total === null && Array.isArray(body?.positions)) {
+		const sum = body.positions.reduce((a: number, x: any) => a + (Number(x?.value) || Number(x?.notional) || 0), 0)
+		if (Number.isFinite(sum) && sum > 0) total = cents(sum)
+	}
+	if (total === null) {
+		const pf = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/pnl/portfolio", { walletAddress: wallet })
+		if (!("error" in pf)) {
+			const b = pf.data?.data ?? pf.data
+			total = pick(b?.portfolioValue) ?? pick(b?.totalValue) ?? pick(b?.summary?.totalValue) ?? pick(b?.portfolio?.totalValue)
+		}
+	}
+	if (total === null) return "Binance did not return the wallet value"
+	return { usdt: total, wallet }
 }
 
 async function fetchFunding(apiKey: string, secret: string): Promise<number | string> {
@@ -379,10 +394,23 @@ async function importOrders(uid: string, apiKey: string, secret: string, from: n
 }
 
 export async function rebuild(uid: string) {
-	const [days, moves] = await Promise.all([
+	const [days, moves, hints, user] = await Promise.all([
 		db.findMany(predictDays, { where: { user_id: uid }, orderBy: ["day", "asc"], limit: 800 }),
 		db.findMany(predictMoves, { where: { user_id: uid }, limit: 5000 }),
+		db.findMany(moveHints, { where: { user_id: uid, status: "open" } }),
+		db.find(users, uid),
 	])
+	const dayStart = typeof user?.day_start === "number" && Number.isInteger(user.day_start) ? user.day_start : 5
+	// A detected-but-unconfirmed wallet transfer has already moved the balance.
+	// Adjust for open hints so a transfer never counts as earnings — confirming
+	// the hint swaps the adjustment for a real move, denying it drops the
+	// adjustment and lets the true profit/loss show.
+	const hintAdj = new Map<string, number>()
+	for (const h of hints) {
+		const hd = dayOf(h.found_at, dayStart)
+		const signed = h.kind === "to_funding" ? h.usdt_minor : -h.usdt_minor
+		hintAdj.set(hd, (hintAdj.get(hd) ?? 0) + signed)
+	}
 	let prevDay = ""
 	let prevBal = 0
 	for (const d of days) {
@@ -395,12 +423,48 @@ export async function rebuild(uid: string) {
 		const toPredict = ms.filter((m) => m.kind === "to_predict").reduce((a, m) => a + m.usdt_minor, 0)
 		const toFunding = ms.filter((m) => m.kind === "to_funding").reduce((a, m) => a + m.usdt_minor, 0)
 		const open = prevDay ? prevBal : d.balance_minor - toPredict + toFunding
-		const profit = d.balance_minor - open - toPredict + toFunding
+		const profit = d.balance_minor - open - toPredict + toFunding + (hintAdj.get(d.day) ?? 0)
 		if (d.open_minor !== open || d.profit_minor !== profit) {
 			await db.update(predictDays, d.id, { open_minor: open, profit_minor: profit })
 		}
 		prevDay = d.day
 		prevBal = d.balance_minor
+	}
+}
+
+// Every day since the first balance snapshot needs a row, otherwise a day
+// without a sync would fold its earnings into the next visited day. Missing
+// days are filled with the last known balance (profit 0) so each day's change
+// lands on the day it actually happened.
+async function fillDays(uid: string) {
+	const user = await db.find(users, uid)
+	const dayStart = typeof user?.day_start === "number" && Number.isInteger(user.day_start) ? user.day_start : 5
+	const t = today(dayStart)
+	const rows = await db.findMany(predictDays, { where: { user_id: uid }, orderBy: ["day", "asc"], limit: 800 })
+	if (!rows.length) return
+	const byDay = new Map(rows.map((r) => [r.day, r]))
+	const first = rows[0]!.day
+	let prev = rows[0]!
+	let created = 0
+	for (let d = addDays(first, 1); d <= t && created < 400; d = addDays(d, 1)) {
+		const have = byDay.get(d)
+		if (have) {
+			prev = have
+			continue
+		}
+		await db.create(predictDays, {
+			id: `${uid}:${d}`,
+			user_id: uid,
+			day: d,
+			open_minor: prev.balance_minor,
+			balance_minor: prev.balance_minor,
+			bought_minor: 0,
+			sold_minor: 0,
+			profit_minor: 0,
+			locked: 0,
+			saved_at: prev.saved_at,
+		})
+		created++
 	}
 }
 
@@ -421,6 +485,7 @@ async function saveDay(uid: string, balance: number, now: number) {
 	const row = await db.find(predictDays, key)
 	if (row) await db.update(predictDays, key, { balance_minor: balance, saved_at: now })
 	else await db.create(predictDays, { id: key, user_id: uid, day: t, open_minor: 0, balance_minor: balance, bought_minor: 0, sold_minor: 0, profit_minor: 0, locked: 0, saved_at: now })
+	await fillDays(uid)
 	await rebuild(uid)
 }
 
@@ -460,7 +525,12 @@ export async function syncPredict(uid: string, force = false): Promise<void> {
 
 		await checkMoveHints(uid, dP, dF, now)
 
-		const lastError = typeof rFunding === "string" ? `Funding: ${rFunding}` : (typeof rPredict === "string" && !predictWallet ? `Predict: ${rPredict}` : "")
+		const lastError = [
+			typeof rFunding === "string" && rFunding ? `Funding: ${rFunding}` : "",
+			typeof rPredict === "string" && rPredict ? `Predict: ${rPredict}` : "",
+		]
+			.filter(Boolean)
+			.join(" · ")
 
 		await db.update(predictAccount, uid, {
 			...p2p,
@@ -536,7 +606,14 @@ export async function loadWallet(user: User): Promise<WalletView> {
 	const fundingUsdt = a?.funding_minor ?? 0
 	const totalUsdt = predictUsdt + fundingUsdt
 
-	const st = p2pStats(moves, t, market.rate)
+		const st = p2pStats(moves, t, market.rate)
+		// Open (unconfirmed) transfer hints are already excluded from profit in
+		// rebuild(); show them in the transfers column so the daily view matches.
+		const hintTransfers = new Map<string, number>()
+		for (const h of hints) {
+			const hd = dayOf(h.found_at, user.day_start)
+			hintTransfers.set(hd, (hintTransfers.get(hd) ?? 0) + h.usdt_minor)
+		}
 	const predictToday = days.find((d) => d.day === t)?.profit_minor ?? 0
 	const predictAll = days.reduce((x, d) => x + d.profit_minor, 0)
 	const predictTodayMad = toMad(predictToday, market.rate)
@@ -560,7 +637,7 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		const predictProfitMad = toMad(predictProfitUsdt, market.rate)
 		const totalEarnedMad = predictProfitMad + p2pProfitMad
 		const totalEarnedUsdt = predictProfitUsdt + (market.rate > 0 ? Math.round((p2pProfitMad * 100) / market.rate) : 0)
-		const transfersUsdt = st.transfersByDay.get(dayKey) || 0
+			const transfersUsdt = (st.transfersByDay.get(dayKey) || 0) + (hintTransfers.get(dayKey) || 0)
 		return {
 			day: dayKey,
 			profit: predictProfitUsdt,

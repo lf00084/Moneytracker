@@ -3,7 +3,7 @@ import { fmt, plain } from "../lib/money.ts"
 import { hhmm } from "../lib/time.ts"
 import { isFixed } from "../lib/util.ts"
 import { calc, gotToday, srcAmount } from "../lib/view.ts"
-import { Back, Empty, ExpandCard, Icon, ListCard, NameChips, Submit, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, Link, ListCard, NameChips, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 const rateOf = (x: Source) => Number(x.config.rate_minor) || 0
@@ -179,9 +179,9 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					<div>{x.name}</div>
 					{sub ? <div class={exo && s.exo[x.id] ? "lb neg" : "lb"}>{sub}</div> : null}
 					{exo && s.exo[x.id] ? (
-						<a class="lnk" href="/income">
+						<Link class="lnk" href="/income">
 							Fix
-						</a>
+						</Link>
 					) : null}
 				</div>
 				<HomeAct s={s} x={x} />
@@ -575,9 +575,9 @@ const SrcTile = view<{ s: State; x: Source }>(({ s, x }) => {
 			</div>
 			<div class={bad ? "hm-src-sub neg" : "hm-src-sub"}>{sub}</div>
 			{bad ? (
-				<a class="hm-src-btn" href="/income">
+				<Link class="hm-src-btn" href="/income">
 					Fix
-				</a>
+				</Link>
 			) : null}
 			{fixedSrc && !got ? (
 				<form method="post" action="/income/add" style={contents}>

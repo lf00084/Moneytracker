@@ -2,7 +2,7 @@ import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
 import { dayLabel, timeAgo, today } from "../lib/time.ts"
 import { AppLayout } from "./layout.tsx"
-import { Back, ErrorBanner, Icon, PageHeader, Submit, view } from "./ui.tsx"
+import { Back, ErrorBanner, Icon, Link, PageHeader, Submit, view } from "./ui.tsx"
 
 const contents = { display: "contents" }
 
@@ -10,9 +10,9 @@ const sg = (minor: number) => `${minor < 0 ? "−" : "+"}${fmt(Math.abs(minor))}
 const tone = (minor: number) => (minor < 0 ? "neg" : "pos")
 
 const ConnectLink = view(() => (
-	<a class="btn o" href="/profile/api">
+	<Link class="btn o" href="/profile/api">
 		Connect Binance in API connections
-	</a>
+	</Link>
 ))
 
 const Hero = view<{ s: State }>(({ s }) => {

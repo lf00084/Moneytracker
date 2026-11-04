@@ -1,6 +1,6 @@
 import appCss from "../client/app.css?raw"
 import homeCss from "../client/home.css?raw"
-import js from "../client/app.ts?raw"
+import js from "../client/dist/entry.js?raw"
 import authCss from "../client/auth.css?raw"
 import pico from "@picocss/pico/css/pico.min.css?raw"
 

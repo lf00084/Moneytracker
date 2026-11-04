@@ -1,9 +1,11 @@
 import type { RemixNode } from "remix/component"
+import { clientEntry, type Handle } from "remix/component"
+import { entryId, ENTRY_HREF } from "../client/entry-url.ts"
 import { env } from "../env.ts"
 import { SITE } from "../lib/assets.ts"
-import { liveClockNow } from "../lib/time.ts"
 import { V } from "../lib/static.ts"
 import { BottomBar, type MobileTab } from "./bottombar.tsx"
+import { ClockWidget } from "./clock.tsx"
 import { Icon, Link, Logo, Submit, ThemeIcons, view } from "./ui.tsx"
 
 type DocumentProps = {
@@ -19,6 +21,11 @@ type DocumentProps = {
 const THEME_BOOT = `try{var t=localStorage.getItem('mtheme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`
 const REGISTER_SW = `if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))`
 const FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@500;600&display=swap"
+// Dev loads the source entry through Vite. The script URL must match the one
+// loadModule imports (Vite rewrites dynamic imports to `?import`) or the
+// module executes twice. Production serves the prebuilt bundle at the plain
+// URL (the assets route answers with ETag/no-cache when no ?v is pinned).
+const ENTRY_SRC = import.meta.env.DEV ? `${ENTRY_HREF}?import` : ENTRY_HREF
 
 export const Document = view<DocumentProps>(({ title, user = true, theme, desc, path, auth, children }) => {
 	const description = desc ?? SITE.desc
@@ -74,35 +81,10 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 			</head>
 			<body>
 				{children}
-				<script src={`/assets/app.js?v=${V.js}`} defer></script>
+				<script type="module" src={ENTRY_SRC}></script>
 				<script>{REGISTER_SW}</script>
 			</body>
 		</html>
-	)
-})
-
-type Parts = { numDate: string; arabicDay: string }
-
-const SubDate = view<Parts>(({ numDate, arabicDay }) => (
-	<>
-		<span class="clock-num">{numDate}</span> <span class="clock-dot">·</span> <span class="clock-ar">{arabicDay}</span>
-	</>
-))
-
-export const ClockWidget = view(() => {
-	const { timeStr, dateStr, numDate, arabicDay } = liveClockNow()
-	return (
-		<div class="live-clock" data-tz="Africa/Casablanca" aria-label="Local Casablanca time">
-			<div class="clock-time" data-clock-time>
-				{timeStr}
-			</div>
-			<div class="clock-date" data-clock-date>
-				{dateStr}
-			</div>
-			<div class="clock-subdate" data-clock-subdate dir="ltr">
-				<SubDate numDate={numDate} arabicDay={arabicDay} />
-			</div>
-		</div>
 	)
 })
 

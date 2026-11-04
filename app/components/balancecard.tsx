@@ -1,6 +1,6 @@
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
-import { Icon, view } from "./ui.tsx"
+import { Icon, Link, view } from "./ui.tsx"
 
 export const BalanceCard = view<{ s: State }>(({ s }) => {
 	const onHold = s.money?.pendingMad ?? 0
@@ -27,9 +27,9 @@ export const BalanceCard = view<{ s: State }>(({ s }) => {
 			</div>
 			<div class="hm-bal-sub-row">
 				{onHold > 0 ? (
-					<a href="/income" class="hm-onhold-badge">
+					<Link href="/income" class="hm-onhold-badge">
 						+{fmt(onHold)} {s.user.currency} on hold
-					</a>
+					</Link>
 				) : (
 					<span class="hm-bal-hint">All-time count</span>
 				)}

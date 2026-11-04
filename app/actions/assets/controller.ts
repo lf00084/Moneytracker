@@ -1,7 +1,7 @@
 import { createController } from "remix/router"
-import { assets } from "../lib/assets.ts"
-import { files, hash } from "../lib/static.ts"
-import { routes } from "../routes.ts"
+import { assets } from "../../lib/assets.ts"
+import { files, hash } from "../../lib/static.ts"
+import { routes } from "../../routes.ts"
 
 const file = (body: string, type: string) => {
 	const etag = `"${hash(body)}"`

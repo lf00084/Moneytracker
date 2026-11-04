@@ -1,7 +1,7 @@
 import { createController } from "remix/router"
-import { commands, errorOf, type Command, type CommandName } from "../commands.ts"
-import { routes } from "../routes.ts"
-import { backTo, fail, formOf, go, userOf, type Ctx } from "../request.ts"
+import { commands, errorOf, type Command, type CommandName } from "../../commands.ts"
+import { routes } from "../../routes.ts"
+import { backTo, fail, formOf, go, userOf, type Ctx } from "../../request.ts"
 
 const form = (name: CommandName) => async (ctx: Ctx) => {
 	const c: Command = commands[name]

@@ -1,12 +1,12 @@
 import { finishExternalAuth, startExternalAuth } from "remix/auth"
 import { createController } from "remix/router"
-import { LoginScreen, SignupScreen } from "../screens.tsx"
-import { env } from "../env.ts"
-import * as act from "../lib/actions.ts"
-import { googleProvider } from "../lib/auth.ts"
-import { signInWithPassword, signUpWithPassword, upsertFromGoogle } from "../lib/users.ts"
-import { routes } from "../routes.ts"
-import { fail, formOf, go, signInAs, signOut, takeError, userOf, type Ctx } from "../request.ts"
+import { LoginScreen, SignupScreen } from "../../screens.tsx"
+import { env } from "../../env.ts"
+import * as act from "../../lib/actions.ts"
+import { googleProvider } from "../../lib/auth.ts"
+import { signInWithPassword, signUpWithPassword, upsertFromGoogle } from "../../lib/users.ts"
+import { routes } from "../../routes.ts"
+import { fail, formOf, go, signInAs, signOut, takeError, userOf, type Ctx } from "../../request.ts"
 
 export default createController(routes.auth, {
 	actions: {

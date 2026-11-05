@@ -42,7 +42,7 @@ export const IncomeRow = view<{ s: State; i: Income }>(({ s, i }) => (
 	</div>
 ))
 
-export const ExtraHoursControl = view<{ s: State; x: Source; row?: Income }>(({ s, x, row }) => {
+export const ExtraHoursControl = view<{ s: State; x: Source; row?: { hours?: number } }>(({ s, x, row }) => {
 	const rate = rateOf(x)
 	if (rate <= 0 && !isFixed(x.type)) return null
 	const h = row?.hours ?? 0
@@ -88,6 +88,8 @@ export const ExtraHoursControl = view<{ s: State; x: Source; row?: Income }>(({ 
 const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 	const got = gotToday(s, x)
 	const sum = got.reduce((a, i) => a + i.amount, 0)
+	const pend = s.money?.pending.find((p) => p.id === x.id)
+	const pendToday = pend && pend.today > 0 ? pend : null
 	const fixed = srcAmount(x)
 	const cur = s.user.currency
 	const amt = (n: number) => (
@@ -108,6 +110,18 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 			<>
 				{amt(x.amount)}
 				<span></span>
+			</>
+		)
+	}
+	if (pendToday) {
+		return (
+			<>
+				<span class="hm-added-tag" title="On hold today">
+					{amt(pendToday.today)}
+				</span>
+				<button type="button" class="xs outline hspan" disabled>
+					On hold
+				</button>
 			</>
 		)
 	}
@@ -157,21 +171,23 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const fixedSrc = isFixed(x.type)
 	const all = gotToday(s, x)
 	const got = all[0]
+	const pend = s.money?.pending.find((p) => p.id === x.id)
+	const pendToday = pend && pend.today > 0 ? pend : null
+	const row = got ?? (pendToday ? { hours: pendToday.hours } : undefined)
 	const cur = s.user.currency
 	const exo = x.type === "exoclick"
 	const rate = rateOf(x)
+	const hrs = row?.hours ?? 0
 	const sub = exo
 		? exoSub(s, x)
 		: fixedSrc
-		? (got
-			? `${fmt(srcAmount(x))} ${cur}${got.hours ? ` · +${got.hours}h extra (${fmt(Math.round(got.hours * rate))} ${cur})` : ""}`
-			: `${fmt(srcAmount(x))} ${cur}${rate ? ` + ${fmt(rate)} / h` : ""}`)
+		? `${fmt(srcAmount(x))} ${cur}${hrs ? ` · +${hrs}h extra (${fmt(Math.round(hrs * rate))} ${cur})` : rate ? ` + ${fmt(rate)} / h` : ""}${pendToday && !got ? " · pending" : ""}`
 		: rate
-		? (got
-			? `${got.hours ? `+${got.hours}h extra (${fmt(Math.round(got.hours * rate))} ${cur})` : `${fmt(rate)} ${cur} / h`}`
+		? (hrs
+			? `+${hrs}h extra (${fmt(Math.round(hrs * rate))} ${cur})`
 			: `${fmt(rate)} ${cur} / hour`)
 		: ""
-	const manual = !fixedSrc && !exo && x.mode !== "auto" && !all.length
+	const manual = !fixedSrc && !exo && x.mode !== "auto" && !all.length && !pendToday
 	return (
 		<div class="sw dbw" data-exo={exo ? "1" : undefined}>
 			<div class="hr">
@@ -196,7 +212,7 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					</div>
 				</form>
 			) : null}
-			{(rate > 0 || fixedSrc) ? <ExtraHoursControl s={s} x={x} row={got} /> : null}
+			{(rate > 0 || fixedSrc) ? <ExtraHoursControl s={s} x={x} row={row} /> : null}
 		</div>
 	)
 })
@@ -277,8 +293,8 @@ const SourceFields = view<{ s: State }>(({ s }) => (
 	</>
 ))
 
-const SourceForm = view<{ s: State }>(({ s }) => (
-	<form method="post" action="/income" class="sf xfm" data-kind="fixed" data-adp hidden>
+const SourceForm = view<{ s: State; id?: string }>(({ s, id }) => (
+	<form id={id} method="post" action="/income" class="sf xfm" data-kind="fixed" data-adp hidden>
 		<SourceFields s={s} />
 	</form>
 ))
@@ -504,9 +520,7 @@ export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 						<Icon name="plus" /> Add source
 					</button>
 				</div>
-				<div id="sf-src-add" class="adp" hidden>
-					<SourceForm s={s} />
-				</div>
+				<SourceForm s={s} id="sf-src-add" />
 				<div class="income-sources-list" style={{ marginTop: "12px" }}>
 					{s.sources.length ? (
 						s.sources.map((x) => <ManageRow key={x.id} s={s} x={x} />)
@@ -533,21 +547,23 @@ const SrcTile = view<{ s: State; x: Source }>(({ s, x }) => {
 	const cur = s.user.currency
 	const all = gotToday(s, x)
 	const got = all[0]
+	const pend = s.money?.pending.find((p) => p.id === x.id)
+	const pendToday = pend && pend.today > 0 ? pend : null
 	const sum = all.reduce((a, i) => a + i.amount, 0)
 	const exo = x.type === "exoclick"
 	const auto = !exo && x.mode === "auto"
 	const fixedSrc = isFixed(x.type)
 	const fixed = srcAmount(x)
 	const rate = rateOf(x)
-	const shown = auto ? x.amount : sum
-	const filled = exo || auto || all.length > 0
+	const shown = auto ? x.amount : all.length ? sum : pendToday ? pendToday.today : 0
+	const filled = exo || auto || all.length > 0 || !!pendToday
 	const bad = exo && !!s.exo[x.id]
+	const hours = got?.hours ?? pendToday?.hours ?? 0
+	const pendRow = pendToday ? { hours: pendToday.hours } : undefined
 	const sub = exo
 		? exoSub(s, x)
 		: fixedSrc
-		? got?.hours
-			? `+${got.hours}h extra`
-			: `${fmt(fixed)} ${cur}${rate ? ` + ${fmt(rate)}/h` : ""}`
+		? `${hours ? `+${hours}h (${fmt(Math.round(hours * rate))} ${cur}) · ` : ""}${fmt(fixed)} ${cur}${rate ? ` + ${fmt(rate)}/h` : ""}${pendToday && !got ? " · pending" : ""}`
 		: auto
 		? x.every === "month"
 			? "monthly"
@@ -555,95 +571,119 @@ const SrcTile = view<{ s: State; x: Source }>(({ s, x }) => {
 		: rate
 		? `${fmt(rate)} ${cur} / h`
 		: "manual"
-	const manual = !fixedSrc && !exo && !auto && !all.length
+	const manual = !fixedSrc && !exo && !auto && !all.length && !pendToday
 	return (
 		<div class="hm-src dbw" data-exo={exo ? "1" : undefined}>
-			<div class="hm-src-top">
-				<b>{x.name}</b>
-				{got && !auto && !exo ? (
-					<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
-						<Hid s={s} id={got.id} />
-						<Submit class="hm-src-x" aria-label={`Undo ${x.name}`}>
-							<Icon name="revert" />
-						</Submit>
-					</form>
-				) : null}
+			<div class="hm-src-main">
+				<div class="hm-src-info">
+					<div class="hm-src-name">
+						<b>{x.name}</b>
+						{hours > 0 ? (
+							<span class="hx-chip-on">
+								<Icon name="clock" />
+								{hours}h
+							</span>
+						) : (
+							<span class="tag">{tagOf(x)}</span>
+						)}
+					</div>
+					{sub ? <div class={bad ? "hm-src-sub neg" : "hm-src-sub"}>{sub}</div> : null}
+				</div>
+				<div class="hm-src-act">
+					<div class={filled ? "hm-src-amt" : "hm-src-amt none"}>
+						{filled ? `+${fmt(shown)}` : "—"}
+						<small>{cur}</small>
+					</div>
+					{bad ? (
+						<Link class="hm-src-btn" href="/income">
+							Fix
+						</Link>
+					) : null}
+					{fixedSrc ? (
+						got || pendToday ? (
+							<button type="button" class="xs outline" disabled>
+								{got ? "Added" : "On hold"}
+							</button>
+						) : (
+							<form method="post" action="/income/add">
+								<Back s={s} />
+								<input type="hidden" name="source_id" value={x.id} />
+								<Submit class="xs outline hm-src-btn">Add {fmt(fixed)}</Submit>
+							</form>
+						)
+					) : null}
+					{got && !auto && !exo ? (
+						<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(sum)} ${cur} from ${x.name}?`}>
+							<Hid s={s} id={got.id} />
+							<Submit class="hm-src-x" aria-label={`Undo ${x.name}`}>
+								<Icon name="revert" />
+							</Submit>
+						</form>
+					) : null}
+					{manual ? (
+						<button type="button" class="xs outline" data-tg>
+							Add
+						</button>
+					) : null}
+				</div>
 			</div>
-			<div class={filled ? "hm-src-amt" : "hm-src-amt none"}>
-				{filled ? `+${fmt(shown)}` : "—"}
-				<small>{cur}</small>
-			</div>
-			<div class={bad ? "hm-src-sub neg" : "hm-src-sub"}>{sub}</div>
-			{bad ? (
-				<Link class="hm-src-btn" href="/income">
-					Fix
-				</Link>
-			) : null}
-			{fixedSrc && !got ? (
-				<form method="post" action="/income/add" style={contents}>
+			{manual ? (
+				<form method="post" action="/income/add" class="ad" data-addp hidden>
 					<Back s={s} />
 					<input type="hidden" name="source_id" value={x.id} />
-					<Submit class="hm-src-btn">Add {fmt(fixed)}</Submit>
+					<div class="ln">
+						<input class="in" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
+						<Submit class="xs">Save</Submit>
+					</div>
 				</form>
 			) : null}
-			{manual ? (
-				<>
-					<button type="button" class="hm-src-btn" data-tg>
-						Add
-					</button>
-					<form method="post" action="/income/add" class="ad" data-addp hidden>
-						<Back s={s} />
-						<input type="hidden" name="source_id" value={x.id} />
-						<div class="ln">
-							<input class="in" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
-							<Submit class="hm-src-btn">Save</Submit>
-						</div>
-					</form>
-				</>
-			) : null}
-			{rate > 0 ? <ExtraHoursControl s={s} x={x} row={got} /> : null}
+			{rate > 0 ? <ExtraHoursControl s={s} x={x} row={got ?? pendRow} /> : null}
 		</div>
 	)
 })
 
 const OtherTile = view<{ s: State; i: Income }>(({ s, i }) => (
 	<div class="hm-src dbw">
-		<div class="hm-src-top">
-			<b>{i.source}</b>
-			<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} ${s.user.currency} from ${i.source}?`}>
-				<Hid s={s} id={i.id} />
-				<Submit class="hm-src-x" aria-label="Undo income">
-					<Icon name="revert" />
-				</Submit>
-			</form>
+		<div class="hm-src-main">
+			<div class="hm-src-info">
+				<div class="hm-src-name">
+					<b>{i.source}</b>
+					<span class="tag">manual</span>
+				</div>
+				<div class="hm-src-sub">{i.at ? hhmm(i.at) : "today"}</div>
+			</div>
+			<div class="hm-src-act">
+				<div class="hm-src-amt">
+					+{fmt(i.amount)}
+					<small>{s.user.currency}</small>
+				</div>
+				<form method="post" action="/income/delete" style={contents} data-confirm={`Undo +${fmt(i.amount)} ${s.user.currency} from ${i.source}?`}>
+					<Hid s={s} id={i.id} />
+					<Submit class="hm-src-x" aria-label="Undo income">
+						<Icon name="revert" />
+					</Submit>
+				</form>
+			</div>
 		</div>
-		<div class="hm-src-amt">
-			+{fmt(i.amount)}
-			<small>{s.user.currency}</small>
-		</div>
-		<div class="hm-src-sub">{i.at ? hhmm(i.at) : "today"}</div>
 	</div>
 ))
 
-export const IncomeStripCard = view<{ s: State; open?: boolean; storeKey?: string }>(({ s, open = true, storeKey = "income" }) => {
+export const IncomeStripCard = view<{ s: State; open?: boolean; storeKey?: string }>(({ s }) => {
 	const list = s.sources.filter((x) => x.active)
 	const others = s.incomesToday.filter((i) => !i.sourceId)
 	return (
-		<ExpandCard
-			storeKey={storeKey}
-			open={open}
-			title="Income sources"
-			label="Add source"
-			head={
-				<>
-					<b class="big2">{s.sources.length}</b>
-					<span class="lb">{`${list.length} active`}</span>
-				</>
-			}
-			form={<SourceForm s={s} />}
-		>
+		<article>
+			<header>
+				<strong>Income sources</strong>
+				<span class="hd-r">
+					<small>{`${list.length} active`}</small>
+					<Link href="/income" class="hm-src-manage">
+						Manage
+					</Link>
+				</span>
+			</header>
 			{list.length || others.length ? (
-				<div class="hm-src-row">
+				<div class="hm-src-list">
 					{list.map((x) => (
 						<SrcTile key={x.id} s={s} x={x} />
 					))}
@@ -652,8 +692,13 @@ export const IncomeStripCard = view<{ s: State; open?: boolean; storeKey?: strin
 					))}
 				</div>
 			) : (
-				<Empty>No sources yet. Tap + to add one.</Empty>
+				<div class="hm-src-empty">
+					<Empty>No sources yet.</Empty>
+					<Link href="/income" class="hm-src-manage">
+						Add one on the On hold page
+					</Link>
+				</div>
 			)}
-		</ExpandCard>
+		</article>
 	)
 })

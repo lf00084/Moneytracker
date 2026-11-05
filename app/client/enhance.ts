@@ -18,6 +18,13 @@ export function enhance(app: App) {
 	const d = document
 	const root = d.documentElement
 	const all = <T extends Element = Element>(sel: string, scope?: Element) => Array.from((scope ?? d).querySelectorAll<T>(sel))
+	// The mobile (.m) and desktop (.d) trees repeat the same element ids.
+	// Resolve inside the caller's tree first so the visible copy is the one
+	// that gets opened, filled or toggled.
+	const byId = <T extends Element>(id: string, from?: Element | null): T | null => {
+		const tree = from && from.closest ? (from.closest(".m") ?? from.closest(".d")) : null
+		return (tree ? tree.querySelector<T>(`#${CSS.escape(id)}`) : null) ?? (d.getElementById(id) as T | null)
+	}
 
 	// ---- theme -------------------------------------------------------------
 	const setTheme = (t: string) => {
@@ -191,7 +198,7 @@ export function enhance(app: App) {
 		}
 		if ((q = t.closest("[data-bigadd]"))) {
 			const tf = q.getAttribute("data-for")
-			const ap = (tf ? d.getElementById(tf) : q.closest(".bgc")?.querySelector("[data-adp]")) as HTMLElement | null
+			const ap = (tf ? byId<HTMLElement>(tf, q) : q.closest(".bgc")?.querySelector("[data-adp]")) as HTMLElement | null
 			if (ap) {
 				ap.hidden = !ap.hidden
 				q.classList.toggle("on", !ap.hidden)
@@ -332,8 +339,8 @@ export function enhance(app: App) {
 	})
 
 	// ---- bottom sheets -----------------------------------------------------
-	const openSheet = (id: string) => {
-		const el = d.getElementById(id) as HTMLElement | null
+	const openSheet = (id: string, from?: Element | null) => {
+		const el = byId<HTMLElement>(id, from)
 		if (!el) return
 		el.hidden = false
 		el.querySelector<HTMLInputElement>("input:not([type=hidden])")?.focus()
@@ -358,19 +365,19 @@ export function enhance(app: App) {
 		const st = t.closest("[data-sheet-trigger]") as HTMLElement | null
 		if (st) {
 			const kind = st.getAttribute("data-sheet-trigger")
-			if (kind === "bought") openSheet("sheet-bought")
-			else if (kind === "add-money") openSheet("sheet-add-money")
-			else if (kind === "transfer") openSheet("sheet-transfer")
-			else if (kind === "add-bank") openSheet("sheet-add-bank")
+			if (kind === "bought") openSheet("sheet-bought", st)
+			else if (kind === "add-money") openSheet("sheet-add-money", st)
+			else if (kind === "transfer") openSheet("sheet-transfer", st)
+			else if (kind === "add-bank") openSheet("sheet-add-bank", st)
 			else if (kind === "paid") {
 				const sId = st.getAttribute("data-source-id") || ""
 				const sName = st.getAttribute("data-source-name") || "Paid"
 				const sAmt = st.getAttribute("data-source-amt") || ""
 				const sUsd = st.getAttribute("data-source-usd") === "1"
-				const pTitle = d.getElementById("sheet-paid-title")
-				const pSelect = d.getElementById("sheet-paid-source-select") as HTMLSelectElement | null
-				const pText = d.getElementById("sheet-paid-pending-text")
-				const pAmt = d.getElementById("sheet-paid-amount") as HTMLInputElement | null
+				const pTitle = byId("sheet-paid-title", st)
+				const pSelect = byId("sheet-paid-source-select", st) as HTMLSelectElement | null
+				const pText = byId("sheet-paid-pending-text", st)
+				const pAmt = byId("sheet-paid-amount", st) as HTMLInputElement | null
 				let id = sId
 				let name = sName
 				let amt = sAmt
@@ -400,21 +407,21 @@ export function enhance(app: App) {
 					pAmt.placeholder = amt ? `Amount (blank = all ${usd ? "$" : ""}${(Number(amt) / 100).toFixed(2)})` : "Amount (blank = all)"
 				}
 				if (pText) pText.textContent = amt ? `Pending on hold: ${usd ? "$" : ""}${(Number(amt) / 100).toFixed(2)}` : "Select source and amount received"
-				openSheet("sheet-paid")
+				openSheet("sheet-paid", st)
 			} else if (kind === "adjust-pending") {
 				const sId = st.getAttribute("data-source-id") || ""
 				const sName = st.getAttribute("data-source-name") || "pending"
 				const sAmt = st.getAttribute("data-source-amt") || ""
 				const sUsd = st.getAttribute("data-source-usd") === "1"
-				const aTitle = d.getElementById("sheet-adjust-title")
-				const aSrc = d.getElementById("sheet-adjust-source-id") as HTMLInputElement | null
-				const aText = d.getElementById("sheet-adjust-current-text")
-				const aAmt = d.getElementById("sheet-adjust-amount") as HTMLInputElement | null
+				const aTitle = byId("sheet-adjust-title", st)
+				const aSrc = byId("sheet-adjust-source-id", st) as HTMLInputElement | null
+				const aText = byId("sheet-adjust-current-text", st)
+				const aAmt = byId("sheet-adjust-amount", st) as HTMLInputElement | null
 				if (aTitle) aTitle.textContent = `Adjust ${sName} pending`
 				if (aSrc) aSrc.value = sId
 				if (aAmt) aAmt.value = sAmt ? (Number(sAmt) / 100).toFixed(2) : ""
 				if (aText) aText.textContent = `Current pending: ${sUsd ? "$" : ""}${(Number(sAmt) / 100).toFixed(2)}`
-				openSheet("sheet-adjust")
+				openSheet("sheet-adjust", st)
 			}
 			return
 		}
@@ -427,14 +434,14 @@ export function enhance(app: App) {
 			const bDef = btile.getAttribute("data-bank-default") === "1"
 			const bIcon = btile.getAttribute("data-bank-icon") || ""
 			const set = (id: string, v: string) => {
-				const el = d.getElementById(id) as HTMLInputElement | null
+				const el = byId<HTMLInputElement>(id, btile)
 				if (el) el.value = v
 			}
-			const sbn = d.getElementById("sheet-bank-name")
-			const sbb = d.getElementById("sheet-bank-bal")
-			const sbIconPrev = d.getElementById("sheet-bank-icon-preview")
-			const sbDefForm = d.getElementById("sheet-bank-default-form") as HTMLElement | null
-			const sbDelForm = d.getElementById("sheet-bank-delete-form") as HTMLElement | null
+			const sbn = byId("sheet-bank-name", btile)
+			const sbb = byId("sheet-bank-bal", btile)
+			const sbIconPrev = byId("sheet-bank-icon-preview", btile)
+			const sbDefForm = byId("sheet-bank-default-form", btile) as HTMLElement | null
+			const sbDelForm = byId("sheet-bank-delete-form", btile) as HTMLElement | null
 			if (sbn) sbn.textContent = bName
 			if (sbb) sbb.textContent = `${(Number(bBal) / 100).toFixed(2)} MAD`
 			set("sheet-bank-name", bName)
@@ -445,7 +452,7 @@ export function enhance(app: App) {
 			if (sbIconPrev) sbIconPrev.innerHTML = bIcon ? `<img src="${bIcon}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" />` : ""
 			if (sbDefForm) sbDefForm.hidden = bDef || bCash
 			if (sbDelForm) sbDelForm.hidden = bCash
-			openSheet("sheet-bank-actions")
+			openSheet("sheet-bank-actions", st)
 			return
 		}
 		const rad = t.closest("[data-from-radio]") as HTMLInputElement | null
@@ -463,7 +470,7 @@ export function enhance(app: App) {
 	d.addEventListener("input", (e) => {
 		const inp = e.target as HTMLElement
 		if (inp.id === "sheet-bank-icon-input") {
-			const prev = d.getElementById("sheet-bank-icon-preview")
+			const prev = byId("sheet-bank-icon-preview", inp)
 			if (prev) prev.innerHTML = (inp as HTMLInputElement).value ? `<img src="${(inp as HTMLInputElement).value}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" />` : ""
 		}
 		const form = inp.closest?.("form")
@@ -483,9 +490,9 @@ export function enhance(app: App) {
 		const sel = (e.target as HTMLElement).closest?.("#sheet-paid-source-select") as HTMLSelectElement | null
 		if (!sel) return
 		const opt = sel.options[sel.selectedIndex]
-		const pTitle = d.getElementById("sheet-paid-title")
-		const pText = d.getElementById("sheet-paid-pending-text")
-		const pAmt = d.getElementById("sheet-paid-amount") as HTMLInputElement | null
+		const pTitle = byId("sheet-paid-title", sel)
+		const pText = byId("sheet-paid-pending-text", sel)
+		const pAmt = byId<HTMLInputElement>("sheet-paid-amount", sel)
 		if (opt && opt.value) {
 			const sName = opt.getAttribute("data-name") || opt.text.split(" (")[0] || "paid"
 			const sAmt = opt.getAttribute("data-amt") || ""
@@ -523,7 +530,7 @@ export function enhance(app: App) {
 	const transferCheck = (tf: HTMLFormElement, show: boolean) => {
 		const fromEl = tf.querySelector<HTMLInputElement>("[name=from],[name=from_bank]")
 		const toEl = tf.querySelector<HTMLInputElement>("[name=to],[name=to_bank]")
-		const errEl = d.getElementById("transfer-error")
+		const errEl = byId<HTMLElement>("transfer-error", tf)
 		if (!errEl) return
 		if (fromEl && toEl && fromEl.value && fromEl.value === toEl.value) {
 			errEl.textContent = "From and To cannot be the same bank."
@@ -534,7 +541,7 @@ export function enhance(app: App) {
 		const tf = (e.target as HTMLElement).closest?.("#sheet-transfer-form") as HTMLFormElement | null
 		if (!tf) return
 		const amtEl = tf.querySelector<HTMLInputElement>("[name=amount]")
-		const errEl = d.getElementById("transfer-error")
+		const errEl = byId<HTMLElement>("transfer-error", tf)
 		const fromEl = tf.querySelector<HTMLInputElement>("[name=from],[name=from_bank]")
 		const toEl = tf.querySelector<HTMLInputElement>("[name=to],[name=to_bank]")
 		if (fromEl && toEl && fromEl.value && fromEl.value === toEl.value) {

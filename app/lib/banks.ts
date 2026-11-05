@@ -8,7 +8,7 @@ import { id, parseJson, rowsOf, text } from "./util.ts"
 type Result = Promise<string | void>
 
 export type BankView = { id: string; name: string; balance: number; isDefault: boolean; cash: boolean; iconUrl: string }
-export type PendingView = { id: string; name: string; usd: boolean; earned: number; paid: number; left: number; madLeft: number; due: string; overdue: number; payDays: number }
+export type PendingView = { id: string; name: string; usd: boolean; earned: number; paid: number; left: number; madLeft: number; due: string; overdue: number; payDays: number; today: number; hours: number }
 export type BankMoveView = { id: string; bank: string; amount: number; kind: string; note: string; day: string; at: number; ref: string }
 export type PaymentView = { id: string; source: string; amount: number; usd: boolean; bank: string; day: string; at: number }
 export type LooseMove = { id: string; kind: string; usdt: number; mad: number; pay: string; day: string; fee: number }
@@ -119,18 +119,18 @@ export async function bankTotal(uid: string, setup: Setup | null) {
 export async function pendingList(uid: string, usdRate: number, t: string): Promise<PendingView[]> {
 	const [srcs, rows, pays, adjusts] = await Promise.all([
 		db.findMany(incomeSources, { where: { user_id: uid } }),
-		db.exec(sql`select source_id as k, day, amount_minor as m, usd_minor as u from incomes where user_id = ${uid} and source_id is not null order by day asc`),
+		db.exec(sql`select source_id as k, day, amount_minor as m, usd_minor as u, cast(coalesce(json_extract(meta, '$.hours'), 0) as real) as h from incomes where user_id = ${uid} and source_id is not null order by day asc`),
 		db.exec(sql`select source_id as b, coalesce(sum(amount_minor), 0) as s from source_payments where user_id = ${uid} group by source_id`),
 		db.exec(sql`select source_id as b, coalesce(sum(amount_minor), 0) as s from source_adjusts where user_id = ${uid} group by source_id`),
 	])
 
 	const paid = new Map(pairs(pays))
 	const adj = new Map(pairs(adjusts))
-	const by = new Map<string, { day: string; m: number; u: number }[]>()
+	const by = new Map<string, { day: string; m: number; u: number; h: number }[]>()
 	for (const r of rowsOf(rows)) {
 		const k = String(r.k ?? r[0] ?? "")
 		const list = by.get(k) ?? []
-		list.push({ day: String(r.day ?? r[1] ?? ""), m: num(r.m ?? r[2]), u: num(r.u ?? r[3]) })
+		list.push({ day: String(r.day ?? r[1] ?? ""), m: num(r.m ?? r[2]), u: num(r.u ?? r[3]), h: num(r.h) })
 		by.set(k, list)
 	}
 
@@ -138,7 +138,7 @@ export async function pendingList(uid: string, usdRate: number, t: string): Prom
 	for (const s of srcs) {
 		if (isInstant(s.config)) continue
 		const usd = s.type === "exoclick"
-		const list = (by.get(s.id) ?? []).map((x) => ({ day: x.day, v: usd ? x.u : x.m }))
+		const list = (by.get(s.id) ?? []).map((x) => ({ day: x.day, v: usd ? x.u : x.m, h: x.h }))
 		const earned = list.reduce((a, x) => a + x.v, 0)
 		const done = paid.get(s.id) ?? 0
 		const netAdj = adj.get(s.id) ?? 0
@@ -167,6 +167,8 @@ export async function pendingList(uid: string, usdRate: number, t: string): Prom
 			due: payDays > 0 ? due : "",
 			overdue,
 			payDays,
+			today: list.find((x) => x.day === t)?.v ?? 0,
+			hours: list.find((x) => x.day === t)?.h ?? 0,
 		})
 	}
 	return out.sort((a, b) => b.madLeft - a.madLeft)

@@ -18,6 +18,8 @@ export const env = {
 	GOOGLE_CLIENT_ID: getVal("GOOGLE_CLIENT_ID"),
 	GOOGLE_CLIENT_SECRET: getVal("GOOGLE_CLIENT_SECRET"),
 	APP_ORIGIN: getVal("APP_ORIGIN", "http://localhost:3000"),
+	BINANCE_PROXY_URL: getVal("BINANCE_PROXY_URL").replace(/\/$/, ""),
+	BINANCE_PROXY_SECRET: getVal("BINANCE_PROXY_SECRET"),
 }
 
 export const missingEnv = () => (["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "SESSION_SECRET"] as const).filter((k) => !env[k])

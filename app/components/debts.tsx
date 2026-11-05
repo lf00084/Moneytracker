@@ -35,7 +35,7 @@ const DebtPanel = view<DebtProps & { kind: "add" | "pay" }>(({ s, d, kind, manag
 					) : null}
 					<span class="mu">{unit}</span>
 				</div>
-				<Submit class="btn xs">{pay ? "Pay" : "Add"}</Submit>
+				<Submit class="xs">{pay ? "Pay" : "Add"}</Submit>
 				{manage ? (
 					<Submit class="ub" formaction="/debts/clear" formnovalidate data-confirm-btn={`Remove ${d.person} from the list without marking it paid?`} aria-label="Remove without paying" title="Remove without paying">
 						<Icon name="trash" />
@@ -64,7 +64,7 @@ const DebtRow = view<DebtProps>(({ s, d, manage }) => {
 						<i style={{ width: `${debtPct(d)}%` }}></i>
 					</div>
 				</div>
-				<button type="button" class="btn xs o" data-pay>
+				<button type="button" class="xs outline" data-pay>
 					Pay
 				</button>
 			</div>
@@ -85,7 +85,7 @@ const AddDebtPanel = view<{ s: State }>(({ s }) => (
 			<input class="in" name="amount" data-price placeholder="Debt amount" inputmode="decimal" autocomplete="off" required />
 			<span class="mu">{s.user.currency}</span>
 		</div>
-		<Submit class="btn full">Add</Submit>
+		<Submit class="full">Add</Submit>
 	</form>
 ))
 
@@ -124,7 +124,7 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey, manage = false }) 
 export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false }) => {
 	const c = calc(s)
 	return (
-		<div class="sc sc-grey card-grey bgc">
+		<article class="sc-grey card-grey bgc">
 			<BigAdd label="Add debt" />
 			<div class="ct">
 				<details data-keep-open={storeKey} open={open ? true : undefined}>
@@ -141,7 +141,7 @@ export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false })
 				</details>
 				<AddDebtPanel s={s} />
 			</div>
-		</div>
+		</article>
 	)
 })
 
@@ -152,7 +152,7 @@ export const RoadCard = view<{ s: State }>(({ s }) => {
 		...s.debts.filter((d) => d.kind === "money").map((d) => ({ key: `d${d.id}`, text: `${d.person} ${debtPct(d)}%` })),
 	]
 	return (
-		<div class="cd jarc">
+		<article class="jarc">
 			<i class="jar" style={{ width: `${c.pct}%` }}></i>
 			<div class="jin">
 				<div class="tg">Road to goals</div>
@@ -175,6 +175,6 @@ export const RoadCard = view<{ s: State }>(({ s }) => {
 					) : null}
 				</div>
 			</div>
-		</div>
+		</article>
 	)
 })

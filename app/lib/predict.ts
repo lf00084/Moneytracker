@@ -1,5 +1,6 @@
 import { sql } from "remix/data-table"
-import { banks, db, moveHints, payMaps, predictAccount, predictDays, predictMoves, users } from "../db/index.ts"
+import { env } from "../env.ts"
+import { banks, db, payMaps, predictAccount, predictChecks, predictDays, predictMoves, users } from "../db/index.ts"
 import { bankResolver } from "./banks.ts"
 import { decryptSecret, encryptSecret } from "./crypto.ts"
 import { toMinor } from "./money.ts"
@@ -17,6 +18,17 @@ const WINDOW = 29 * DAY
 const WINDOWS = 6
 const PAGE = 100
 const PAGES = 5
+// When a VPS proxy is configured, every Binance call goes through it so the
+// Cloudflare Worker's IP is never rate-limited by Binance. The proxy signs
+// requests with the keys it holds; we only send timestamped queries.
+const proxyUrl = (path: string) => `${env.BINANCE_PROXY_URL}${path}`
+const proxyHeaders = (apiKey: string, secret: string): Record<string, string> => ({
+	Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}`,
+	"X-Binance-Key": apiKey,
+	"X-Binance-Secret": secret,
+})
+const useProxy = () => !!env.BINANCE_PROXY_URL && !!env.BINANCE_PROXY_SECRET
+
 const lastTry = new Map<string, number>()
 const rates = new Map<string, { v: number; exp: number; at: number }>()
 
@@ -41,15 +53,6 @@ export type WalletDay = {
 	totalEarnedMad?: number
 	totalEarnedUsdt?: number
 	balance: number
-	transfersUsdt?: number
-}
-
-export type MoveHintView = {
-	id: string
-	kind: "to_predict" | "to_funding"
-	usdt: number
-	foundAt: number
-	status: string
 }
 
 export type WalletView = {
@@ -80,9 +83,10 @@ export type WalletView = {
 	soldUsdt: number
 	madSpent: number
 	madGot: number
+	checkedToday: boolean
+	mineRate: number
 	days: WalletDay[]
 	moves: WalletMove[]
-	openHints: MoveHintView[]
 }
 
 const cents = (v: unknown) => Math.round((Number(v) || 0) * 100)
@@ -109,7 +113,8 @@ async function syncServerTime() {
 	try {
 		const c = new AbortController()
 		const timer = setTimeout(() => c.abort(), 4000)
-		const r = await fetch(`${BASE}/api/v3/time`, { signal: c.signal })
+		const timeUrl = useProxy() ? proxyUrl("/binance/api/v3/time") : `${BASE}/api/v3/time`
+		const r = await fetch(timeUrl, useProxy() ? { signal: c.signal, headers: { Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}` } } : { signal: c.signal })
 		clearTimeout(timer)
 		if (r.ok) {
 			const data: any = await r.json()
@@ -135,11 +140,14 @@ async function call(apiKey: string, secret: string, path: string, params: Record
 	const c = new AbortController()
 	const timer = setTimeout(() => c.abort(), 8000)
 	try {
-		const fullQuery = `${query}&signature=${signature}`
-		const url = method === "GET" ? `${BASE}${path}?${fullQuery}` : `${BASE}${path}`
+		const throughProxy = useProxy()
+		const fullQuery = throughProxy ? query : `${query}&signature=${signature}`
+		const url = throughProxy ? proxyUrl(`/binance${path}${method === "GET" ? `?${fullQuery}` : ""}`) : method === "GET" ? `${BASE}${path}?${fullQuery}` : `${BASE}${path}`
 		const init: RequestInit = {
 			method,
-			headers: { "X-MBX-APIKEY": apiKey, ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
+			headers: throughProxy
+				? { ...proxyHeaders(apiKey, secret), ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }
+				: { "X-MBX-APIKEY": apiKey, ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
 			signal: c.signal,
 			...(method === "POST" ? { body: fullQuery } : {}),
 		}
@@ -158,9 +166,10 @@ async function ads(fiat: string, side: "BUY" | "SELL", payTypes: string[] = []):
 	const c = new AbortController()
 	const timer = setTimeout(() => c.abort(), 4000)
 	try {
-		const r = await fetch(ADS, {
+		const adsUrl = useProxy() ? proxyUrl("/p2p/bapi/c2c/v2/friendly/c2c/adv/search") : ADS
+		const r = await fetch(adsUrl, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: useProxy() ? { "Content-Type": "application/json", Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}` } : { "Content-Type": "application/json" },
 			body: JSON.stringify({ fiat, page: 1, rows: 10, tradeType: side, asset: "USDT", countries: [], proMerchantAds: false, shieldMerchantAds: false, filterType: "all", periods: [], additionalKycVerifyFilter: 0, publisherType: null, payTypes, classifies: ["mass", "profession"] }),
 			signal: c.signal,
 		})
@@ -267,6 +276,17 @@ export function p2pStats(moves: Row[], t: string, firstSellRate = 1100) {
 	}
 
 	return { profit: totalProfit, today: todayProfit, fees: totalFees, profitPerSell, p2pProfitByDay, transfersByDay }
+}
+
+// Average execution price of my own completed P2P sells — the same way Binance
+// values held USDT in local currency. Falls back to the market rate when I
+// have no sells yet.
+export function avgSellRate(moves: { kind: string; usdt_minor: number; mad_minor: number }[]): number {
+	const sells = moves.filter((m) => m.kind === "sell" && m.usdt_minor > 0)
+	if (!sells.length) return 0
+	const mad = sells.reduce((a, m) => a + m.mad_minor, 0)
+	const usdt = sells.reduce((a, m) => a + m.usdt_minor, 0)
+	return usdt > 0 ? Math.round(mad / usdt) : 0
 }
 
 async function fetchWallet(apiKey: string, secret: string, known: string): Promise<{ usdt: number; wallet: string } | string> {
@@ -394,23 +414,12 @@ async function importOrders(uid: string, apiKey: string, secret: string, from: n
 }
 
 export async function rebuild(uid: string) {
-	const [days, moves, hints, user] = await Promise.all([
+	const [days, moves] = await Promise.all([
 		db.findMany(predictDays, { where: { user_id: uid }, orderBy: ["day", "asc"], limit: 800 }),
 		db.findMany(predictMoves, { where: { user_id: uid }, limit: 5000 }),
-		db.findMany(moveHints, { where: { user_id: uid, status: "open" } }),
-		db.find(users, uid),
 	])
-	const dayStart = typeof user?.day_start === "number" && Number.isInteger(user.day_start) ? user.day_start : 5
-	// A detected-but-unconfirmed wallet transfer has already moved the balance.
-	// Adjust for open hints so a transfer never counts as earnings — confirming
-	// the hint swaps the adjustment for a real move, denying it drops the
-	// adjustment and lets the true profit/loss show.
-	const hintAdj = new Map<string, number>()
-	for (const h of hints) {
-		const hd = dayOf(h.found_at, dayStart)
-		const signed = h.kind === "to_funding" ? h.usdt_minor : -h.usdt_minor
-		hintAdj.set(hd, (hintAdj.get(hd) ?? 0) + signed)
-	}
+	// Internal Funding <-> Predict transfers are auto-recorded as moves, so the
+	// day formula below already excludes them from earnings.
 	let prevDay = ""
 	let prevBal = 0
 	for (const d of days) {
@@ -423,7 +432,7 @@ export async function rebuild(uid: string) {
 		const toPredict = ms.filter((m) => m.kind === "to_predict").reduce((a, m) => a + m.usdt_minor, 0)
 		const toFunding = ms.filter((m) => m.kind === "to_funding").reduce((a, m) => a + m.usdt_minor, 0)
 		const open = prevDay ? prevBal : d.balance_minor - toPredict + toFunding
-		const profit = d.balance_minor - open - toPredict + toFunding + (hintAdj.get(d.day) ?? 0)
+		const profit = d.balance_minor - open - toPredict + toFunding
 		if (d.open_minor !== open || d.profit_minor !== profit) {
 			await db.update(predictDays, d.id, { open_minor: open, profit_minor: profit })
 		}
@@ -468,15 +477,34 @@ async function fillDays(uid: string) {
 	}
 }
 
-async function checkMoveHints(uid: string, dPredict: number, dFunding: number, now: number) {
+// Funding <-> Predict wallets only move money between themselves: opposite,
+// near-equal deltas mean an internal transfer. Record it automatically so it
+// is excluded from earnings without asking the user anything.
+async function autoTransfers(uid: string, dPredict: number, dFunding: number, now: number, dayStart: number) {
 	const tol = 50
+	let kind: "to_predict" | "to_funding" | null = null
+	let amt = 0
 	if (dPredict < -tol && dFunding > tol && Math.abs(dPredict + dFunding) < 200) {
-		const amt = Math.abs(dPredict)
-		await db.create(moveHints, { id: id(), user_id: uid, kind: "to_funding", usdt_minor: amt, found_at: now, status: "open", resolved_at: 0 })
+		kind = "to_funding"
+		amt = Math.abs(dPredict)
 	} else if (dPredict > tol && dFunding < -tol && Math.abs(dPredict + dFunding) < 200) {
-		const amt = dPredict
-		await db.create(moveHints, { id: id(), user_id: uid, kind: "to_predict", usdt_minor: amt, found_at: now, status: "open", resolved_at: 0 })
+		kind = "to_predict"
+		amt = dPredict
 	}
+	if (!kind) return
+	await db.create(predictMoves, {
+		id: id(),
+		user_id: uid,
+		kind,
+		usdt_minor: amt,
+		mad_minor: 0,
+		order_no: "",
+		fee_minor: 0,
+		bank_id: "",
+		pay: "internal transfer",
+		day: dayOf(now, dayStart),
+		created_at: now,
+	})
 }
 
 async function saveDay(uid: string, balance: number, now: number) {
@@ -523,7 +551,7 @@ export async function syncPredict(uid: string, force = false): Promise<void> {
 		const dP = predictUsdt - prevP
 		const dF = fundingMinor - prevF
 
-		await checkMoveHints(uid, dP, dF, now)
+		await autoTransfers(uid, dP, dF, now, typeof u?.day_start === "number" && Number.isInteger(u.day_start) ? u.day_start : 5)
 
 		const lastError = [
 			typeof rFunding === "string" && rFunding ? `Funding: ${rFunding}` : "",
@@ -555,10 +583,15 @@ export async function syncAllPredict(): Promise<void> {
 }
 
 export async function usdtValueMad(uid: string): Promise<number> {
-	const [a, u] = await Promise.all([db.findOne(predictAccount, { where: { user_id: uid } }), db.find(users, uid)])
+	const [a, u, sells] = await Promise.all([
+		db.findOne(predictAccount, { where: { user_id: uid } }),
+		db.find(users, uid),
+		db.findMany(predictMoves, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 500 }),
+	])
 	if (!a) return 0
-	const fallback = Number(u?.usdt_rate_minor) > 0 ? Number(u?.usdt_rate_minor) : 1100
-	const { rate } = await marketRate(String(u?.currency || "MAD").toUpperCase(), fallback)
+	const fallback = Number(u?.usdt_rate_minor ?? 0) > 0 ? Number(u?.usdt_rate_minor ?? 0) : 1100
+	const mine = avgSellRate(sells)
+	const { rate } = mine > 0 ? { rate: mine } : await marketRate(String(u?.currency || "MAD").toUpperCase(), fallback)
 	const totalUsdt = (a.usdt_minor || 0) + (a.funding_minor || 0)
 	return toMad(totalUsdt, rate)
 }
@@ -591,14 +624,16 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		if ((norm.includes("BMCE") || norm.includes("AFRICA")) && !payTypes.includes("BMCE")) payTypes.push("BMCE")
 	}
 
-	const [a, days, moves, market, hints] = await Promise.all([
+	const [a, days, moves, market, checks] = await Promise.all([
 		db.findOne(predictAccount, { where: { user_id: uid } }),
 		db.findMany(predictDays, { where: { user_id: uid }, orderBy: ["day", "desc"], limit: 400 }),
 		db.findMany(predictMoves, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 5000 }),
 		marketRate(user.currency.toUpperCase(), user.usdt_rate, payTypes),
-		db.findMany(moveHints, { where: { user_id: uid, status: "open" }, orderBy: ["found_at", "desc"] }),
+		db.findOne(predictChecks, { where: { id: `${uid}:${today(user.day_start)}` } }),
 	])
 	const t = today(user.day_start)
+	const mineRate = avgSellRate(moves)
+	const rate = mineRate > 0 ? mineRate : market.rate
 	const buys = moves.filter((m) => m.kind === "buy")
 	const sells = moves.filter((m) => m.kind === "sell")
 	const ins = moves.filter((m) => m.kind === "in")
@@ -606,18 +641,11 @@ export async function loadWallet(user: User): Promise<WalletView> {
 	const fundingUsdt = a?.funding_minor ?? 0
 	const totalUsdt = predictUsdt + fundingUsdt
 
-		const st = p2pStats(moves, t, market.rate)
-		// Open (unconfirmed) transfer hints are already excluded from profit in
-		// rebuild(); show them in the transfers column so the daily view matches.
-		const hintTransfers = new Map<string, number>()
-		for (const h of hints) {
-			const hd = dayOf(h.found_at, user.day_start)
-			hintTransfers.set(hd, (hintTransfers.get(hd) ?? 0) + h.usdt_minor)
-		}
+		const st = p2pStats(moves, t, rate)
 	const predictToday = days.find((d) => d.day === t)?.profit_minor ?? 0
 	const predictAll = days.reduce((x, d) => x + d.profit_minor, 0)
-	const predictTodayMad = toMad(predictToday, market.rate)
-	const predictAllMad = toMad(predictAll, market.rate)
+	const predictTodayMad = toMad(predictToday, rate)
+	const predictAllMad = toMad(predictAll, rate)
 
 	// Build daily earnings for all days with activity
 	const allDayKeys = new Set<string>()
@@ -634,10 +662,9 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		const d = daysMap.get(dayKey)
 		const p2pProfitMad = st.p2pProfitByDay.get(dayKey) || 0
 		const predictProfitUsdt = d?.profit_minor ?? 0
-		const predictProfitMad = toMad(predictProfitUsdt, market.rate)
+		const predictProfitMad = toMad(predictProfitUsdt, rate)
 		const totalEarnedMad = predictProfitMad + p2pProfitMad
-		const totalEarnedUsdt = predictProfitUsdt + (market.rate > 0 ? Math.round((p2pProfitMad * 100) / market.rate) : 0)
-			const transfersUsdt = (st.transfersByDay.get(dayKey) || 0) + (hintTransfers.get(dayKey) || 0)
+		const totalEarnedUsdt = predictProfitUsdt + (rate > 0 ? Math.round((p2pProfitMad * 100) / rate) : 0)
 		return {
 			day: dayKey,
 			profit: predictProfitUsdt,
@@ -646,7 +673,6 @@ export async function loadWallet(user: User): Promise<WalletView> {
 			totalEarnedMad,
 			totalEarnedUsdt,
 			balance: d?.balance_minor ?? (dayKey === t ? predictUsdt : 0),
-			transfersUsdt,
 		}
 	})
 
@@ -657,14 +683,16 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		usdt: totalUsdt,
 		predictUsdt,
 		fundingUsdt,
-		predictMad: toMad(predictUsdt, market.rate),
-		fundingMad: toMad(fundingUsdt, market.rate),
+		predictMad: toMad(predictUsdt, rate),
+		fundingMad: toMad(fundingUsdt, rate),
 		syncedAt: a?.synced_at ?? 0,
-		rate: market.rate,
+		rate,
 		rateAt: market.at,
-		live: market.live,
+		live: mineRate > 0 ? false : market.live,
+		mineRate,
+		checkedToday: !!checks && checks.done === 1,
 		feePct: (a?.fee_bps ?? 20) / 100,
-		valueMad: toMad(totalUsdt, market.rate),
+		valueMad: toMad(totalUsdt, rate),
 		today: predictToday,
 		total: predictAll,
 		p2pToday: st.today,
@@ -691,7 +719,6 @@ export async function loadWallet(user: User): Promise<WalletView> {
 			at: m.created_at,
 			profit: st.profitPerSell.get(m.id),
 		})),
-		openHints: hints.map((h) => ({ id: h.id, kind: h.kind as any, usdt: h.usdt_minor, foundAt: h.found_at, status: h.status })),
 	}
 }
 
@@ -704,76 +731,6 @@ export async function addMove(uid: string, f: FormData, kind: "buy" | "sell"): P
 	const bank = pick ? await db.findOne(banks, { where: { id: pick, user_id: uid } }) : null
 	await db.create(predictMoves, { id: id(), user_id: uid, kind, usdt_minor: usdt, mad_minor: mad, order_no: "", fee_minor: 0, bank_id: bank?.id ?? "", pay: "", day: await todayFor(uid), created_at: Date.now() })
 	await rebuild(uid)
-}
-
-export async function moveToPredict(uid: string, f: FormData): Promise<string | void> {
-	const usdt = toMinor(f.get("usdt"))
-	if (!usdt || usdt <= 0) return "Enter USDT amount to move to Predict"
-	const u = await db.find(users, uid)
-	const { rate } = await marketRate(String(u?.currency || "MAD").toUpperCase(), Number(u?.usdt_rate_minor) || 1100)
-	await db.create(predictMoves, {
-		id: id(),
-		user_id: uid,
-		kind: "to_predict",
-		usdt_minor: usdt,
-		mad_minor: toMad(usdt, rate),
-		order_no: "",
-		fee_minor: 0,
-		bank_id: "",
-		pay: "",
-		day: await todayFor(uid),
-		created_at: Date.now(),
-	})
-	await rebuild(uid)
-}
-
-export async function moveToFunding(uid: string, f: FormData): Promise<string | void> {
-	const usdt = toMinor(f.get("usdt"))
-	if (!usdt || usdt <= 0) return "Enter USDT amount to move back to Funding"
-	const u = await db.find(users, uid)
-	const { rate } = await marketRate(String(u?.currency || "MAD").toUpperCase(), Number(u?.usdt_rate_minor) || 1100)
-	await db.create(predictMoves, {
-		id: id(),
-		user_id: uid,
-		kind: "to_funding",
-		usdt_minor: usdt,
-		mad_minor: toMad(usdt, rate),
-		order_no: "",
-		fee_minor: 0,
-		bank_id: "",
-		pay: "",
-		day: await todayFor(uid),
-		created_at: Date.now(),
-	})
-	await rebuild(uid)
-}
-
-export async function resolveHint(uid: string, f: FormData): Promise<string | void> {
-	const hid = text(f.get("id"), 36)
-	const yes = f.get("action") === "yes"
-	const hint = await db.findOne(moveHints, { where: { id: hid, user_id: uid } })
-	if (!hint) return
-	if (yes) {
-		const u = await db.find(users, uid)
-		const { rate } = await marketRate(String(u?.currency || "MAD").toUpperCase(), Number(u?.usdt_rate_minor) || 1100)
-		await db.create(predictMoves, {
-			id: id(),
-			user_id: uid,
-			kind: hint.kind,
-			usdt_minor: hint.usdt_minor,
-			mad_minor: toMad(hint.usdt_minor, rate),
-			order_no: "",
-			fee_minor: 0,
-			bank_id: "",
-			pay: "",
-			day: await todayFor(uid),
-			created_at: Date.now(),
-		})
-		await db.update(moveHints, hint.id, { status: "yes", resolved_at: Date.now() })
-		await rebuild(uid)
-	} else {
-		await db.update(moveHints, hint.id, { status: "no", resolved_at: Date.now() })
-	}
 }
 
 export async function fetchMethods(uid: string): Promise<Array<{ method: string; count: number; bankId: string }>> {
@@ -849,6 +806,16 @@ export async function saveFee(uid: string, f: FormData): Promise<string | void> 
 	const a = await db.findOne(predictAccount, { where: { user_id: uid } })
 	if (!a) return "Connect Binance first"
 	await db.update(predictAccount, uid, { fee_bps: bps, updated_at: Date.now() })
+}
+
+// Daily strategy confirmation: the user ticks "I did it today" once per day;
+// the Predict page then shows today's earned value and keeps refreshing it.
+export async function checkToday(uid: string): Promise<void> {
+	const day = await todayFor(uid)
+	const key = `${uid}:${day}`
+	const row = await db.findOne(predictChecks, { where: { id: key } })
+	if (row) await db.update(predictChecks, key, { done: row.done === 1 ? 0 : 1, done_at: row.done === 1 ? 0 : Date.now() })
+	else await db.create(predictChecks, { id: key, user_id: uid, day, done: 1, done_at: Date.now() })
 }
 
 export async function syncNow(uid: string): Promise<string | void> {

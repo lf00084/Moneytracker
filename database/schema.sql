@@ -368,3 +368,12 @@ CREATE TABLE IF NOT EXISTS pay_maps (
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS pay_maps_user_idx ON pay_maps(user_id);
+
+CREATE TABLE IF NOT EXISTS predict_checks (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day         TEXT NOT NULL,
+  done        INTEGER NOT NULL DEFAULT 0,
+  done_at     INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS predict_checks_uq ON predict_checks(user_id, day);

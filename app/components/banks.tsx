@@ -34,7 +34,7 @@ const Setup = view<{ s: State }>(({ s }) => (
 				<input class="in" value="Cash" disabled />
 				<input class="in" name="cash" placeholder="Cash now" inputmode="decimal" autocomplete="off" />
 			</div>
-			<Submit class="btn">Start</Submit>
+			<Submit >Start</Submit>
 		</form>
 	</Card>
 ))
@@ -93,14 +93,14 @@ const BankCard = view<{ s: State; m: MoneyView; b: BankView }>(({ s, m, b }) => 
 				<div class="sheet-live-line" data-live-total="plus">
 					Total: no change
 				</div>
-				<Submit class="btn">Add money</Submit>
+				<Submit >Add money</Submit>
 			</form>
 
 			<form method="post" action="/banks/set" style={col} novalidate>
 				<Back s={s} />
 				<input type="hidden" name="bank" value={b.id} />
 				<input class="in" name="balance" inputmode="decimal" placeholder={`Real balance now (${plain(b.balance)})`} autocomplete="off" />
-				<Submit class="btn o">Set real balance</Submit>
+				<Submit class="outline">Set real balance</Submit>
 			</form>
 
 			<form method="post" action="/banks/transfer" style={col} novalidate>
@@ -116,7 +116,7 @@ const BankCard = view<{ s: State; m: MoneyView; b: BankView }>(({ s, m, b }) => 
 					<input class="in" name="amount" placeholder="Amount" inputmode="decimal" autocomplete="off" />
 				</div>
 				<div class="sheet-live-line">Total: no change</div>
-				<Submit class="btn o">Move money</Submit>
+				<Submit class="outline">Move money</Submit>
 			</form>
 
 			{b.cash ? null : (
@@ -125,14 +125,14 @@ const BankCard = view<{ s: State; m: MoneyView; b: BankView }>(({ s, m, b }) => 
 						<Back s={s} />
 						<input type="hidden" name="bank" value={b.id} />
 						<input class="in" name="icon_url" value={b.iconUrl} placeholder="Icon URL (e.g. https://...)" autocomplete="off" />
-						<Submit class="btn o">Update icon</Submit>
+						<Submit class="outline">Update icon</Submit>
 					</form>
 
 					<form method="post" action="/banks/rename" style={col} novalidate>
 						<Back s={s} />
 						<input type="hidden" name="bank" value={b.id} />
 						<input class="in" name="name" value={b.name} autocomplete="off" />
-						<Submit class="btn o">Rename</Submit>
+						<Submit class="outline">Rename</Submit>
 					</form>
 				</>
 			)}
@@ -142,14 +142,14 @@ const BankCard = view<{ s: State; m: MoneyView; b: BankView }>(({ s, m, b }) => 
 					<form method="post" action="/banks/default" style={contents}>
 						<Back s={s} />
 						<input type="hidden" name="bank" value={b.id} />
-						<Submit class="btn o">Set as default</Submit>
+						<Submit class="outline">Set as default</Submit>
 					</form>
 				)}
 				{b.cash ? null : (
 					<form method="post" action="/banks/delete" style={contents} data-confirm={`Delete ${b.name}? Its balance must be 0.`}>
 						<Back s={s} />
 						<input type="hidden" name="bank" value={b.id} />
-						<Submit class="btn o neg">Delete</Submit>
+						<Submit class="outline neg">Delete</Submit>
 					</form>
 				)}
 			</div>
@@ -169,7 +169,7 @@ const AddBankForm = view<{ s: State }>(({ s }) => (
 					<span class="bk-ico-char">?</span>
 				</div>
 			</div>
-			<Submit class="btn">Add bank</Submit>
+			<Submit >Add bank</Submit>
 		</form>
 	</Card>
 ))
@@ -192,14 +192,14 @@ export const BanksScreen = view<{ s: State }>(({ s }) => {
 					<ErrorBanner s={s} />
 					<PageHeader title="Banks" back="/home" />
 					<Total s={s} m={m} />
-					<div class="cd">
+					<article>
 						<div class="cb">
 							<div class="tg" style={{ marginBottom: "8px" }}>Your banks and Cash</div>
 							{m.banks.map((b) => (
 								<BankCard key={b.id} s={s} m={m} b={b} />
 							))}
 						</div>
-					</div>
+					</article>
 					<AddBankForm s={s} />
 				</>
 			}
@@ -210,14 +210,14 @@ export const BanksScreen = view<{ s: State }>(({ s }) => {
 					<Total s={s} m={m} />
 					<div class="g2">
 						<div>
-							<div class="cd">
+							<article>
 								<div class="cb">
 									<div class="tg" style={{ marginBottom: "8px" }}>Your banks and Cash</div>
 									{m.banks.map((b) => (
 										<BankCard key={b.id} s={s} m={m} b={b} />
 									))}
 								</div>
-							</div>
+							</article>
 						</div>
 						<div>
 							<AddBankForm s={s} />

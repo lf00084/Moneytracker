@@ -24,9 +24,6 @@ export const NeedsYouChip = view<{ s: State }>(({ s }) => {
 			items.push({ label: `${late.length} late payment${late.length > 1 ? "s" : ""}`, href: "/income" })
 		}
 	}
-	if (w && w.openHints && w.openHints.length > 0) {
-		items.push({ label: `${w.openHints.length} move hint${w.openHints.length > 1 ? "s" : ""}`, href: "/trading#hints" })
-	}
 
 	if (!items.length) return null
 
@@ -395,7 +392,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="sheet-live-line" data-live-total="minus">
 						Total: no change
 					</div>
-					<Submit class="btn full">Record spend</Submit>
+					<Submit class="full">Record spend</Submit>
 				</form>
 			</div>
 		</div>
@@ -417,7 +414,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="sheet-live-line" data-live-total="plus">
 						Total: no change
 					</div>
-					<Submit class="btn full">Add money</Submit>
+					<Submit class="full">Add money</Submit>
 				</form>
 			</div>
 		</div>
@@ -461,7 +458,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="sheet-live-line" data-live-total="none">
 						Total: no change (inside my world)
 					</div>
-					<Submit class="btn full" type="submit">Move money</Submit>
+					<Submit class="full" type="submit">Move money</Submit>
 				</form>
 			</div>
 		</div>
@@ -504,7 +501,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="sheet-live-line" data-live-total="plus">
 						Total: no change
 					</div>
-					<Submit class="btn full" type="submit" id="sheet-paid-submit">Confirm paid</Submit>
+					<Submit class="full" type="submit" id="sheet-paid-submit">Confirm paid</Submit>
 				</form>
 			</div>
 		</div>
@@ -529,7 +526,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="sheet-live-line" data-live-total="none">
 						Total: no change (pending is on hold, not in total)
 					</div>
-					<Submit class="btn full">Save adjustment</Submit>
+					<Submit class="full">Save adjustment</Submit>
 				</form>
 			</div>
 		</div>
@@ -555,13 +552,13 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<form method="post" action="/banks/icon" class="ln" id="sheet-bank-icon-form" style={{ marginTop: "10px" }}>
 						<input type="hidden" name="id" id="sheet-bank-icon-id" />
 						<input class="in" name="icon_url" id="sheet-bank-icon-input" placeholder="Icon URL (e.g. https://...)" />
-						<Submit class="btn xs">Save icon</Submit>
+						<Submit class="xs">Save icon</Submit>
 					</form>
 					<div id="sheet-bank-icon-preview" style={{ marginTop: "6px" }}></div>
 
 					<form method="post" action="/banks/default" id="sheet-bank-default-form" style={{ marginTop: "12px" }}>
 						<input type="hidden" name="id" id="sheet-bank-default-id" />
-						<Submit class="btn full o" id="sheet-bank-default-btn">
+						<Submit class="full outline" id="sheet-bank-default-btn">
 							Set as default bank
 						</Submit>
 					</form>
@@ -574,7 +571,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 						data-confirm="Delete this bank? Its moves will be moved to Cash."
 					>
 						<input type="hidden" name="id" id="sheet-bank-delete-id" />
-						<Submit class="btn full dng" id="sheet-bank-delete-btn">
+						<Submit class="full dng" id="sheet-bank-delete-btn">
 							Delete bank
 						</Submit>
 					</form>
@@ -597,7 +594,7 @@ export const HomeSheets = view<{ s: State }>(({ s }) => (
 					<div class="ln" style={{ marginTop: "10px" }}>
 						<input class="in" name="icon_url" placeholder="Icon URL (optional)" autocomplete="off" />
 					</div>
-					<Submit class="btn full">Create bank</Submit>
+					<Submit class="full">Create bank</Submit>
 				</form>
 			</div>
 		</div>

@@ -12,7 +12,7 @@ const BinanceKeys = view<{ s: State; first: boolean }>(({ s, first }) => (
 		<input class="in" name="fee" inputmode="decimal" placeholder="P2P fee % (default 0.2)" autocomplete="off" />
 		<input class="in" name="days" inputmode="numeric" placeholder="Import P2P orders from the last N days (0 = new only)" autocomplete="off" />
 		<div class="wkn">Read-only with the prediction permission. Keep trading and withdrawals off.</div>
-		<Submit class="btn">{first ? "Connect" : "Save keys"}</Submit>
+		<Submit >{first ? "Connect" : "Save keys"}</Submit>
 	</form>
 ))
 
@@ -46,13 +46,13 @@ const Binance = view<{ s: State }>(({ s }) => {
 				<form method="post" action="/wallet/fee" style={col}>
 					<Back s={s} />
 					<Field label="P2P fee (%)" value={String(w.feePct)} name="fee" />
-					<Submit class="btn o">Save fee</Submit>
+					<Submit class="outline">Save fee</Submit>
 				</form>
 				<form method="post" action="/wallet/sync" style={col}>
 					<Back s={s} />
 					<div class="wkb">
-						<Submit class="btn">Sync now</Submit>
-						<Submit class="btn o" formaction="/wallet/forget" formnovalidate data-confirm-btn="Remove the Binance keys?">
+						<Submit >Sync now</Submit>
+						<Submit class="outline" formaction="/wallet/forget" formnovalidate data-confirm-btn="Remove the Binance keys?">
 							Remove
 						</Submit>
 					</div>
@@ -84,7 +84,7 @@ const ExoClick = view<{ s: State }>(({ s }) => {
 						<b>{x.name}</b>
 						<div class={s.exo[x.id] ? "lb neg" : "lb"}>{s.exo[x.id] || "Connected"}</div>
 						<input class="in" name="api_key" type="password" placeholder="New API key" autocomplete="off" />
-						<Submit class="btn o">Save key</Submit>
+						<Submit class="outline">Save key</Submit>
 					</form>
 				))}
 				<details class="wk" open={list.length ? undefined : true}>
@@ -98,7 +98,7 @@ const ExoClick = view<{ s: State }>(({ s }) => {
 						<input class="in" name="name" value="ExoClick" autocomplete="off" required />
 						<input class="in" name="api_key" type="password" placeholder="ExoClick API key" autocomplete="off" />
 						<div class="wkn">Saved encrypted. Counted in USD during the day, converted to {s.user.currency} when the day ends.</div>
-						<Submit class="btn">Add source</Submit>
+						<Submit >Add source</Submit>
 					</form>
 				</details>
 			</div>

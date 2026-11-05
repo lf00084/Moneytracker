@@ -29,7 +29,7 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					{it.done ? null : (
 						<form method="post" action="/goals/buy" style={contents} data-confirm={`Mark ${it.name} as bought? It will be added as a spend.`}>
 							{hid()}
-							<Submit class={ok ? "btn xs" : "btn xs off"} disabled={ok ? undefined : true}>
+							<Submit class={ok ? "xs" : "xs outline"} disabled={ok ? undefined : true}>
 								Bought
 							</Submit>
 						</form>
@@ -64,7 +64,7 @@ const ItemRow = view<{ s: State; it: GoalItem; manage: boolean }>(({ s, it, mana
 					<div class="ln">
 						<input class="in f" name="name" value={it.name} autocomplete="off" required />
 						<input class="in pr2" name="price" value={plain(it.price)} placeholder="Price" inputmode="decimal" autocomplete="off" required />
-						<Submit class="btn xs">Save</Submit>
+						<Submit class="xs">Save</Submit>
 					</div>
 				</form>
 			)}
@@ -124,7 +124,7 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 					<div class="ln">
 						<input class="in f" name="name" placeholder="Item to buy" autocomplete="off" required />
 						<input class="in pr2" name="price" placeholder="Price" inputmode="decimal" autocomplete="off" required />
-						<Submit class="btn xs">Add</Submit>
+						<Submit class="xs">Add</Submit>
 					</div>
 				</form>
 				<form method="post" action="/goals/edit" class="ad" data-payp hidden>
@@ -133,7 +133,7 @@ const GoalRow = view<{ s: State; g: Goal; manage: boolean }>(({ s, g, manage }) 
 					<label>Rename goal</label>
 					<div class="ln">
 						<input class="in f" name="name" value={g.title} autocomplete="off" required />
-						<Submit class="btn xs">Save</Submit>
+						<Submit class="xs">Save</Submit>
 					</div>
 				</form>
 			</div>
@@ -154,7 +154,7 @@ const GoalForm = view<{ s: State }>(({ s }) => (
 	<form method="post" action="/goals" class="sf xfm" data-adp hidden>
 		<Back s={s} />
 		<input class="in" name="name" placeholder="Goal name" autocomplete="off" required />
-		<Submit class="btn full">Add goal</Submit>
+		<Submit class="full">Add goal</Submit>
 	</form>
 ))
 

@@ -67,3 +67,15 @@ export const moveHints = table({
 		resolved_at: c.integer(),
 	},
 })
+
+export const predictChecks = table({
+	name: "predict_checks",
+	columns: {
+		id: c.varchar(60),
+		user_id: c.varchar(36),
+		day: c.varchar(10),
+		done: c.integer(),
+		done_at: c.integer(),
+	},
+	primaryKey: "id",
+})

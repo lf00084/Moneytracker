@@ -32,7 +32,7 @@ const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
 				</div>
 				<div class="ln" style={{ marginTop: "8px" }}>
 					<input class="in" type="date" name="day" value={t} max={t} required />
-					<Submit class="btn xs">Add buy</Submit>
+					<Submit class="xs">Add buy</Submit>
 				</div>
 			</form>
 			<form method="post" action="/history/income" style={{ marginTop: "14px" }}>
@@ -43,7 +43,7 @@ const DayForms = view<{ s: State; wide: boolean }>(({ s, wide }) => {
 				</div>
 				<div class="ln" style={{ marginTop: "8px" }}>
 					<input class="in" type="date" name="day" value={t} max={t} required />
-					<Submit class="btn xs">Add income</Submit>
+					<Submit class="xs">Add income</Submit>
 				</div>
 			</form>
 		</>

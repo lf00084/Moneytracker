@@ -74,9 +74,7 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
 				<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 				<link rel="stylesheet" href={FONTS} />
-				<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css" />
 				<link rel="stylesheet" href={`/assets/app.css?v=${V.css}`} />
-				{auth ? <link rel="stylesheet" href={`/assets/auth.css?v=${V.auth}`} /> : null}
 				{theme ? null : <script>{THEME_BOOT}</script>}
 			</head>
 			<body>
@@ -107,12 +105,14 @@ const LINKS = [
 export const Sidebar = view<{ active: DesktopTab }>(({ active }) => (
 	<aside class="sb d">
 		<Logo href="/home" />
-		{LINKS.map((l) => (
-			<Link key={l.key} class={active === l.key ? "sbl on" : "sbl"} href={l.href}>
-				<Icon name={l.icon} />
-				{l.label}
-			</Link>
-		))}
+		<nav class="sb-nav">
+			{LINKS.map((l) => (
+				<Link key={l.key} class={active === l.key ? "sbl on" : "sbl"} href={l.href} aria-current={active === l.key ? "page" : undefined}>
+					<Icon name={l.icon} />
+					{l.label}
+				</Link>
+			))}
+		</nav>
 		<div class="sp"></div>
 		<button type="button" class="sbl" data-theme-toggle>
 			<ThemeIcons />
@@ -161,7 +161,7 @@ type AuthLayoutProps = { title: string; path: string; desc: string; children?: R
 
 export const AuthLayout = view<AuthLayoutProps>(({ title, path, desc, children }) => (
 	<Document title={title} path={path} desc={desc} user={false} auth>
-		<div class="app">
+		<div class="app auth">
 			<main class="auth-main">{children}</main>
 		</div>
 	</Document>

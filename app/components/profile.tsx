@@ -10,14 +10,14 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 			<label>Balance ({s.user.currency})</label>
 			<input class="in f" name="balance" inputmode="decimal" value={plain(s.balance)} autocomplete="off" required />
 		</div>
-		<Submit class="btn full" style={{ marginTop: "14px" }}>
+		<Submit class="full" style={{ marginTop: "14px" }}>
 			Update balance
 		</Submit>
 	</form>
 ))
 
 export const BalanceEditCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
-	<div class="cd hm-balc">
+	<article class="hm-balc">
 		<div class="hm-bal">
 			<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
 				••••••
@@ -43,7 +43,7 @@ export const BalanceEditCard = view<{ s: State; edit?: boolean }>(({ s, edit = f
 				<BalanceForm s={s} />
 			</div>
 		) : null}
-	</div>
+	</article>
 ))
 
 const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s, cancel, showError = false }) => (
@@ -52,10 +52,10 @@ const ProfileForm = view<{ s: State; cancel: string; showError?: boolean }>(({ s
 		<Field label="Name" value={s.user.name} name="name" first />
 		<Field label="Email" value={s.user.email} type="email" name="email" />
 		<div style={{ display: "flex", gap: "10px", marginTop: "18px" }}>
-			<Submit class="btn" style={{ flex: "1" }}>
+			<Submit  style={{ flex: "1" }}>
 				Save
 			</Submit>
-			<Link class="btn o" style={{ flex: "1" }} href={cancel}>
+			<Link class="outline" style={{ flex: "1" }} href={cancel}>
 				Cancel
 			</Link>
 		</div>
@@ -79,7 +79,7 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 		</div>
 		<Field label="1 USD in MAD (ExoClick)" value={plain(s.user.usd_rate_minor)} name="usd_rate" />
 		<Field label="Week starts" value={s.user.week_start} name="week" />
-		<Submit class="btn" style={{ marginTop: "14px" }}>
+		<Submit  style={{ marginTop: "14px" }}>
 			Save
 		</Submit>
 	</form>
@@ -87,11 +87,11 @@ const PrefsForm = view<{ s: State }>(({ s }) => (
 
 const DataButtons = view(() => (
 	<div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-		<a class="btn o" style={{ flex: "1" }} href="/export.csv">
+		<a class="outline" style={{ flex: "1" }} href="/export.csv">
 			Export CSV
 		</a>
 		<form method="post" action="/account/delete" style={{ flex: "1", display: "flex" }} data-confirm="Delete your account and all your data? This cannot be undone.">
-			<Submit class="btn dng" style={{ flex: "1" }}>
+			<Submit class="dng" style={{ flex: "1" }}>
 				Delete account
 			</Submit>
 		</form>
@@ -184,14 +184,19 @@ export const SettingsDesktop = view<{ s: State }>(({ s }) => (
 					<ProfileForm s={s} cancel="/home" />
 				</Section>
 				<Section title="Account">
-					<Link class="btn o" href="/banks" style={{ marginBottom: "10px" }}>
-						Banks & pending
+					<Link class="li" href="/banks">
+						<span>Banks & pending</span>
+						<span class="mu">›</span>
 					</Link>
-					<Link class="btn o" href="/profile/api" style={{ marginBottom: "10px" }}>
-						API connections
+					<Link class="li" href="/profile/api">
+						<span>API connections</span>
+						<span class="mu">›</span>
 					</Link>
 					<form method="post" action="/logout">
-						<Submit class="btn o">Log out</Submit>
+						<Submit class="li">
+							<span class="neg">Log out</span>
+							<span class="mu">›</span>
+						</Submit>
 					</form>
 				</Section>
 			</div>

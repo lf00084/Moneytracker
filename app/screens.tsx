@@ -14,7 +14,8 @@ import { PadBody, PadComposer, type PadTab } from "./components/pad.tsx"
 import type { PadData } from "./lib/padmeta.ts"
 import type { User } from "./lib/users.ts"
 import { EditProfileMobile, ProfileMobile, SettingsDesktop, SettingsMobile } from "./components/profile.tsx"
-import { TradingBody } from "./components/trading.tsx"
+import { TodayCard, TradingBody } from "./components/trading.tsx"
+export { TodayCard }
 import { ErrorBanner, GoogleMark, Link, Logo, PageHeader, Section, Submit, view } from "./components/ui.tsx"
 import type { State } from "./lib/data.ts"
 import { fmt } from "./lib/money.ts"
@@ -267,11 +268,11 @@ export const SettingsScreen = view<{ s: State }>(({ s }) => (
 ))
 
 const PanelLoading = view<{ label: string }>(({ label }) => (
-	<div class="cd">
+	<article>
 		<div class="cb">
 			<div class="lb">{label}</div>
 		</div>
-	</div>
+	</article>
 ))
 
 // The API page connects to Binance (network latency), so its body streams in

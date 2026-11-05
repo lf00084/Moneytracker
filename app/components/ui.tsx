@@ -87,44 +87,48 @@ export const Logo = view<{ href: string }>(({ href }) => (
 	</Link>
 ))
 
+// Cards are Pico <article>: background, radius and shadow come from Pico's
+// card variables, and <header> inside gets Pico's sectioned header treatment.
 export const Card = view<{ title: RemixNode; class?: string; children?: RemixNode }>(({ title, class: cls = "", children }) => (
-	<div class={cls ? `cd ${cls}` : "cd"}>
-		<div class="tg">{title}</div>
-		<div class="cb">{children}</div>
-	</div>
+	<article class={cls || undefined}>
+		<header>
+			<strong>{title}</strong>
+		</header>
+		{children}
+	</article>
 ))
 
 export const Section = view<{ title: RemixNode; right?: RemixNode; class?: string; children?: RemixNode }>(({ title, right = "", class: cls = "", children }) => (
-	<div class={cls ? `sc ${cls}` : "sc"}>
-		<div class="sh">
-			<span>{title}</span>
-			<span class="lb">{right}</span>
-		</div>
+	<article class={cls || undefined}>
+		<header>
+			<strong>{title}</strong>
+			{right ? <small>{right}</small> : null}
+		</header>
 		{children}
-	</div>
+	</article>
 ))
 
 export const PageHeader = view<{ title: string; right?: RemixNode; back?: string }>(({ title, right = "", back }) => (
-	<div class="hd">
+	<header class="ph">
 		{back ? (
 			<Link class="back" href={back}>
 				<Icon name="back" />
-				<h1 class="t">{title}</h1>
+				<h1>{title}</h1>
 			</Link>
 		) : (
-			<h1 class="t">{title}</h1>
+			<h1>{title}</h1>
 		)}
-		<span class="lb">{right}</span>
-	</div>
+		{right ? <small>{right}</small> : null}
+	</header>
 ))
 
 type FieldProps = { label: string; value?: string; name?: string; type?: string; placeholder?: string; first?: boolean }
 
-export const Field = view<FieldProps>(({ label, value = "", name, type, placeholder = "", first }) => (
-	<div class="fl">
-		<label>{label}</label>
-		<input class={first ? "in f" : "in"} name={name} type={type as any} value={value} placeholder={value ? undefined : placeholder} autocomplete="off" />
-	</div>
+export const Field = view<FieldProps>(({ label, value = "", name, type, placeholder = "" }) => (
+	<label class="fld">
+		{label}
+		<input name={name} type={type as any} value={value} placeholder={value ? undefined : placeholder} autocomplete="off" />
+	</label>
 ))
 
 export const FloatField = view<{ label: string; name: string; type?: string; auto?: string }>(({ label, name, type = "text", auto }) => (
@@ -136,36 +140,22 @@ export const FloatField = view<{ label: string; name: string; type?: string; aut
 
 export const Back = view<{ s: State }>(({ s }) => <input type="hidden" name="back" value={s.back} />)
 
-export const ErrorBanner = view<{ s: State }>(({ s }) =>
-	s.error ? (
-		<div class="neg" role="alert" style={{ margin: "10px 0", fontSize: "13px" }}>
-			{s.error}
-		</div>
-	) : null,
-)
+export const ErrorBanner = view<{ s: State }>(({ s }) => (s.error ? <p class="err" role="alert">{s.error}</p> : null))
 
-export const Empty = view<{ children?: RemixNode }>(({ children }) => (
-	<div class="lb" style={{ padding: "8px 0" }}>
-		{children}
-	</div>
-))
+export const Empty = view<{ children?: RemixNode }>(({ children }) => <p class="empty">{children}</p>)
 
 export const Avatar = view<{ avatar: string | null; name: string }>(({ avatar, name }) => {
 	const url = avatar ? encodeURI(avatar).replace(/'/g, "%27") : ""
-	return (
-		<div class="av" style={url ? { background: `url('${url}') center/cover` } : undefined}>
-			{url ? "" : (name.trim()[0] ?? "?").toUpperCase()}
-		</div>
-	)
+	return <span class="av" style={url ? { background: `url('${url}') center/cover` } : undefined}>{url ? "" : (name.trim()[0] ?? "?").toUpperCase()}</span>
 })
 
 export const ThemeSwitch = view(() => (
-	<div class="sg">
-		<button type="button" data-set-theme="dark">
+	<div class="grid" role="group" style={{ gridTemplateColumns: "1fr 1fr" }}>
+		<button type="button" class="outline" data-set-theme="dark">
 			<Icon name="moon" />
 			Dark
 		</button>
-		<button type="button" data-set-theme="light">
+		<button type="button" class="outline" data-set-theme="light">
 			<Icon name="sun" />
 			White
 		</button>
@@ -174,39 +164,39 @@ export const ThemeSwitch = view(() => (
 
 export const NameChips = view<{ names: string[] }>(({ names }) =>
 	names.length ? (
-		<div class="chips nm">
+		<div class="chips">
 			{names.map((n) => (
-				<span key={n} class="chip" data-nm={n}>
+				<button key={n} type="button" class="secondary" data-nm={n}>
 					{n}
-				</span>
+				</button>
 			))}
 		</div>
 	) : null,
 )
 
-export const BigAdd = view<{ label: string; target?: string; right?: boolean }>(({ label, target = "", right = false }) => (
-	<button type="button" class={right ? "addb r" : "addb"} data-bigadd data-for={target || undefined} aria-label={label}>
+export const BigAdd = view<{ label: string; target?: string; right?: boolean }>(({ label, target = "" }) => (
+	<button type="button" class="addb" data-bigadd data-for={target || undefined} aria-label={label}>
 		<Icon name="plus" />
 	</button>
 ))
 
 export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; class?: string; children?: RemixNode }>(({ title, right, target, label, class: cls = "", children }) => (
-	<div class={cls ? `sc bgc rgt ${cls}` : "sc bgc rgt"}>
-		<div class="ct">
-			<div class="sh">
-				<span>{title}</span>
-				<span class="lb">{right}</span>
-			</div>
-			{children}
-		</div>
-		<BigAdd label={label} target={target} right />
-	</div>
+	<article class={cls ? `bgc ${cls}` : "bgc"}>
+		<header>
+			<strong>{title}</strong>
+			<span class="hd-r">
+				<small>{right}</small>
+				<BigAdd label={label} target={target} right />
+			</span>
+		</header>
+		{children}
+	</article>
 ))
 
 type ExpandProps = {
 	storeKey: string
 	open: boolean
-	title: string
+	title: RemixNode
 	head?: RemixNode
 	foot?: RemixNode
 	form?: RemixNode
@@ -218,19 +208,14 @@ type ExpandProps = {
 }
 
 export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot, form, label = "", jar = -1, fixed = false, class: cls = "", children }) => (
-	<div class={label ? (cls ? `xc ${cls}` : "xc") : (cls ? `xc xn ${cls}` : "xc xn")}>
-		<details class="xd" data-keep-open={fixed ? undefined : storeKey} data-fixed={fixed ? "1" : undefined} open={open || fixed ? true : undefined}>
-			<summary class="xh osum">
+	<article class={cls ? `xc ${cls}` : "xc"}>
+		<details data-keep-open={fixed ? undefined : storeKey} data-fixed={fixed ? "1" : undefined} open={open || fixed ? true : undefined}>
+			<summary>
 				{jar >= 0 ? <i class={jar >= 100 ? "xj full" : "xj"} style={{ width: `${jar}%` }}></i> : null}
-				<div>
-					<div class="tg0">{title}</div>
-					{head ? <div class="ow">{head}</div> : null}
-				</div>
-				{fixed ? null : (
-					<span class="chev">
-						<Icon name="chev" />
-					</span>
-				)}
+				<span class="xsum">
+					<strong>{title}</strong>
+					{head ? <small>{head}</small> : null}
+				</span>
 				{label ? (
 					<button type="button" class="xp" data-xplus aria-label={label}>
 						<Icon name="plus" />
@@ -238,12 +223,14 @@ export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot
 				) : null}
 			</summary>
 			<div class="xb">{children}</div>
-			<div class={foot ? "xf" : "xf xo"}>
-				{foot}
-				{form}
-			</div>
+			{foot || form ? (
+				<footer class="xf">
+					{foot}
+					{form}
+				</footer>
+			) : null}
 		</details>
-	</div>
+	</article>
 ))
 
 export const BankIcon = view<{ name: string; url?: string; size?: number }>(({ name, url, size = 28 }) => {
@@ -273,9 +260,8 @@ export const BankIcon = view<{ name: string; url?: string; size?: number }>(({ n
 
 export const FlowBadge = view<{ from: string; to: string }>(({ from, to }) => (
 	<span class="flow-badge">
-		<span class="flow-from">{from}</span>
-		<span class="flow-arr">→</span>
-		<span class="flow-to">{to}</span>
+		<span>{from}</span>
+		<span aria-hidden="true">→</span>
+		<span>{to}</span>
 	</span>
 ))
-

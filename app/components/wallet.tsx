@@ -10,7 +10,7 @@ const sg = (minor: number) => `${minor < 0 ? "−" : "+"}${fmt(Math.abs(minor))}
 const tone = (minor: number) => (minor < 0 ? "neg" : "pos")
 
 const ConnectLink = view(() => (
-	<Link class="btn o" href="/profile/api">
+	<Link class="outline" href="/profile/api">
 		Connect Binance in API connections
 	</Link>
 ))
@@ -84,8 +84,8 @@ const MoveForm = view<{ s: State }>(({ s }) => (
 			</select>
 		) : null}
 		<div class="wmb">
-			<Submit class="btn">Add USDT</Submit>
-			<Submit class="btn o" formaction="/wallet/sell">
+			<Submit >Add USDT</Submit>
+			<Submit class="outline" formaction="/wallet/sell">
 				Sell USDT
 			</Submit>
 		</div>

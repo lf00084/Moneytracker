@@ -2,9 +2,10 @@ import { createController } from "remix/router"
 import type { RemixNode } from "remix/component"
 import * as act from "../../lib/actions.ts"
 import { loadState, type Part, type State } from "../../lib/data.ts"
+import * as predict from "../../lib/predict.ts"
 import { BanksScreen } from "../../components/banks.tsx"
 import { WalletScreen } from "../../components/wallet.tsx"
-import { ApiPanel, ApiScreen, DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TradingPanel, TradingScreen } from "../../screens.tsx"
+import { ApiPanel, ApiScreen, DebtsScreen, GoalsScreen, HistoryScreen, HomeScreen, IncomeScreen, PadScreen, ProfileEditScreen, ProfileScreen, SettingsScreen, TodayCard, TradingPanel, TradingScreen } from "../../screens.tsx"
 import { routes } from "../../routes.ts"
 import { go, takeError, userOf, type Ctx } from "../../request.ts"
 import { loadPad } from "../../lib/pad.ts"
@@ -89,6 +90,18 @@ export default createController(routes.pages, {
 		padProject: padPage("edit"),
 		trading: page("/trading", [], (s) => <TradingScreen s={s} />),
 		tradingPanel: page("/trading", ["trading", "wallet", "money"], (s) => <TradingPanel s={s} />),
+		todayPanel: page("/trading", ["wallet"], (s) => <TodayCard s={s} />),
+		// The daily check posts into the named "today" frame: respond with the
+		// card HTML directly (no redirect) so the frame swaps without touching
+		// the address bar.
+		predictCheckGet: (ctx: Ctx) => go("/trading"),
+		predictCheck: async (ctx: Ctx) => {
+			const user = userOf(ctx)
+			if (!user) return go("/login")
+			await predict.checkToday(user.id)
+			const s = await loadState(user, ["wallet"], { back: "/trading" })
+			return ctx.render(<TodayCard s={s} />)
+		},
 		wallet: (ctx: Ctx) => {
 			const user = userOf(ctx)
 			if (!user) return go("/login")

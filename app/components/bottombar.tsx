@@ -11,13 +11,11 @@ const TABS = [
 ] as const
 
 export const BottomBar = view<{ active: MobileTab }>(({ active }) => (
-	<nav class="bt" aria-label="Main">
+	<nav class="pb-nav" aria-label="Main">
 		{TABS.map((t) => (
-			<Link key={t.key} href={t.href} class={active === t.key ? "on" : ""} aria-label={t.label} aria-current={active === t.key ? "page" : undefined}>
-				<span class="bp">
-					<Icon name={t.icon} />
-				</span>
-				<span class="bl">{t.label}</span>
+			<Link key={t.key} href={t.href} class={active === t.key ? "pb-a on" : "pb-a"} aria-label={t.label} aria-current={active === t.key ? "page" : undefined}>
+				<Icon name={t.icon} />
+				<span>{t.label}</span>
 			</Link>
 		))}
 	</nav>

@@ -18,7 +18,7 @@ export const DateCard = clientEntry(entryId("DateCard"), function DateCard(handl
 	return () => {
 		const { weekday, day, month, arabic } = parts
 		return (
-			<div class="hm-c hm-date" aria-label="Today">
+			<article class="hm-date" aria-label="Today">
 				<span class="hm-ar" lang="ar" dir="rtl" data-d-ar>
 					{arabic}
 				</span>
@@ -27,7 +27,7 @@ export const DateCard = clientEntry(entryId("DateCard"), function DateCard(handl
 					<small data-d-wd>{weekday}</small>
 					<small data-d-mo>{month}</small>
 				</div>
-			</div>
+			</article>
 		)
 	}
 })

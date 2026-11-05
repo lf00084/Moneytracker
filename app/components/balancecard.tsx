@@ -9,7 +9,7 @@ export const BalanceCard = view<{ s: State }>(({ s }) => {
 	const peFmt = `${peSign}${fmt(Math.abs(pe))}`
 
 	return (
-		<div class="hm-c hm-bal-card">
+		<article class="hm-bal-card">
 			<div class="hm-bal-top-row">
 				<span class="hm-bal-label">Total balance</span>
 				<button type="button" class="ib sm" data-eye aria-label="Show balance">
@@ -39,6 +39,6 @@ export const BalanceCard = view<{ s: State }>(({ s }) => {
 					</span>
 				) : null}
 			</div>
-		</div>
+		</article>
 	)
 })

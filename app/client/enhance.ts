@@ -4,7 +4,12 @@
 // runtime boots. Component-scoped state lives in clientEntry components
 // instead — this module only owns document-level glue.
 
-type App = { frames: { top: { reload: (opts?: { src?: string }) => Promise<unknown> } } }
+type App = {
+	frames: {
+		top: { reload: (opts?: { src?: string }) => Promise<unknown> }
+		get?: (name: string) => { reload: (opts?: { src?: string }) => Promise<unknown> } | undefined
+	}
+}
 
 const THEME_KEY = "mtheme"
 const OPEN_KEY = "mt:open"
@@ -205,8 +210,8 @@ export function enhance(app: App) {
 			return
 		}
 		if ((q = t.closest("[data-eye]"))) {
-			const card = q.closest(".hm-bal-card, .hm-bal, .hm-top-bal")
-			const v = card?.querySelector(".hm-dots") as HTMLElement | null
+			const card = q.closest("article, .hm-bal-card, .hm-bal, .hm-top-bal, .hm-balc")
+			const v = card?.querySelector("[data-bal]") as HTMLElement | null
 			if (!v) return
 			const hide = q.getAttribute("data-s") !== "1"
 			q.setAttribute("data-s", hide ? "1" : "0")
@@ -214,7 +219,7 @@ export function enhance(app: App) {
 			return
 		}
 		if ((q = t.closest("[data-edit-bal]"))) {
-			const bf = q.closest(".cd,.sc")?.querySelector<HTMLElement>("[data-balf]")
+			const bf = q.closest("article")?.querySelector<HTMLElement>("[data-balf]")
 			if (!bf) return
 			bf.hidden = !bf.hidden
 			q.setAttribute("aria-label", bf.hidden ? "Edit balance" : "Cancel")
@@ -240,7 +245,7 @@ export function enhance(app: App) {
 		if (t.closest("[data-xplus],[data-tg],[data-pay],[data-bigadd]")) {
 			setTimeout(() => {
 				const a = t.closest("[data-xplus],[data-tg],[data-pay],[data-bigadd]")
-				const box = (a?.closest(".xc,.dbw,.sc,.cd") as Element) ?? d
+				const box = (a?.closest(".xc,.dbw,article") as Element) ?? d
 				const f = all("[data-adp],[data-addp],[data-payp]", box).filter((n) => !(n as HTMLElement).hidden && (n as HTMLElement).offsetParent)[0]
 				if (!f) return
 				const i = f.querySelector<HTMLInputElement>("input:not([type=hidden]),textarea")
@@ -709,6 +714,14 @@ export function enhance(app: App) {
 	d.addEventListener("keydown", (e) => {
 		if (e.key === "Escape") closeMenus()
 	})
+
+	// ---- keep today's predict earnings fresh while the page is open --------
+	setInterval(() => {
+		if (d.hidden) return
+		if (!d.querySelector("[data-tick]")) return
+		const todayFrame = app.frames.get?.("today")
+		if (todayFrame) void todayFrame.reload().catch(() => {})
+	}, 60000)
 
 	// ---- keep background data fresh via the frame runtime ------------------
 	const loaded = Date.now()

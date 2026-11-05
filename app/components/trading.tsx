@@ -1,4 +1,6 @@
+import { Frame } from "remix/component"
 import type { State } from "../lib/data.ts"
+import { routes } from "../routes.ts"
 import { fmt } from "../lib/money.ts"
 import { dayLabel, timeAgo, today } from "../lib/time.ts"
 import { allDone, backUsdt, DEPOSIT, FIVE, flowOf, GAME, gameOf, gamesStrip, hasGames, isDone, letter, resOf, stakesFor, toMad, totalPnl, TRIES, word, type Flow, type GameKey, type TradeSession } from "../lib/trade-math.ts"
@@ -25,13 +27,13 @@ const PnlField = view(() => (
 
 const Outcomes = view(() => (
 	<div class="pbt p3">
-		<Submit class="btn win" name="outcome" value="win">
+		<Submit  name="outcome" value="win">
 			Won
 		</Submit>
-		<Submit class="btn lost" name="outcome" value="lose">
+		<Submit class="secondary" name="outcome" value="lose">
 			Lost
 		</Submit>
-		<Submit class="btn miss" name="outcome" value="miss" formnovalidate>
+		<Submit class="outline" name="outcome" value="miss" formnovalidate>
 			Miss
 		</Submit>
 	</div>
@@ -78,7 +80,7 @@ const Steps = view<{ s: State; t: TradeSession; f: Flow }>(({ s, t, f }) => (
 		{t.results.length > 0 ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last entry?">
 				<SessionHid s={s} t={t} />
-				<Submit class="btn xs o">Undo last</Submit>
+				<Submit class="xs outline">Undo last</Submit>
 			</form>
 		) : null}
 	</Card>
@@ -111,10 +113,10 @@ const GameRow = view<{ s: State; t: TradeSession; g: GameKey; n: number }>(({ s,
 			<span>{`Game ${n} · ${fmt(GAME)} USDT`}</span>
 			<span class="rt">
 				<PnlField />
-				<Submit class="btn xs win" name="won" value="1">
+				<Submit class="xs" name="won" value="1">
 					Won
 				</Submit>
-				<Submit class="btn xs lost" name="won" value="0">
+				<Submit class="xs secondary" name="won" value="0">
 					Lost
 				</Submit>
 			</span>
@@ -129,7 +131,7 @@ const GamesCard = view<{ s: State; t: TradeSession; undo: boolean }>(({ s, t, un
 		{undo && (gameOf(t.results, "ga") || gameOf(t.results, "gb")) ? (
 			<form method="post" action="/trading/undo" style={contents} data-confirm="Undo the last game?">
 				<SessionHid s={s} t={t} />
-				<Submit class="btn xs o">Undo last</Submit>
+				<Submit class="xs outline">Undo last</Submit>
 			</form>
 		) : null}
 	</Card>
@@ -141,7 +143,7 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 	const cur = s.user.currency
 	const mad = toMad(pnl, t.rate)
 	return (
-		<div class="cd tsum">
+		<article class="tsum">
 			<div class="gl">
 				<div>
 					<div class="tg">Running PnL</div>
@@ -157,15 +159,15 @@ const OpenSummary = view<{ s: State; t: TradeSession }>(({ s, t }) => {
 			{allDone(t.deposit, t.results) ? (
 				<form method="post" action="/trading/finish" style={contents}>
 					<SessionHid s={s} t={t} />
-					<Submit class="btn full pos">Finish & save</Submit>
+					<Submit class="full pos">Finish & save</Submit>
 				</form>
 			) : t.results.length > 0 ? (
 				<form method="post" action="/trading/finish" style={contents} data-confirm="Finish now before all steps are done?">
 					<SessionHid s={s} t={t} />
-					<Submit class="btn xs o">Finish now</Submit>
+					<Submit class="xs outline">Finish now</Submit>
 				</form>
 			) : null}
-		</div>
+		</article>
 	)
 })
 
@@ -207,7 +209,7 @@ const StartCard = view<{ s: State; ready: boolean }>(({ s, ready }) => {
 			{ready ? (
 				<form method="post" action="/trading/deposit" style={contents}>
 					<Back s={s} />
-					<Submit class="btn full pgo">Start predict</Submit>
+					<Submit class="full">Start predict</Submit>
 				</form>
 			) : (
 				<div class="pdn">{miss}</div>
@@ -265,35 +267,6 @@ const Status = view<{ ok: boolean; title: string; sub: string }>(({ ok, title, s
 	</div>
 ))
 
-const MoveHintsSection = view<{ s: State }>(({ s }) => {
-	const hints = s.wallet?.openHints ?? []
-	if (!hints.length) return null
-	return (
-		<div class="cd hint-box" id="hints">
-			<div class="cb">
-				<div class="tg warn">Move hints detected</div>
-				<div class="lb" style={{ marginBottom: "8px" }}>Did you transfer between Binance Funding and Predict wallet?</div>
-				{hints.map((h) => (
-					<div key={h.id} class="hint-row">
-						<div>
-							<b>{h.kind === "to_predict" ? "Funding → Predict" : "Predict → Funding"}</b>
-							<div class="lb">{fmt(h.usdt)} USDT · {timeAgo(h.foundAt)}</div>
-						</div>
-						<div class="hint-actions">
-							<form method="post" action="/wallet/hint" style={contents}>
-								<Back s={s} />
-								<input type="hidden" name="id" value={h.id} />
-								<Submit class="btn xs pos" name="action" value="yes">Yes</Submit>
-								<Submit class="btn xs o" name="action" value="no">No</Submit>
-							</form>
-						</div>
-					</div>
-				))}
-			</div>
-		</div>
-	)
-})
-
 const PickBankSection = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
 	const m = s.money
@@ -303,7 +276,7 @@ const PickBankSection = view<{ s: State }>(({ s }) => {
 	const lastBank = m.banks.find((b) => b.isDefault)?.id ?? m.banks[0]?.id ?? ""
 
 	return (
-		<div class="cd" id="unmatched">
+		<article id="unmatched">
 			<div class="cb">
 				<div class="gl">
 					<div>
@@ -330,12 +303,12 @@ const PickBankSection = view<{ s: State }>(({ s }) => {
 								<input type="checkbox" name="remember" value="1" defaultChecked />
 								<span class="lb">remember</span>
 							</label>
-							<Submit class="btn xs">Assign</Submit>
+							<Submit class="xs">Assign</Submit>
 						</div>
 					</form>
 				))}
 			</div>
-		</div>
+		</article>
 	)
 })
 
@@ -350,7 +323,7 @@ const P2PBlock = view<{ s: State }>(({ s }) => {
 
 	return (
 		<div class="p2p-block">
-			<div class="cd">
+			<article>
 				<div class="cb">
 					<div class="gl">
 						<div>
@@ -371,7 +344,7 @@ const P2PBlock = view<{ s: State }>(({ s }) => {
 						</div>
 						<form method="post" action="/wallet/sync" style={contents}>
 							<Back s={s} />
-							<Submit class="btn xs">
+							<Submit class="xs">
 								<Icon name="revert" /> Sync Binance
 							</Submit>
 						</form>
@@ -407,7 +380,7 @@ const P2PBlock = view<{ s: State }>(({ s }) => {
 															<option key={b.id} value={b.id}>{b.name}</option>
 														))}
 													</select>
-													<Submit class="btn xs">Save</Submit>
+													<Submit class="xs">Save</Submit>
 												</form>
 											) : null}
 										</div>
@@ -419,7 +392,7 @@ const P2PBlock = view<{ s: State }>(({ s }) => {
 						<div class="lb">No P2P orders synced yet. Connect Binance in API connections or click Sync Binance.</div>
 					)}
 				</div>
-			</div>
+			</article>
 		</div>
 	)
 })
@@ -433,7 +406,7 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 	const t = today(s.user.day_start)
 
 	return (
-		<div class="cd daily-earnings-card">
+		<article class="daily-earnings-card">
 			<div class="cb">
 				<div class="gl">
 					<div>
@@ -448,7 +421,6 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 						const p2pMad = d.p2pProfitMad ?? 0
 						const predMad = d.predictProfitMad ?? 0
 						const predUsdt = d.profit ?? 0
-						const transfers = d.transfersUsdt ?? 0
 						const label = dayLabel(d.day, t)
 
 						return (
@@ -458,11 +430,6 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 									<div class="de-badges">
 										<span class="de-pill">P2P: <b class={tone(p2pMad)}>{sg(p2pMad)} {cur}</b></span>
 										<span class="de-pill">Predict: <b class={tone(predMad)}>{sg(predMad)} {cur}</b> ({sg(predUsdt)} USDT)</span>
-										{transfers > 0 ? (
-											<span class="de-pill de-transfer" title="Transfers between Funding and Predict are internal movements and never counted as earned">
-												Transfer: {fmt(transfers)} USDT (not earned)
-											</span>
-										) : null}
 										<span class="de-pill mu">Bal: {fmt(d.balance)} USDT</span>
 									</div>
 								</div>
@@ -475,9 +442,54 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 					})}
 				</div>
 			</div>
-		</div>
+		</article>
 	)
 })
+
+// Daily strategy check: confirm once a day, then today's predict earnings are
+// shown and refreshed (the frame reloads every minute while the page is open).
+export const TodayCard = view<{ s: State }>(({ s }) => {
+	const w = s.wallet
+	const cur = s.user.currency
+	const checked = !!w?.checkedToday
+	const rate = w?.rate ?? s.user.usdt_rate
+	const predictUsdt = w?.today ?? 0
+	const predictMad = toMad(predictUsdt, rate)
+	return (
+		<article class="today-card" data-tick>
+			<div class="cb">
+				<div class="gl">
+					<div>
+						<div class="tg">Today&apos;s strategy</div>
+						{checked ? (
+							<>
+								<b class={`big ${tone(predictMad)}`}>{sg(predictMad)} <small>{cur}</small></b>
+								<div class="lb">Predict earned today · {sg(predictUsdt)} USDT</div>
+							</>
+						) : (
+							<div class="lb">Do your 5 min + 2 games, then confirm below.</div>
+						)}
+					</div>
+					<div class="tsr">
+						<form method="post" action="/trading/check" data-rmx-target="today" style={contents}>
+							<Back s={s} />
+							<Submit class={checked ? "xs outline" : ""}>{checked ? "Done ✓" : "I did it today"}</Submit>
+						</form>
+					</div>
+				</div>
+				<Strategy base={FIVE} />
+			</div>
+		</article>
+	)
+})
+
+const TodayLoading = view(() => (
+	<article class="today-card">
+		<div class="cb">
+			<div class="lb">Checking today…</div>
+		</div>
+	</article>
+))
 
 export const TradingBody = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
@@ -499,7 +511,8 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 
 	return (
 		<div class="trd">
-			<div class="cd ptop-hero">
+			<Frame name="today" src={routes.pages.todayPanel.href()} fallback={<TodayLoading />}></Frame>
+			<article class="ptop-hero">
 				<div class="cb">
 					<div class="gl">
 						<div>
@@ -536,28 +549,15 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 					</div>
 
 					<div class="rate-indicator-line">
-						1 USDT = {fmt(w?.rate ?? s.user.usdt_rate)} {cur} (P2P first sell price){w?.rateAt ? ` · ${timeAgo(w.rateAt)}` : ""}
+						1 USDT = {fmt(w?.rate ?? s.user.usdt_rate)} {cur} {w?.mineRate ? "(avg of my P2P sells)" : "(market)"}{w?.rateAt ? ` · ${timeAgo(w.rateAt)}` : ""}
 					</div>
 
-					<div class="wallet-transfer-actions">
-						<form method="post" action="/wallet/to-predict" class="wmi" style={{ flex: 1 }}>
-							<Back s={s} />
-							<input class="in sm" name="usdt" placeholder="USDT to Predict" inputmode="decimal" autocomplete="off" />
-							<Submit class="btn xs">Moved to Predict</Submit>
-						</form>
-						<form method="post" action="/wallet/to-funding" class="wmi" style={{ flex: 1 }}>
-							<Back s={s} />
-							<input class="in sm" name="usdt" placeholder="USDT to Funding" inputmode="decimal" autocomplete="off" />
-							<Submit class="btn xs o">Moved to Funding</Submit>
-						</form>
-					</div>
-				</div>
-			</div>
+									</div>
+			</article>
 
-			<MoveHintsSection s={s} />
 			<PickBankSection s={s} />
 
-			<div class="cd">
+			<article>
 				<div class="cb">
 					<div class="tg">Predict Games</div>
 					<Status ok={ok} title={title} sub={sub} />
@@ -575,7 +575,7 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 					)}
 					<PastCard s={s} list={settled} canReopen={!open} />
 				</div>
-			</div>
+			</article>
 
 			<DailyEarningsSection s={s} />
 

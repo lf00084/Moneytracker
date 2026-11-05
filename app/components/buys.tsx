@@ -98,7 +98,7 @@ export const SpendFields = view<{ s: State }>(({ s }) => (
 		<div class="sheet-live-line" data-live-total="minus">
 			Total: no change
 		</div>
-		<Submit class="btn full">Add a spend</Submit>
+		<Submit class="full">Add a spend</Submit>
 	</>
 ))
 
@@ -123,7 +123,7 @@ export const BuysExpand = view<{ s: State }>(({ s }) => (
 
 export const BuysDesktop = view<{ s: State }>(({ s }) => (
 	<>
-		<form method="post" action="/buy" id="f-buy-d" class="sc sc-grey card-grey spf" data-sp data-adp hidden>
+		<form method="post" action="/buy" id="f-buy-d" class="sc-grey card-grey spf" data-sp data-adp hidden>
 			<SpendFields s={s} />
 		</form>
 		<ListCard title="Today's buys" right={`${s.buys.length}`} target="f-buy-d" label="Add a spend" class="card-grey sc-grey">

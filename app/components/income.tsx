@@ -78,7 +78,7 @@ export const ExtraHoursControl = view<{ s: State; x: Source; row?: Income }>(({ 
 					<Back s={s} />
 					<input type="hidden" name="source_id" value={x.id} />
 					<input class="in sm" name="hours" value={h && !opts.includes(h) ? String(h) : ""} placeholder="Custom h" inputmode="decimal" autocomplete="off" />
-					<Submit class="btn xs o">Save</Submit>
+					<Submit class="xs outline">Save</Submit>
 				</form>
 			</div>
 		</div>
@@ -131,14 +131,14 @@ const HomeAct = view<{ s: State; x: Source }>(({ s, x }) => {
 			<form method="post" action="/income/add" style={contents}>
 				<Back s={s} />
 				<input type="hidden" name="source_id" value={x.id} />
-				<Submit class="btn xs o hspan">
+				<Submit class="xs outline hspan">
 					Add {fmt(fixed)} {cur}
 				</Submit>
 			</form>
 		)
 	}
 	return (
-		<button type="button" class="btn xs o hspan hadd" data-tg>
+		<button type="button" class="xs outline hspan hadd" data-tg>
 			Add
 		</button>
 	)
@@ -192,7 +192,7 @@ const HomeRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					<input type="hidden" name="source_id" value={x.id} />
 					<div class="ln">
 						<input class="in" name="amount" placeholder="Amount today" inputmode="decimal" autocomplete="off" required />
-						<Submit class="btn xs">Add</Submit>
+						<Submit class="xs">Add</Submit>
 					</div>
 				</form>
 			) : null}
@@ -209,7 +209,7 @@ export const NamedFields = view<{ s: State }>(({ s }) => (
 			<input class="in" name="label" data-name placeholder="Name (e.g. Tip)" autocomplete="off" />
 			<input class="in pr" name="amount" data-price placeholder="Amount" inputmode="decimal" autocomplete="off" required />
 		</div>
-		<Submit class="btn full">Add income</Submit>
+		<Submit class="full">Add income</Submit>
 	</>
 ))
 
@@ -273,7 +273,7 @@ const SourceFields = view<{ s: State }>(({ s }) => (
 		</div>
 		<PayFields s={s} />
 		<input class="in" name="pay_days" placeholder="Pays after how many days? (optional, e.g. 15)" inputmode="numeric" autocomplete="off" style={{ marginTop: "8px" }} />
-		<Submit class="btn full">Add source</Submit>
+		<Submit class="full">Add source</Submit>
 	</>
 ))
 
@@ -305,14 +305,14 @@ export const IncomeDesktop = view<{ s: State; title?: string; id?: string; bare?
 	const others = s.incomesToday.filter((i) => !i.sourceId)
 	if (bare) {
 		return (
-			<div class="sc sc-grey card-grey incbare">
+			<article class="sc-grey card-grey incbare">
 				<TodayRows s={s} />
-			</div>
+			</article>
 		)
 	}
 	return (
 		<>
-			<form method="post" action="/income/named" id={id} class="sc sc-grey card-grey spf" data-adp hidden>
+			<form method="post" action="/income/named" id={id} class="sc-grey card-grey spf" data-adp hidden>
 				<NamedFields s={s} />
 			</form>
 			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income" class="card-grey sc-grey">
@@ -361,7 +361,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					{x.active ? <HomeAct s={s} x={x} /> : null}
 					<form method="post" action="/income/toggle" style={contents}>
 						<Hid s={s} id={x.id} />
-						<Submit class="btn xs o">{x.active ? "Pause" : "Resume"}</Submit>
+						<Submit class="xs outline">{x.active ? "Pause" : "Resume"}</Submit>
 					</form>
 					<button type="button" class="ub" data-tg aria-label={`Edit ${x.name}`}>
 						<Icon name="edit" />
@@ -388,10 +388,10 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 					<input class="in" style={{ marginTop: "8px" }} name="pay_days" value={days ? String(days) : ""} placeholder="Pays after how many days (optional)" inputmode="numeric" autocomplete="off" />
 				) : null}
 				<div class="wkb" style={{ marginTop: "10px" }}>
-					<Submit class="btn xs">Save</Submit>
+					<Submit class="xs">Save</Submit>
 					<button
 						type="button"
-						class="btn xs o"
+						class="xs outline"
 						data-sheet-trigger="adjust-pending"
 						data-source-id={x.id}
 						data-source-name={x.name}
@@ -412,7 +412,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 	const cur = s.user.currency
 
 	return (
-		<div class="cd cd-grey card-grey">
+		<article>
 			<div class="cb">
 				<div class="gl">
 					<div>
@@ -446,7 +446,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 									</button>
 									<button
 										type="button"
-										class="btn xs pos"
+										class="xs pos"
 										data-sheet-trigger="paid"
 										data-source-id={p.id}
 										data-source-name={p.name}
@@ -463,7 +463,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 					<Empty>No pending money on hold. All clear.</Empty>
 				)}
 			</div>
-		</div>
+		</article>
 	)
 })
 
@@ -490,7 +490,7 @@ export const InvoiceCard = view<{ s: State }>(({ s }) => {
 export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 	const active = s.sources.filter((x) => x.active).length
 	return (
-		<div class="cd cd-grey card-grey income-sources-card" id="income-sources-card">
+		<article id="income-sources-card">
 			<div class="cb">
 				<div class="gl">
 					<div>
@@ -500,7 +500,7 @@ export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 							<span class="lb">{active} active</span>
 						</div>
 					</div>
-					<button type="button" class="btn xs o" data-bigadd data-for="sf-src-add">
+					<button type="button" class="xs outline" data-bigadd data-for="sf-src-add">
 						<Icon name="plus" /> Add source
 					</button>
 				</div>
@@ -515,7 +515,7 @@ export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 					)}
 				</div>
 			</div>
-		</div>
+		</article>
 	)
 })
 

@@ -16,12 +16,11 @@ export const DateCard = clientEntry(entryId("DateCard"), function DateCard(handl
 		handle.signal.addEventListener("abort", () => clearInterval(timer))
 	}
 	return () => {
-		const { weekday, day, month, arabic } = parts
+		// One date only: the day number next to the weekday and month. The Arabic
+		// weekday duplicated the same date, so it is gone.
+		const { weekday, day, month } = parts
 		return (
 			<article class="hm-date" aria-label="Today">
-				<span class="hm-ar" lang="ar" dir="rtl" data-d-ar>
-					{arabic}
-				</span>
 				<b data-d-day>{day}</b>
 				<div class="hm-dm">
 					<small data-d-wd>{weekday}</small>

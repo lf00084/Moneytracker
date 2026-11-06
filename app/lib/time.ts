@@ -42,7 +42,6 @@ export function dateParts() {
 		weekday: part("en-GB", { weekday: "short" }, now),
 		day: part("en-GB", { day: "numeric" }, now),
 		month: part("en-GB", { month: "short" }, now),
-		arabic: part("ar-MA", { weekday: "long" }, now),
 	}
 }
 
@@ -50,8 +49,5 @@ export function liveClockNow() {
 	const now = new Date()
 	return {
 		timeStr: part("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }, now),
-		dateStr: part("en-GB", { weekday: "long", day: "numeric", month: "long" }, now),
-		numDate: part("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }, now),
-		arabicDay: part("ar-MA", { weekday: "long" }, now),
 	}
 }

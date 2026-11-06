@@ -180,13 +180,16 @@ export const BigAdd = view<{ label: string; target?: string; right?: boolean }>(
 	</button>
 ))
 
-export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; class?: string; children?: RemixNode }>(({ title, right, target, label, class: cls = "", children }) => (
+// List card with a quiet text action in the header (no floating + button).
+export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; action?: string; class?: string; children?: RemixNode }>(({ title, right, target, label, action = "Add", class: cls = "", children }) => (
 	<article class={cls || undefined}>
 		<header>
 			<strong>{title}</strong>
 			<span class="hd-r">
-				<small>{right}</small>
-				<BigAdd label={label} target={target} right />
+				{right ? <small>{right}</small> : null}
+				<button type="button" class="btn-quiet" data-bigadd data-for={target || undefined} aria-label={label}>
+					{action}
+				</button>
 			</span>
 		</header>
 		<div class="cb">{children}</div>
@@ -217,8 +220,8 @@ export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot
 					{head ? <span class="ow">{head}</span> : null}
 				</span>
 				{label ? (
-					<button type="button" class="xp" data-xplus aria-label={label}>
-						<Icon name="plus" />
+					<button type="button" class="btn-quiet" data-xplus aria-label={label}>
+						{label.length > 4 ? "Add" : label}
 					</button>
 				) : null}
 			</summary>
@@ -247,13 +250,15 @@ export const BankIcon = view<{ name: string; url?: string; size?: number }>(({ n
 					loading="lazy"
 					{...({ onerror: "this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline-flex';" } as any)}
 				/>
-				<span class="bk-ico-char" style={{ display: "none" }}>{isCash ? "💵" : initial}</span>
+				<span class="bk-ico-char" style={{ display: "none" }}>
+					{isCash ? <Icon name="coin" /> : initial}
+				</span>
 			</span>
 		)
 	}
 	return (
 		<span class={isCash ? "bk-ico-wrap cash" : "bk-ico-wrap"} style={{ width: `${size}px`, height: `${size}px` }}>
-			<span class="bk-ico-char">{isCash ? "💵" : initial}</span>
+			<span class="bk-ico-char">{isCash ? <Icon name="coin" /> : initial}</span>
 		</span>
 	)
 })

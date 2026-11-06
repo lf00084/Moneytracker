@@ -216,13 +216,18 @@ export function enhance(app: App) {
 			form?.setAttribute("data-m", mode)
 			return
 		}
-		if ((q = t.closest("[data-eye]"))) {
-			const card = q.closest("article, .hm-bal-card, .hm-bal, .hm-top-bal, .hm-balc")
-			const v = card?.querySelector("[data-bal]") as HTMLElement | null
+		// The eye button and the number itself both reveal the balance.
+		const eyeBtn = t.closest("[data-eye]")
+		const balVal = eyeBtn ? null : t.closest("[data-bal]")
+		if (eyeBtn || balVal) {
+			const card = (eyeBtn ?? balVal)!.closest("article, .hm-bal-card, .hm-bal, .hm-top-bal, .hm-balc")
+			const v = (balVal as HTMLElement | null) ?? (card?.querySelector("[data-bal]") as HTMLElement | null)
 			if (!v) return
-			const hide = q.getAttribute("data-s") !== "1"
-			q.setAttribute("data-s", hide ? "1" : "0")
-			v.innerHTML = hide ? `${v.getAttribute("data-bal") || ""} <small>${v.getAttribute("data-cur") || ""}</small>` : "••••••"
+			const shown = !card?.querySelector("[data-eye]")?.getAttribute("data-s") || (eyeBtn && eyeBtn.getAttribute("data-s") !== "1")
+			const hide = balVal ? !(v.getAttribute("data-shown") === "1") : shown
+			if (eyeBtn) eyeBtn.setAttribute("data-s", hide ? "1" : "0")
+			v.setAttribute("data-shown", hide ? "1" : "0")
+			v.innerHTML = hide ? `${v.getAttribute("data-bal") || ""} <small>${v.getAttribute("data-cur") || ""}</small>` : "•••••••••"
 			return
 		}
 		if ((q = t.closest("[data-edit-bal]"))) {

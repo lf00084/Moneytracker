@@ -126,7 +126,7 @@ export const BuysDesktop = view<{ s: State }>(({ s }) => (
 		<form method="post" action="/buy" id="f-buy-d" class="sc-grey card-grey spf" data-sp data-adp hidden>
 			<SpendFields s={s} />
 		</form>
-		<ListCard title="Today's buys" right={`${s.buys.length}`} target="f-buy-d" label="Add a spend" class="card-grey sc-grey">
+		<ListCard title="Today's buys" right={`${s.buys.length}`} target="f-buy-d" label="Add a spend" class="sc-grey">
 			<BuyRows s={s} />
 		</ListCard>
 	</>

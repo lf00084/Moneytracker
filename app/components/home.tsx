@@ -1,7 +1,7 @@
 import type { BankView, MoneyView, PendingView } from "../lib/banks.ts"
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
-import { showUsdt } from "../lib/usdt.ts"
+import { showMad, showUsdt } from "../lib/usdt.ts"
 import { hhmm, timeAgo, today } from "../lib/time.ts"
 import { DEPOSIT, flowOf, toMad, TRIES } from "../lib/trade-math.ts"
 import { calc } from "../lib/view.ts"
@@ -130,9 +130,7 @@ export const UsdtCard = view<{ s: State }>(({ s }) => {
 				<b>
 					{showUsdt(w?.totalText ?? totalUsdt)} <small>USDT</small>
 				</b>
-				<small>
-					≈ {fmt(madVal)} {cur}
-				</small>
+				<small>≈ {showMad(w?.valueMadText ?? madVal)} {cur}</small>
 			</span>
 		</div>
 	)
@@ -197,9 +195,11 @@ export const HomePredict = view<{ s: State }>(({ s }) => {
 })
 
 const Stat = view<{ label: string; sign: string; value: number; cur: string }>(({ label, sign, value, cur }) => (
-	<div class="hm-c hm-bal">
-		<b class="hm-dots">{`${sign}${fmt(value)}`} <small>{cur}</small></b>
-		<div class="hm-m">{label}</div>
+	<div class="stat-card">
+		<span class="stat-label">{label}</span>
+		<b class="stat-value">
+			{`${sign}${fmt(value)}`} <small>{cur}</small>
+		</b>
 	</div>
 ))
 

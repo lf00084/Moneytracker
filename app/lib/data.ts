@@ -4,11 +4,12 @@ import { settleAuto } from "./auto.ts"
 import { exoStatus, latestInvoice, liveExo, settleExo, type Invoice } from "./exoclick.ts"
 import type { TradeSession } from "./trade-math.ts"
 import { bankTotal, getSetup, loadMoney, type MoneyView } from "./banks.ts"
-import { loadWallet, marketRate, predictTotal, syncPredict, usdtValueMad, type WalletView } from "./predict.ts"
+import { loadWallet, marketRate, predictTotal, syncPredict, usdtValueMad, usdtValueMadText, type WalletView } from "./predict.ts"
 import { loadTrades } from "./trading.ts"
 import { addDays, dayLabel, today } from "./time.ts"
 import { getActiveAvatar, type User } from "./users.ts"
 import { parseJson, rowsOf, type Json } from "./util.ts"
+import { addMad, minorToMad, showMad } from "./usdt.ts"
 
 export type Buy = { id: string; name: string; qty: number; unit: number; total: number; day: string; at: number; bankId: string }
 export type Income = { id: string; sourceId: string; source: string; amount: number; day: string; hours: number; locked: boolean; at: number }
@@ -44,6 +45,9 @@ export type State = {
 	goals: Goal[]
 	days: DayRow[]
 	balance: number
+	// Same balance as a decimal string: bank money + the exact MAD value of the
+	// Binance USDT wallets (down to a millionth), already added together.
+	balanceText: string
 	invoice: Invoice | null
 	snapshot: SnapshotView | null
 }
@@ -177,6 +181,7 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 		goals: [],
 		days: [],
 		balance: 0,
+		balanceText: "0",
 		invoice: null,
 		snapshot: null,
 	}
@@ -360,16 +365,21 @@ export async function loadState(user: User, parts: Part[], extra: { back: string
 		jobs.push(
 			(async () => {
 				const setup = await getSetup(uid)
-				const [usdtMad, market] = await Promise.all([
-					usdtValueMad(uid),
+				const [usdt, market] = await Promise.all([
+					usdtValueMadText(uid),
 					marketRate(user.currency.toUpperCase(), user.usdt_rate),
 				])
+				const usdtMad = Math.round(Number(usdt.text) * 100)
 				if (!setup) {
 					s.balance = await total(uid)
+					s.balanceText = addMad(minorToMad(s.balance), "0")
 					return
 				}
 				s.money = await loadMoney(user, setup, usdtMad)
 				s.balance = s.money.total
+				// Bank money in cents + USDT value at 1e-10 precision: a 0.000001 MAD
+				// remainder from the wallets still moves the balance.
+				s.balanceText = addMad(minorToMad(s.money.banksTotal + s.money.unmatchedMad), usdt.text)
 				const usdtMinor = s.wallet?.usdt ?? 0
 				s.snapshot = await recordSnapshot(user, s.money.banksTotal, usdtMinor, s.money.pendingMad, s.balance, market.rate)
 			})(),

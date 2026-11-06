@@ -331,7 +331,7 @@ export const IncomeDesktop = view<{ s: State; title?: string; id?: string; bare?
 			<form method="post" action="/income/named" id={id} class="sc-grey card-grey spf" data-adp hidden>
 				<NamedFields s={s} />
 			</form>
-			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income" class="card-grey sc-grey">
+			<ListCard title={title} right={`+${fmt(calc(s).earned)} today`} target={id} label="Add manual income" action="Add income" class="sc-grey">
 				{sources.length || others.length ? (
 					<>
 						{sources.map((x) => (
@@ -516,8 +516,8 @@ export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 							<span class="lb">{active} active</span>
 						</div>
 					</div>
-					<button type="button" class="xs outline" data-bigadd data-for="sf-src-add">
-						<Icon name="plus" /> Add source
+					<button type="button" class="btn-quiet" data-bigadd data-for="sf-src-add">
+						Add source
 					</button>
 				</div>
 				<SourceForm s={s} id="sf-src-add" />
@@ -525,7 +525,7 @@ export const IncomeSourcesCard = view<{ s: State }>(({ s }) => {
 					{s.sources.length ? (
 						s.sources.map((x) => <ManageRow key={x.id} s={s} x={x} />)
 					) : (
-						<Empty>No sources yet. Tap "+ Add source" above.</Empty>
+						<Empty>No sources yet. Tap "Add source" above.</Empty>
 					)}
 				</div>
 			</div>
@@ -590,10 +590,12 @@ const SrcTile = view<{ s: State; x: Source }>(({ s, x }) => {
 					{sub ? <div class={bad ? "hm-src-sub neg" : "hm-src-sub"}>{sub}</div> : null}
 				</div>
 				<div class="hm-src-act">
-					<div class={filled ? "hm-src-amt" : "hm-src-amt none"}>
-						{filled ? `+${fmt(shown)}` : "—"}
-						<small>{cur}</small>
-					</div>
+					{filled ? (
+						<div class="hm-src-amt">
+							+{fmt(shown)}
+							<small>{cur}</small>
+						</div>
+					) : null}
 					{bad ? (
 						<Link class="hm-src-btn" href="/income">
 							Fix
@@ -671,18 +673,14 @@ const OtherTile = view<{ s: State; i: Income }>(({ s, i }) => (
 export const IncomeStripCard = view<{ s: State; open?: boolean; storeKey?: string }>(({ s }) => {
 	const list = s.sources.filter((x) => x.active)
 	const others = s.incomesToday.filter((i) => !i.sourceId)
+	const total = list.length + others.length
 	return (
-		<article>
+		<article class="src-card">
 			<header>
 				<strong>Income sources</strong>
-				<span class="hd-r">
-					<small>{`${list.length} active`}</small>
-					<Link href="/income" class="hm-src-manage">
-						Manage
-					</Link>
-				</span>
+				<small class="src-count">{total ? `${total} active` : "none yet"}</small>
 			</header>
-			{list.length || others.length ? (
+			{total ? (
 				<div class="hm-src-list">
 					{list.map((x) => (
 						<SrcTile key={x.id} s={s} x={x} />
@@ -693,9 +691,9 @@ export const IncomeStripCard = view<{ s: State; open?: boolean; storeKey?: strin
 				</div>
 			) : (
 				<div class="hm-src-empty">
-					<Empty>No sources yet.</Empty>
+					<span class="lb">No sources yet.</span>
 					<Link href="/income" class="hm-src-manage">
-						Add one on the On hold page
+						Add one
 					</Link>
 				</div>
 			)}

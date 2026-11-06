@@ -2,7 +2,7 @@ import type { DebtView, State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
 import { dayLabel, dayOf, hhmm, timeAgo } from "../lib/time.ts"
 import { calc, debtPct, peopleCount, pctOf } from "../lib/view.ts"
-import { Back, BigAdd, Empty, ExpandCard, Icon, NameChips, Submit, view } from "./ui.tsx"
+import { Back, Empty, ExpandCard, Icon, NameChips, Submit, view } from "./ui.tsx"
 
 type DebtProps = { s: State; d: DebtView; manage: boolean }
 
@@ -129,7 +129,9 @@ export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false })
 				<strong>I owe</strong>
 				<span class="hd-r">
 					<small>{`${fmt(c.oweMoney)} ${s.user.currency} ${c.oweExtra}`}</small>
-					<BigAdd label="Add debt" />
+					<button type="button" class="btn-quiet" data-bigadd aria-label="Add debt">
+						Add
+					</button>
 				</span>
 			</header>
 			<div class="cb">

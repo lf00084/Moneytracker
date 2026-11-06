@@ -47,3 +47,4 @@ export const srcAmount = (x: Source) => (isFixed(x.type) ? Number(x.config.fixed
 export const gotToday = (s: State, x: Source) => s.incomesToday.filter((i) => i.sourceId === x.id)
 
 export const dayNet = (earned: number, bought: number) => `${earned - bought < 0 ? "−" : "+"}${fmt(Math.abs(earned - bought))}`
+

@@ -1,5 +1,6 @@
 import type { State } from "../lib/data.ts"
 import { fmt, plain } from "../lib/money.ts"
+import { showMad } from "../lib/usdt.ts"
 import { LANG } from "../lib/view.ts"
 import { Avatar, Back, Card, ErrorBanner, Field, Icon, Link, PageHeader, Section, Submit, ThemeSwitch, view } from "./ui.tsx"
 
@@ -19,7 +20,7 @@ const BalanceForm = view<{ s: State }>(({ s }) => (
 export const BalanceEditCard = view<{ s: State; edit?: boolean }>(({ s, edit = false }) => (
 	<article class="hm-balc">
 		<div class="hm-bal">
-			<b class="hm-dots" data-bal={`${s.balance < 0 ? "−" : ""}${fmt(Math.abs(s.balance))}`} data-cur={s.user.currency}>
+			<b class="hm-dots" data-bal={showMad(s.balanceText)} data-cur={s.user.currency}>
 				••••••
 			</b>
 			<div class="hm-ba">

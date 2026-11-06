@@ -6,7 +6,7 @@ import { decryptSecret, encryptSecret } from "./crypto.ts"
 import { toMinor } from "./money.ts"
 import { addDays, dayOf, today } from "./time.ts"
 import { toMad } from "./trade-math.ts"
-import { normUsdt, sumUsdt } from "./usdt.ts"
+import { madFromUsdt, normUsdt, sumUsdt } from "./usdt.ts"
 import { todayFor, type User } from "./users.ts"
 import { id, rowsOf, text } from "./util.ts"
 
@@ -79,6 +79,8 @@ export type WalletView = {
 	fundingMad: number
 	syncedAt: number
 	rate: number
+	// Value of both wallets in MAD as a decimal string (exact, not cent-rounded).
+	valueMadText: string
 	rateAt: number
 	live: boolean
 	feePct: number
@@ -633,18 +635,26 @@ export async function syncAllPredict(): Promise<void> {
 	}
 }
 
-export async function usdtValueMad(uid: string): Promise<number> {
+// Exact MAD value of both wallets at the rate the P2P sell orders give — the
+// same number the app adds to the balance, kept as a decimal string so a
+// millionth of a dirham is not rounded away.
+export async function usdtValueMadText(uid: string): Promise<{ text: string; rate: number; usdt: string }> {
 	const [a, u, sells] = await Promise.all([
 		db.findOne(predictAccount, { where: { user_id: uid } }),
 		db.find(users, uid),
 		db.findMany(predictMoves, { where: { user_id: uid }, orderBy: ["created_at", "desc"], limit: 500 }),
 	])
-	if (!a) return 0
+	if (!a) return { text: "0", rate: 0, usdt: "0" }
 	const fallback = Number(u?.usdt_rate_minor ?? 0) > 0 ? Number(u?.usdt_rate_minor ?? 0) : 1100
 	const mine = avgSellRate(sells)
 	const { rate } = mine > 0 ? { rate: mine } : await marketRate(String(u?.currency || "MAD").toUpperCase(), fallback)
-	const totalUsdt = Number(sumUsdt(a.predict_text || normUsdt((a.usdt_minor || 0) / 100), a.funding_text || normUsdt((a.funding_minor || 0) / 100)))
-	return Math.round(totalUsdt * rate)
+	const usdt = sumUsdt(a.predict_text || normUsdt((a.usdt_minor || 0) / 100), a.funding_text || normUsdt((a.funding_minor || 0) / 100))
+	return { text: madFromUsdt(usdt, rate), rate, usdt }
+}
+
+export async function usdtValueMad(uid: string): Promise<number> {
+	const { text } = await usdtValueMadText(uid)
+	return Math.round(Number(text) * 100)
 }
 
 export async function predictTotal(uid: string): Promise<number> {
@@ -750,6 +760,7 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		checkedToday: !!checks && checks.done === 1,
 		feePct: (a?.fee_bps ?? 20) / 100,
 		valueMad: Math.round(Number(totalText) * rate),
+		valueMadText: madFromUsdt(totalText, rate),
 		today: predictToday,
 		total: predictAll,
 		p2pToday: st.today,

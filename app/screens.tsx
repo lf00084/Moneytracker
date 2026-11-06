@@ -378,7 +378,9 @@ const AuthCard = view<{ up: boolean; error: string }>(({ up, error }) => (
 				{error}
 			</div>
 		) : null}
-		<form method="post" action={up ? "/signup" : "/login"}>
+		// data-rmx-document: signing in changes the whole session, so the redirect
+		// must be a real document navigation instead of a soft one.
+		<form method="post" action={up ? "/signup" : "/login"} data-rmx-document>
 			{up ? <AuthField label="Name" name="name" auto="name" /> : null}
 			<AuthField label="Email" type="email" name="email" auto="email" />
 			<AuthField label="Password" type="password" name="password" auto={up ? "new-password" : "current-password"} />

@@ -14,6 +14,13 @@ const SubDate = view<Parts>(({ numDate, arabicDay }) => (
 // Hydrated in the browser: ticks once per second without a page reload.
 export const ClockWidget = clientEntry(entryId("ClockWidget"), function ClockWidget(handle: Handle) {
 	let { timeStr, dateStr, numDate, arabicDay } = liveClockNow()
+	// Hydration compares against the server's text. If a minute ticked in
+	// between, reuse the rendered value for the first paint and let the timer
+	// below correct it a second later instead of logging a mismatch.
+	if (typeof document !== "undefined") {
+		const shown = document.querySelector("[data-clock-time]")?.textContent?.trim()
+		if (shown && shown !== timeStr) timeStr = shown
+	}
 	if (typeof document !== "undefined") {
 		const timer = setInterval(() => {
 			const next = liveClockNow()

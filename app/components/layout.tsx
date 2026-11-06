@@ -20,7 +20,6 @@ type DocumentProps = {
 
 const THEME_BOOT = `try{var t=localStorage.getItem('mtheme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}`
 const REGISTER_SW = `if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))`
-const FONTS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@500;600&display=swap"
 // Dev loads the source entry through Vite. The script URL must match the one
 // loadModule imports (Vite rewrites dynamic imports to `?import`) or the
 // module executes twice. Production serves the prebuilt bundle at the plain
@@ -71,9 +70,6 @@ export const Document = view<DocumentProps>(({ title, user = true, theme, desc, 
 				{path && !user ? <link rel="canonical" href={`${origin}${path}`} /> : null}
 				{path && !user ? <meta property="og:url" content={`${origin}${path}`} /> : null}
 				{user ? null : <script type="application/ld+json">{ld}</script>}
-				<link rel="preconnect" href="https://fonts.googleapis.com" />
-				<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-				<link rel="stylesheet" href={FONTS} />
 				<link rel="stylesheet" href={`/assets/app.css?v=${V.css}`} />
 				{theme ? null : <script>{THEME_BOOT}</script>}
 			</head>

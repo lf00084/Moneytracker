@@ -18,8 +18,9 @@ export const env = {
 	GOOGLE_CLIENT_ID: getVal("GOOGLE_CLIENT_ID"),
 	GOOGLE_CLIENT_SECRET: getVal("GOOGLE_CLIENT_SECRET"),
 	APP_ORIGIN: getVal("APP_ORIGIN", "http://localhost:3000"),
-	BINANCE_PROXY_URL: getVal("BINANCE_PROXY_URL").replace(/\/$/, ""),
-	BINANCE_PROXY_SECRET: getVal("BINANCE_PROXY_SECRET"),
+	// Optional: point every Binance call at a mirror instead of api.binance.com.
+	// The app signs its own requests, so no proxy deployment is required.
+	BINANCE_BASE: getVal("BINANCE_BASE").replace(/\/+$/, ""),
 }
 
 export const missingEnv = () => (["TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "SESSION_SECRET"] as const).filter((k) => !env[k])

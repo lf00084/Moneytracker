@@ -6,11 +6,30 @@ import { decryptSecret, encryptSecret } from "./crypto.ts"
 import { toMinor } from "./money.ts"
 import { addDays, dayOf, today } from "./time.ts"
 import { toMad } from "./trade-math.ts"
+import { normUsdt, sumUsdt } from "./usdt.ts"
 import { todayFor, type User } from "./users.ts"
 import { id, rowsOf, text } from "./util.ts"
 
-const BASE = "https://api.binance.com"
 const ADS = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+// Binance is called straight from the Worker. No proxy project, no extra
+// deployment: the app signs its own requests. api1..api4 and api-gcp are the
+// official mirrors, so if one edge is blocked in a region the next one is
+// tried before giving up.
+// CloudFront in front of api.binance.com is known to reject Cloudflare Worker
+// IPs with a code-less 403; api-gcp sits on Google Cloud and is not behind it,
+// so it is tried right after the main host, then the numbered mirrors.
+const HOSTS = [
+	"https://api.binance.com",
+	"https://api-gcp.binance.com",
+	"https://api1.binance.com",
+	"https://api2.binance.com",
+	"https://api3.binance.com",
+	"https://api4.binance.com",
+]
+// Workers' fetch sends no User-Agent and WAF rules reject that, so every call
+// carries one.
+const UA = "Moneytracker/1.0 (Cloudflare Worker; +https://github.com/lf00084/Moneytracker)"
+const FIXED_HOST = (env.BINANCE_BASE || "").replace(/\/+$/, "")
 const EVERY = 3 * 60000
 const RETRY = 20000
 const DAY = 86400000
@@ -18,16 +37,6 @@ const WINDOW = 29 * DAY
 const WINDOWS = 6
 const PAGE = 100
 const PAGES = 5
-// When a VPS proxy is configured, every Binance call goes through it so the
-// Cloudflare Worker's IP is never rate-limited by Binance. The proxy signs
-// requests with the keys it holds; we only send timestamped queries.
-const proxyUrl = (path: string) => `${env.BINANCE_PROXY_URL}${path}`
-const proxyHeaders = (apiKey: string, secret: string): Record<string, string> => ({
-	Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}`,
-	"X-Binance-Key": apiKey,
-	"X-Binance-Secret": secret,
-})
-const useProxy = () => !!env.BINANCE_PROXY_URL && !!env.BINANCE_PROXY_SECRET
 
 const lastTry = new Map<string, number>()
 const rates = new Map<string, { v: number; exp: number; at: number }>()
@@ -62,6 +71,10 @@ export type WalletView = {
 	usdt: number
 	predictUsdt: number
 	fundingUsdt: number
+	// Exact balances as Binance reported them, so 0.000000001 USDT still shows.
+	predictText: string
+	fundingText: string
+	totalText: string
 	predictMad: number
 	fundingMad: number
 	syncedAt: number
@@ -105,23 +118,19 @@ const pct = (v: unknown) => {
 
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("")
 
-let timeOffset = 0
-let lastTimeSync = 0
-async function syncServerTime() {
+const offsets = new Map<string, { v: number; at: number }>()
+async function syncServerTime(base: string) {
+	const hit = offsets.get(base)
 	const now = Date.now()
-	if (now - lastTimeSync < 300000 && lastTimeSync > 0) return
+	if (hit && now - hit.at < 300000) return
 	try {
 		const c = new AbortController()
 		const timer = setTimeout(() => c.abort(), 4000)
-		const timeUrl = useProxy() ? proxyUrl("/binance/api/v3/time") : `${BASE}/api/v3/time`
-		const r = await fetch(timeUrl, useProxy() ? { signal: c.signal, headers: { Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}` } } : { signal: c.signal })
+		const r = await fetch(`${base}/api/v3/time`, { signal: c.signal, headers: { "User-Agent": UA, Accept: "application/json" } })
 		clearTimeout(timer)
 		if (r.ok) {
-			const data: any = await r.json()
-			if (data?.serverTime) {
-				timeOffset = Number(data.serverTime) - Date.now()
-				lastTimeSync = Date.now()
-			}
+			const data: any = await r.json().catch(() => null)
+			if (data?.serverTime) offsets.set(base, { v: Number(data.serverTime) - now, at: now })
 		}
 	} catch {}
 }
@@ -132,44 +141,79 @@ async function sign(secret: string, query: string) {
 	return hex(await crypto.subtle.sign("HMAC", key, enc.encode(query)))
 }
 
-async function call(apiKey: string, secret: string, path: string, params: Record<string, string> = {}, method: "GET" | "POST" = "GET"): Promise<{ data: any } | { error: string }> {
-	await syncServerTime()
-	const timestamp = String(Date.now() + timeOffset)
-	const query = new URLSearchParams({ ...params, recvWindow: "60000", timestamp }).toString()
-	const signature = await sign(secret, query)
+type Attempt = { data: any } | { error: string; retry: boolean }
+
+// One signed request against one host.
+async function attempt(base: string, apiKey: string, secret: string, path: string, params: Record<string, string>, method: "GET" | "POST"): Promise<Attempt> {
+	await syncServerTime(base)
+	const timestamp = String(Date.now() + (offsets.get(base)?.v ?? 0))
+	const unsigned = new URLSearchParams({ ...params, recvWindow: "60000", timestamp }).toString()
+	const query = `${unsigned}&signature=${await sign(secret, unsigned)}`
 	const c = new AbortController()
 	const timer = setTimeout(() => c.abort(), 8000)
 	try {
-		const throughProxy = useProxy()
-		const fullQuery = throughProxy ? query : `${query}&signature=${signature}`
-		const url = throughProxy ? proxyUrl(`/binance${path}${method === "GET" ? `?${fullQuery}` : ""}`) : method === "GET" ? `${BASE}${path}?${fullQuery}` : `${BASE}${path}`
-		const init: RequestInit = {
+		const r = await fetch(method === "GET" ? `${base}${path}?${query}` : `${base}${path}`, {
 			method,
-			headers: throughProxy
-				? { ...proxyHeaders(apiKey, secret), ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }
-				: { "X-MBX-APIKEY": apiKey, ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
+			headers: { "X-MBX-APIKEY": apiKey, "User-Agent": UA, Accept: "application/json", ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) },
 			signal: c.signal,
-			...(method === "POST" ? { body: fullQuery } : {}),
-		}
-		const r = await fetch(url, init)
+			...(method === "POST" ? { body: query } : {}),
+		})
 		const body: any = await r.json().catch(() => null)
-		if (!r.ok) return { error: String(body?.msg ?? `Binance error ${r.status}`).slice(0, 280) }
-		return { data: body }
+		if (r.ok) return { data: body }
+		const msg = String(body?.msg ?? `Binance error ${r.status}`).slice(0, 280)
+		if (r.status === 451 || /restricted location|eligibility/i.test(msg)) return { error: "451 restricted region", retry: true }
+		if (r.status === 403) {
+			const coded = typeof body?.code === "number"
+			return { error: coded ? msg : "403 blocked by the CDN in front of Binance", retry: true }
+		}
+		if (r.status === 418 || r.status === 429) return { error: "Binance rate limit reached. Try again in a minute.", retry: false }
+		return { error: msg, retry: r.status >= 500 }
 	} catch {
-		return { error: "Could not reach Binance" }
+		return { error: "Could not reach Binance", retry: true }
 	} finally {
 		clearTimeout(timer)
 	}
+}
+
+let hostAt = 0
+
+// Signed call with mirror fallback: a blocked or unreachable host moves to the
+// next official mirror, a real API error (bad key, permission, signature) stops
+// right away because every host would answer the same.
+async function call(apiKey: string, secret: string, path: string, params: Record<string, string> = {}, method: "GET" | "POST" = "GET"): Promise<{ data: any } | { error: string }> {
+	const order = FIXED_HOST ? [FIXED_HOST] : HOSTS.map((_, i) => HOSTS[(hostAt + i) % HOSTS.length]!)
+	const failed: string[] = []
+	for (const base of order) {
+		const r = await attempt(base, apiKey, secret, path, params, method)
+		if ("data" in r) {
+			const i = HOSTS.indexOf(base)
+			if (i >= 0) hostAt = i
+			return r
+		}
+		if (!r.retry) return { error: r.error }
+		failed.push(`${base.replace("https://", "")} ${r.error}`)
+	}
+	if (failed.length > 1) {
+		// One line, no domain-by-domain roll call: the fix is the same for all
+		// of them and the detail is useless in a banner.
+		const reasons = [...new Set(failed.map((f) => f.split(" ").slice(1).join(" ")))]
+		const blocked = reasons.some((r) => /451|403/.test(r))
+		return {
+			error: blocked
+				? "Binance blocks this server's region (451 on every API domain). Not a key problem: run the Worker where Binance serves, e.g. Cloudflare Smart Placement."
+				: `Binance did not answer on any domain: ${reasons.join(" · ")}`.slice(0, 240),
+		}
+	}
+	return { error: failed[0] ?? "Could not reach Binance" }
 }
 
 async function ads(fiat: string, side: "BUY" | "SELL", payTypes: string[] = []): Promise<number[]> {
 	const c = new AbortController()
 	const timer = setTimeout(() => c.abort(), 4000)
 	try {
-		const adsUrl = useProxy() ? proxyUrl("/p2p/bapi/c2c/v2/friendly/c2c/adv/search") : ADS
-		const r = await fetch(adsUrl, {
+		const r = await fetch(ADS, {
 			method: "POST",
-			headers: useProxy() ? { "Content-Type": "application/json", Authorization: `Bearer ${env.BINANCE_PROXY_SECRET}` } : { "Content-Type": "application/json" },
+			headers: { "Content-Type": "application/json", "User-Agent": UA, Accept: "application/json" },
 			body: JSON.stringify({ fiat, page: 1, rows: 10, tradeType: side, asset: "USDT", countries: [], proMerchantAds: false, shieldMerchantAds: false, filterType: "all", periods: [], additionalKycVerifyFilter: 0, publisherType: null, payTypes, classifies: ["mass", "profession"] }),
 			signal: c.signal,
 		})
@@ -289,7 +333,11 @@ export function avgSellRate(moves: { kind: string; usdt_minor: number; mad_minor
 	return usdt > 0 ? Math.round(mad / usdt) : 0
 }
 
-async function fetchWallet(apiKey: string, secret: string, known: string): Promise<{ usdt: number; wallet: string } | string> {
+const usdtRowsOf = (list: any[]) => list.filter((x: any) => String(x?.asset ?? "").toUpperCase() === "USDT")
+
+// Wallet value stays a decimal string: cents would swallow a 0.000000001 USDT
+// balance and the point of the card is to show exactly what Binance holds.
+async function fetchWallet(apiKey: string, secret: string, known: string): Promise<{ usdt: number; text: string; wallet: string } | string> {
 	let wallet = known
 	if (!wallet) {
 		const w = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/wallet/list")
@@ -302,24 +350,25 @@ async function fetchWallet(apiKey: string, secret: string, known: string): Promi
 	// Binance nests the payload differently across API revisions: try the summary
 	// first, then sum the position values, then fall back to the portfolio view.
 	const body = p.data?.data ?? p.data
-	const pick = (v: unknown) => (v !== undefined && v !== null && Number.isFinite(Number(v)) ? cents(v) : null)
-	let total = pick(body?.summary?.totalValue) ?? pick(body?.totalValue) ?? pick(body?.summary?.totalUsdtValue)
-	if (total === null && Array.isArray(body?.positions)) {
+	const pick = (v: unknown) => (v !== undefined && v !== null && Number.isFinite(Number(v)) ? v : null)
+	let value = pick(body?.summary?.totalValue) ?? pick(body?.totalValue) ?? pick(body?.summary?.totalUsdtValue)
+	if (value === null && Array.isArray(body?.positions)) {
 		const sum = body.positions.reduce((a: number, x: any) => a + (Number(x?.value) || Number(x?.notional) || 0), 0)
-		if (Number.isFinite(sum) && sum > 0) total = cents(sum)
+		if (Number.isFinite(sum) && sum > 0) value = sum
 	}
-	if (total === null) {
+	if (value === null) {
 		const pf = await call(apiKey, secret, "/sapi/v1/w3w/wallet/prediction/pnl/portfolio", { walletAddress: wallet })
 		if (!("error" in pf)) {
 			const b = pf.data?.data ?? pf.data
-			total = pick(b?.portfolioValue) ?? pick(b?.totalValue) ?? pick(b?.summary?.totalValue) ?? pick(b?.portfolio?.totalValue)
+			value = pick(b?.portfolioValue) ?? pick(b?.totalValue) ?? pick(b?.summary?.totalValue) ?? pick(b?.portfolio?.totalValue)
 		}
 	}
-	if (total === null) return "Binance did not return the wallet value"
-	return { usdt: total, wallet }
+	if (value === null) return "Binance did not return the wallet value"
+	const text = normUsdt(value)
+	return { usdt: cents(text), text, wallet }
 }
 
-async function fetchFunding(apiKey: string, secret: string): Promise<number | string> {
+async function fetchFunding(apiKey: string, secret: string): Promise<{ usdt: number; text: string } | string> {
 	// Try 1: /sapi/v1/asset/get-funding-asset with asset filter
 	let res = await call(apiKey, secret, "/sapi/v1/asset/get-funding-asset", { asset: "USDT", needBtcValuation: "false" }, "POST")
 	if ("error" in res) {
@@ -327,38 +376,33 @@ async function fetchFunding(apiKey: string, secret: string): Promise<number | st
 	}
 	if (!("error" in res)) {
 		const list: any[] = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : []
-		const usdt = list.find((x: any) => String(x.asset).toUpperCase() === "USDT")
-		if (usdt) {
-			const free = Number(usdt.free) || 0
-			const freeze = Number(usdt.freeze) || 0
-			return cents(free + freeze)
+		const rows = usdtRowsOf(list)
+		if (rows.length) {
+			const text = normUsdt(sumUsdt(...rows.flatMap((x: any) => [x.free, x.freeze, x.locked])))
+			return { usdt: cents(text), text }
 		}
 	}
 	// Try 2: /sapi/v3/asset/getUserAsset
 	const userAsset = await call(apiKey, secret, "/sapi/v3/asset/getUserAsset", { asset: "USDT" }, "POST")
 	if (!("error" in userAsset)) {
-		const list: any[] = Array.isArray(userAsset.data) ? userAsset.data : []
-		const usdt = list.find((x: any) => String(x.asset).toUpperCase() === "USDT")
-		if (usdt) {
-			const free = Number(usdt.free) || 0
-			const freeze = Number(usdt.freeze) || 0
-			const locked = Number(usdt.locked) || 0
-			return cents(free + freeze + locked)
+		const list: any[] = Array.isArray(userAsset.data) ? userAsset.data : Array.isArray(userAsset.data?.data) ? userAsset.data.data : []
+		const rows = usdtRowsOf(list)
+		if (rows.length) {
+			const text = normUsdt(sumUsdt(...rows.flatMap((x: any) => [x.free, x.freeze, x.locked])))
+			return { usdt: cents(text), text }
 		}
 	}
 	// Try 3: /api/v3/account spot balance
 	const spot = await call(apiKey, secret, "/api/v3/account")
 	if (!("error" in spot)) {
-		const balances: any[] = Array.isArray(spot.data?.balances) ? spot.data.balances : []
-		const usdt = balances.find((x: any) => String(x.asset).toUpperCase() === "USDT")
-		if (usdt) {
-			const free = Number(usdt.free) || 0
-			const locked = Number(usdt.locked) || 0
-			return cents(free + locked)
+		const rows = usdtRowsOf(Array.isArray(spot.data?.balances) ? spot.data.balances : [])
+		if (rows.length) {
+			const text = normUsdt(sumUsdt(...rows.flatMap((x: any) => [x.free, x.locked])))
+			return { usdt: cents(text), text }
 		}
 	}
 	if ("error" in res) return res.error
-	return 0
+	return { usdt: 0, text: "0" }
 }
 
 async function importOrders(uid: string, apiKey: string, secret: string, from: number, bps: number, fiat: string, dayStart: number): Promise<{ upto: number } | string> {
@@ -544,7 +588,9 @@ export async function syncPredict(uid: string, force = false): Promise<void> {
 
 		const predictUsdt = typeof rPredict === "object" ? rPredict.usdt : (a.usdt_minor || 0)
 		const predictWallet = typeof rPredict === "object" ? rPredict.wallet : (a.wallet || "")
-		const fundingMinor = typeof rFunding === "number" ? rFunding : (a.funding_minor || 0)
+		const fundingMinor = typeof rFunding === "object" ? rFunding.usdt : (a.funding_minor || 0)
+		const predictText = typeof rPredict === "object" ? rPredict.text : a.predict_text || normUsdt((a.usdt_minor || 0) / 100)
+		const fundingText = typeof rFunding === "object" ? rFunding.text : a.funding_text || normUsdt((a.funding_minor || 0) / 100)
 
 		const prevP = a.prev_predict_minor || a.usdt_minor || predictUsdt
 		const prevF = a.prev_funding_minor || a.funding_minor || fundingMinor
@@ -553,18 +599,23 @@ export async function syncPredict(uid: string, force = false): Promise<void> {
 
 		await autoTransfers(uid, dP, dF, now, typeof u?.day_start === "number" && Number.isInteger(u.day_start) ? u.day_start : 5)
 
-		const lastError = [
-			typeof rFunding === "string" && rFunding ? `Funding: ${rFunding}` : "",
-			typeof rPredict === "string" && rPredict ? `Predict: ${rPredict}` : "",
-		]
-			.filter(Boolean)
-			.join(" · ")
+		const notes: string[] = []
+		for (const [label, value] of [
+			["Funding", typeof rFunding === "string" ? rFunding : ""],
+			["Predict", typeof rPredict === "string" ? rPredict : ""],
+		] as const) {
+			if (!value || notes.some((n) => n.endsWith(value))) continue
+			notes.push(`${label}: ${value}`)
+		}
+		const lastError = notes.join(" · ")
 
 		await db.update(predictAccount, uid, {
 			...p2p,
 			wallet: predictWallet,
 			usdt_minor: predictUsdt,
+			predict_text: predictText,
 			funding_minor: fundingMinor,
+			funding_text: fundingText,
 			prev_predict_minor: predictUsdt,
 			prev_funding_minor: fundingMinor,
 			synced_at: now,
@@ -592,8 +643,8 @@ export async function usdtValueMad(uid: string): Promise<number> {
 	const fallback = Number(u?.usdt_rate_minor ?? 0) > 0 ? Number(u?.usdt_rate_minor ?? 0) : 1100
 	const mine = avgSellRate(sells)
 	const { rate } = mine > 0 ? { rate: mine } : await marketRate(String(u?.currency || "MAD").toUpperCase(), fallback)
-	const totalUsdt = (a.usdt_minor || 0) + (a.funding_minor || 0)
-	return toMad(totalUsdt, rate)
+	const totalUsdt = Number(sumUsdt(a.predict_text || normUsdt((a.usdt_minor || 0) / 100), a.funding_text || normUsdt((a.funding_minor || 0) / 100)))
+	return Math.round(totalUsdt * rate)
 }
 
 export async function predictTotal(uid: string): Promise<number> {
@@ -640,6 +691,9 @@ export async function loadWallet(user: User): Promise<WalletView> {
 	const predictUsdt = a?.usdt_minor ?? 0
 	const fundingUsdt = a?.funding_minor ?? 0
 	const totalUsdt = predictUsdt + fundingUsdt
+	const predictText = a?.predict_text || normUsdt(predictUsdt / 100)
+	const fundingText = a?.funding_text || normUsdt(fundingUsdt / 100)
+	const totalText = sumUsdt(predictText, fundingText)
 
 		const st = p2pStats(moves, t, rate)
 	const predictToday = days.find((d) => d.day === t)?.profit_minor ?? 0
@@ -683,8 +737,11 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		usdt: totalUsdt,
 		predictUsdt,
 		fundingUsdt,
-		predictMad: toMad(predictUsdt, rate),
-		fundingMad: toMad(fundingUsdt, rate),
+		predictText,
+		fundingText,
+		totalText,
+		predictMad: Math.round(Number(predictText) * rate),
+		fundingMad: Math.round(Number(fundingText) * rate),
 		syncedAt: a?.synced_at ?? 0,
 		rate,
 		rateAt: market.at,
@@ -692,7 +749,7 @@ export async function loadWallet(user: User): Promise<WalletView> {
 		mineRate,
 		checkedToday: !!checks && checks.done === 1,
 		feePct: (a?.fee_bps ?? 20) / 100,
-		valueMad: toMad(totalUsdt, rate),
+		valueMad: Math.round(Number(totalText) * rate),
 		today: predictToday,
 		total: predictAll,
 		p2pToday: st.today,

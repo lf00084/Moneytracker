@@ -2,6 +2,7 @@ import { Frame } from "remix/component"
 import type { State } from "../lib/data.ts"
 import { routes } from "../routes.ts"
 import { fmt } from "../lib/money.ts"
+import { showUsdt } from "../lib/usdt.ts"
 import { dayLabel, timeAgo, today } from "../lib/time.ts"
 import { allDone, backUsdt, DEPOSIT, FIVE, flowOf, GAME, gameOf, gamesStrip, hasGames, isDone, letter, resOf, stakesFor, toMad, totalPnl, TRIES, word, type Flow, type GameKey, type TradeSession } from "../lib/trade-math.ts"
 import { Back, BankIcon, Card, FlowBadge, Icon, Submit, view } from "./ui.tsx"
@@ -401,6 +402,8 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 	const w = s.wallet
 	if (!w) return null
 	const cur = s.user.currency
+	const netToday = w.netToday ?? 0
+	const netTotal = w.netTotal ?? 0
 	const days = w.days ?? []
 	if (!days.length) return null
 	const t = today(s.user.day_start)
@@ -410,8 +413,9 @@ const DailyEarningsSection = view<{ s: State }>(({ s }) => {
 			<div class="cb">
 				<div class="gl">
 					<div>
-						<div class="tg">Daily Earnings History</div>
-						<div class="lb">See exactly what you earned each day from P2P Funding and Binance Predict.</div>
+						<div class="tg">Daily earnings</div>
+						<b class={`big ${tone(netToday)}`}>{sg(netToday)} <small>{cur}</small></b>
+						<div class="lb">Today, P2P + Predict after fees · all-time net {sg(netTotal)} {cur}</div>
 					</div>
 				</div>
 				<div class="daily-earnings-list" style={{ marginTop: "12px" }}>
@@ -506,9 +510,6 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 	const title = stop ? "Stop trading now" : open ? "Predict open" : tradedToday ? "Done for today" : ready ? "You can predict" : "Add balance first"
 	const sub = open ? (f!.over ? "Finish the games" : `Try ${f!.tryNo} of ${TRIES}`) : tradedToday ? `Again at ${at}` : ready ? "Balance in Predict" : "Needs 16 USDT"
 
-	const netToday = w?.netToday ?? 0
-	const netTotal = w?.netTotal ?? 0
-
 	return (
 		<div class="trd">
 			<Frame name="today" src={routes.pages.todayPanel.href()} fallback={<TodayLoading />}></Frame>
@@ -516,9 +517,11 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 				<div class="cb">
 					<div class="gl">
 						<div>
-							<div class="tg">Net profit today (P2P + Predict)</div>
-							<b class={`big ${tone(netToday)}`}>{sg(netToday)} <small>{cur}</small></b>
-							<div class="lb">All-time net: {sg(netTotal)} {cur}</div>
+							<div class="tg">Binance balance · all wallets</div>
+							<b class="big bal-big">
+								{showUsdt(w?.totalText ?? 0)} <small>USDT</small>
+							</b>
+							<div class="lb">≈ {fmt(w?.valueMad ?? 0)} {cur}</div>
 						</div>
 						<div class="tsr">
 							<form method="post" action="/wallet/sync" style={contents}>
@@ -530,27 +533,27 @@ export const TradingBody = view<{ s: State }>(({ s }) => {
 						</div>
 					</div>
 
-					<div class="whs" style={{ marginTop: "12px" }}>
+					<div class="whs two">
 						<div>
-							<span>Funding (P2P)</span>
-							<b>{fmt(w?.fundingUsdt ?? 0)} USDT</b>
+							<span>Funding</span>
+							<b>{showUsdt(w?.fundingText ?? 0)} USDT</b>
 							<span class="lb">≈ {fmt(w?.fundingMad ?? 0)} {cur}</span>
 						</div>
 						<div>
-							<span>Predict wallet</span>
-							<b>{fmt(w?.predictUsdt ?? 0)} USDT</b>
+							<span>Predictions</span>
+							<b>{showUsdt(w?.predictText ?? 0)} USDT</b>
 							<span class="lb">≈ {fmt(w?.predictMad ?? 0)} {cur}</span>
-						</div>
-						<div>
-							<span>Total USDT</span>
-							<b>{fmt(w?.usdt ?? 0)} USDT</b>
-							<span class="lb">≈ {fmt(w?.valueMad ?? 0)} {cur}</span>
 						</div>
 					</div>
 
 					<div class="rate-indicator-line">
 						1 USDT = {fmt(w?.rate ?? s.user.usdt_rate)} {cur} {w?.mineRate ? "(avg of my P2P sells)" : "(market)"}{w?.rateAt ? ` · ${timeAgo(w.rateAt)}` : ""}
 					</div>
+					{w?.connected && w.error ? (
+						<div class="wer" role="alert">
+							{w.error}
+						</div>
+					) : null}
 
 									</div>
 			</article>

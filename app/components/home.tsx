@@ -1,6 +1,7 @@
 import type { BankView, MoneyView, PendingView } from "../lib/banks.ts"
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
+import { showUsdt } from "../lib/usdt.ts"
 import { hhmm, timeAgo, today } from "../lib/time.ts"
 import { DEPOSIT, flowOf, toMad, TRIES } from "../lib/trade-math.ts"
 import { calc } from "../lib/view.ts"
@@ -122,12 +123,12 @@ export const UsdtCard = view<{ s: State }>(({ s }) => {
 			<span class="hm-wide-mid">
 				<b>USDT</b>
 				<small>
-					Funding {fmt(w?.fundingUsdt ?? 0)} · Predict {fmt(w?.predictUsdt ?? 0)}
+					Funding {showUsdt(w?.fundingText ?? 0)} · Predictions {showUsdt(w?.predictText ?? 0)}
 				</small>
 			</span>
 			<span class="hm-wide-end">
 				<b>
-					{fmt(totalUsdt)} <small>USDT</small>
+					{showUsdt(w?.totalText ?? totalUsdt)} <small>USDT</small>
 				</b>
 				<small>
 					≈ {fmt(madVal)} {cur}

@@ -10,6 +10,12 @@ export const go = (href: string) => new Response(null, { status: 303, headers: {
 export const json = (data: unknown, status = 200) =>
 	new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } })
 
+// Where a freshly signed-in user lands. The redirect must be the final page:
+// a client-rendered form only follows one hop, so bouncing through "/" would
+// leave the browser on the auth screen.
+const LANDING = /^\/(home|trading|wallet|banks|income|profile|history|plan|settings|pad(\/(said|home))?)(\?p=[0-9a-f-]{36})?$/
+export const landing = (user: User | null) => (user && LANDING.test(user.last_tab) ? user.last_tab : "/home")
+
 export const userOf = (ctx: Ctx): User | null => {
 	const a = ctx?.get?.(Auth)
 	return a?.ok ? (a.identity as User) : null

@@ -236,6 +236,8 @@ CREATE TABLE IF NOT EXISTS predict_account (
   wallet        TEXT NOT NULL DEFAULT '',
   usdt_minor    INTEGER NOT NULL DEFAULT 0,
   funding_minor INTEGER NOT NULL DEFAULT 0,
+  predict_text  TEXT NOT NULL DEFAULT '',
+  funding_text  TEXT NOT NULL DEFAULT '',
   prev_funding_minor INTEGER NOT NULL DEFAULT 0,
   prev_predict_minor INTEGER NOT NULL DEFAULT 0,
   synced_at     INTEGER NOT NULL DEFAULT 0,

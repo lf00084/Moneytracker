@@ -6,7 +6,7 @@ import * as act from "../../lib/actions.ts"
 import { googleProvider } from "../../lib/auth.ts"
 import { signInWithPassword, signUpWithPassword, upsertFromGoogle } from "../../lib/users.ts"
 import { routes } from "../../routes.ts"
-import { fail, formOf, go, signInAs, signOut, takeError, userOf, type Ctx } from "../../request.ts"
+import { fail, formOf, go, landing, signInAs, signOut, takeError, userOf, type Ctx } from "../../request.ts"
 
 export default createController(routes.auth, {
 	actions: {
@@ -20,7 +20,7 @@ export default createController(routes.auth, {
 			const user = await signInWithPassword(String(f.get("email") ?? ""), String(f.get("password") ?? ""))
 			if (!user) return fail(ctx, "/login", "Wrong email or password.")
 			signInAs(ctx, user.id)
-			return go("/")
+			return go(landing(user))
 		},
 
 		signup(ctx: Ctx) {
@@ -37,7 +37,7 @@ export default createController(routes.auth, {
 			})
 			if (!result.ok) return fail(ctx, "/signup", result.error)
 			signInAs(ctx, result.user.id)
-			return go("/")
+			return go(landing(result.user))
 		},
 
 		logout(ctx: Ctx) {

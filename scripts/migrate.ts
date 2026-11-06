@@ -23,6 +23,8 @@ const addColumns = [
 	"ALTER TABLE banks ADD COLUMN icon_url TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE purchases ADD COLUMN bank_id TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE predict_account ADD COLUMN funding_minor INTEGER NOT NULL DEFAULT 0",
+	"ALTER TABLE predict_account ADD COLUMN predict_text TEXT NOT NULL DEFAULT ''",
+	"ALTER TABLE predict_account ADD COLUMN funding_text TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE predict_account ADD COLUMN prev_funding_minor INTEGER NOT NULL DEFAULT 0",
 	"ALTER TABLE predict_account ADD COLUMN prev_predict_minor INTEGER NOT NULL DEFAULT 0",
 	"ALTER TABLE predict_days ADD COLUMN locked INTEGER NOT NULL DEFAULT 0",

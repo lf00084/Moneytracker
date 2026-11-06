@@ -4,6 +4,10 @@
 	"main": "./bootstrap/worker.ts",
 	"compatibility_date": "2026-09-02",
 	"compatibility_flags": ["nodejs_compat"],
+	// Binance blocks whole regions/datacentres. Smart Placement lets Cloudflare
+	// run this Worker in a region Binance serves, so the API works without any
+	// proxy project.
+	"placement": { "mode": "smart" },
 	"triggers": {
 		"crons": ["*/15 * * * *"]
 	},

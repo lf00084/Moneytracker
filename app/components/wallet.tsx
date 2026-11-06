@@ -1,5 +1,6 @@
 import type { State } from "../lib/data.ts"
 import { fmt } from "../lib/money.ts"
+import { showUsdt } from "../lib/usdt.ts"
 import { dayLabel, timeAgo, today } from "../lib/time.ts"
 import { AppLayout } from "./layout.tsx"
 import { Back, ErrorBanner, Icon, Link, PageHeader, Submit, view } from "./ui.tsx"
@@ -22,10 +23,10 @@ const Hero = view<{ s: State }>(({ s }) => {
 		<div class="wh">
 			<div class="whm">
 				<div class="whb">
-					<b>{fmt(w.usdt)}</b>
+					<b>{showUsdt(w.totalText)}</b>
 					<small>USDT</small>
 				</div>
-				<span class="lb">{`≈ ${fmt(w.valueMad)} ${s.user.currency}`}</span>
+				<span class="lb">{`≈ ${fmt(w.valueMad)} ${s.user.currency} · all wallets`}</span>
 			</div>
 			<form method="post" action="/wallet/sync" style={contents}>
 				<Back s={s} />
@@ -33,32 +34,30 @@ const Hero = view<{ s: State }>(({ s }) => {
 					<Icon name="revert" />
 				</Submit>
 			</form>
+			<div class="whs two">
+				<div>
+					<span>Funding</span>
+					<b>{`${showUsdt(w.fundingText)} USDT`}</b>
+					<span class="lb">{`≈ ${fmt(w.fundingMad)} ${s.user.currency}`}</span>
+				</div>
+				<div>
+					<span>Predictions</span>
+					<b>{`${showUsdt(w.predictText)} USDT`}</b>
+					<span class="lb">{`≈ ${fmt(w.predictMad)} ${s.user.currency}`}</span>
+				</div>
+			</div>
 			<div class="whs">
 				<div>
-					<span>Today</span>
+					<span>Earned today</span>
 					<b class={tone(w.earnedToday)}>{sg(w.earnedToday)}</b>
 				</div>
 				<div>
-					<span>Total</span>
+					<span>All-time</span>
 					<b class={tone(w.earnedTotal)}>{sg(w.earnedTotal)}</b>
 				</div>
 				<div>
 					<span>{w.live ? "P2P rate" : "Rate"}</span>
 					<b>{fmt(w.rate)}</b>
-				</div>
-			</div>
-			<div class="whs">
-				<div>
-					<span>Predict</span>
-					<b class={tone(w.total)}>{`${sg(w.total)} USDT`}</b>
-				</div>
-				<div>
-					<span>P2P</span>
-					<b class={tone(w.p2pTotal)}>{sg(w.p2pTotal)}</b>
-				</div>
-				<div>
-					<span>Fees</span>
-					<b>{fmt(w.fees)}</b>
 				</div>
 			</div>
 			<div class="wsy">{w.syncedAt ? `Synced ${timeAgo(w.syncedAt)} · earnings in ${s.user.currency}` : "Not synced yet"}</div>
@@ -175,7 +174,7 @@ export const WalletBody = view<{ s: State }>(({ s }) => {
 })
 
 export const WalletScreen = view<{ s: State }>(({ s }) => {
-	const right = s.wallet?.connected ? `${fmt(s.wallet.usdt)} USDT` : ""
+	const right = s.wallet?.connected ? `${showUsdt(s.wallet.totalText)} USDT` : ""
 	return (
 		<AppLayout
 			title="Predict wallet"

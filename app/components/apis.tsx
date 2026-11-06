@@ -106,10 +106,15 @@ const ExoClick = view<{ s: State }>(({ s }) => {
 	)
 })
 
-export const ApiBody = view<{ s: State }>(({ s }) => (
-	<div class="wal">
-		<ErrorBanner s={s} />
-		<Binance s={s} />
-		<ExoClick s={s} />
-	</div>
-))
+export const ApiBody = view<{ s: State }>(({ s }) => {
+	// The Binance card already prints the sync error; keep the page banner for
+	// messages it does not own so the same line never appears twice.
+	const dup = !!s.wallet?.error && s.error.trim().endsWith(s.wallet.error.trim())
+	return (
+		<div class="wal">
+			{dup ? null : <ErrorBanner s={s} />}
+			<Binance s={s} />
+			<ExoClick s={s} />
+		</div>
+	)
+})

@@ -9,6 +9,9 @@ export const predictAccount = table({
 		wallet: c.varchar(80),
 		usdt_minor: c.integer(),
 		funding_minor: c.integer(),
+		// Exact decimal strings straight from Binance (0.000000001 USDT is real).
+		predict_text: c.varchar(40),
+		funding_text: c.varchar(40),
 		prev_funding_minor: c.integer(),
 		prev_predict_minor: c.integer(),
 		synced_at: c.integer(),

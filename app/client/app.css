@@ -754,11 +754,11 @@ main {
 
 /* home / income tiles */
 .hm-top {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	margin: 0.75rem 0;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(150px, 0.62fr);
+	gap: 0.55rem;
+	align-items: stretch;
+	margin: 0 0 0.55rem;
 }
 .hm-tiles {
 	display: grid;
@@ -1991,7 +1991,7 @@ a.li:hover {
 	display: none;
 	margin-top: 2px;
 }
-.kf-fixed,
+form[data-kind="fixed"] .kf-fixed,
 form[data-kind="manual"] .kf-manual,
 form[data-kind="daily"] .kf-daily,
 form[data-kind="monthly"] .kf-monthly {
@@ -2036,4 +2036,624 @@ input.pr {
 }
 .inv-st.paid {
 	color: var(--pico-ins-color);
+}
+
+/* ============================================================
+   Structural blocks that used the legacy class names
+   ============================================================ */
+
+/* summary "head" rows inside cards: 0% + label, I owe + amount */
+.ow {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-top: 0.15rem;
+}
+.ow .big2 {
+	font-size: 1.15rem;
+	font-weight: 700;
+	line-height: 1.1;
+}
+.ow .big2 small {
+	font-size: 0.72rem;
+	font-weight: 500;
+	color: var(--pico-muted-color);
+	margin-left: 0.1rem;
+}
+.ow > .sp {
+	flex: 1;
+}
+.ow .sm {
+	font-size: 0.8rem;
+	color: var(--pico-muted-color);
+}
+
+/* card footer meta line */
+.xl {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	font-size: 0.78rem;
+	color: var(--pico-muted-color);
+	flex-wrap: wrap;
+}
+.xl b {
+	color: var(--pico-color);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+/* money header (banks / wallet): total + 3 stat tiles */
+.wh {
+	display: flex;
+	flex-direction: column;
+	gap: 0.7rem;
+	background: var(--pico-card-background-color);
+	border-radius: var(--pico-border-radius);
+	padding: 0.9rem 1rem;
+	margin: 0.75rem 0;
+}
+.whm {
+	display: flex;
+	align-items: baseline;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+}
+.whb {
+	display: flex;
+	align-items: baseline;
+	gap: 0.3rem;
+}
+.whb b {
+	font-size: 1.65rem;
+	font-weight: 700;
+	line-height: 1.05;
+	font-variant-numeric: tabular-nums;
+}
+.whb small {
+	font-size: 0.78rem;
+	color: var(--pico-muted-color);
+	font-weight: 500;
+}
+.whm > .lb {
+	font-size: 0.78rem;
+}
+.wh .hm-needs-chip {
+	width: fit-content;
+}
+
+/* compact bank rows (details) */
+.wk {
+	border-bottom: 1px solid var(--pico-border-color);
+}
+.wk:last-child {
+	border-bottom: 0;
+}
+.wk > summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	padding: 0.6rem 0;
+	font-size: 0.95rem;
+}
+.wk > summary .lb {
+	color: var(--pico-muted-color);
+	font-size: 0.85rem;
+	font-variant-numeric: tabular-nums;
+}
+.wkf {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.25rem 0 0.85rem;
+}
+.wkn {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+}
+
+/* history table */
+.th,
+.tr {
+	display: grid;
+	grid-template-columns: minmax(90px, 0.8fr) minmax(80px, 0.7fr) minmax(80px, 0.7fr) minmax(80px, 0.7fr) minmax(160px, 2fr);
+	gap: 0.75rem;
+	align-items: start;
+	padding: 0.7rem 0;
+	border-bottom: 1px solid var(--pico-border-color);
+}
+.th {
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--pico-muted-color);
+	font-weight: 600;
+	padding-top: 0.25rem;
+	padding-bottom: 0.5rem;
+}
+.tr:last-child {
+	border-bottom: 0;
+}
+.tr .ea,
+.tr .sp {
+	font-variant-numeric: tabular-nums;
+}
+/* day summary row (mobile cards + trading rows) */
+.l1 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+}
+.l1 > span {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.3rem;
+	font-size: 0.85rem;
+}
+.l1 > b {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.l1 .lb {
+	font-size: 0.72rem;
+}
+
+/* debt card: content + add button column */
+.bgc {
+	display: flex;
+	align-items: stretch;
+	padding: 0;
+	overflow: hidden;
+}
+.bgc > .ct {
+	flex: 1;
+	min-width: 0;
+	padding: 0.9rem 1rem 1rem;
+}
+.bgc > .addb {
+	align-self: flex-start;
+	margin: 0.85rem 0.85rem 0 0;
+}
+.ct > details > summary.sh,
+.sh {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	font-weight: 600;
+	list-style: none;
+	cursor: pointer;
+	padding-bottom: 0.5rem;
+}
+.sh::-webkit-details-marker {
+	display: none;
+}
+.sh .rr {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--pico-muted-color);
+	font-weight: 500;
+	font-size: 0.9rem;
+}
+.chev {
+	display: inline-flex;
+	color: var(--pico-muted-color);
+	transition: transform 0.18s ease;
+}
+details[open] > summary .chev {
+	transform: rotate(180deg);
+}
+
+/* goal jar progress card */
+.jarc {
+	position: relative;
+	overflow: hidden;
+}
+.jarc .jar {
+	position: absolute;
+	inset: 0 auto 0 0;
+	background: var(--pico-primary);
+	opacity: 0.14;
+	pointer-events: none;
+	transition: width 0.45s ease;
+}
+.jarc .jin {
+	position: relative;
+	z-index: 1;
+}
+
+/* bank icon preview (add bank form) */
+.bank-icon-preview-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+.bank-icon-preview-row .in {
+	flex: 1;
+	margin-bottom: 0;
+}
+.bank-icon-preview {
+	width: 42px;
+	height: 42px;
+	flex: none;
+	border-radius: 10px;
+	border: 1px dashed var(--pico-border-color);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	color: var(--pico-muted-color);
+	font-size: 0.85rem;
+}
+.bank-icon-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+/* hidden panels toggled by data-bigadd / data-tg / data-pay */
+.adp,
+[data-adp][hidden],
+[data-addp][hidden],
+[data-payp][hidden] {
+	display: none;
+}
+.adp:not([hidden]) {
+	display: block;
+	margin-top: 0.6rem;
+}
+
+/* inline form rows inside cards */
+.xfm,
+.spf {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+.xfm .ln,
+.spf .ln {
+	display: flex;
+	gap: 0.5rem;
+	margin: 0;
+}
+.xfm .ln .in,
+.spf .ln .in {
+	flex: 1;
+	min-width: 0;
+}
+.xfm .ln .in.pr,
+.spf .ln .in.pr {
+	flex: 0 0 6.5rem;
+}
+
+/* trading: PnL entry + summary blocks */
+.pres {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-top: 0.6rem;
+}
+.tsum {
+	margin-top: 0.6rem;
+}
+.hx-top,
+.hx-badge {
+	display: flex;
+}
+.hx-top {
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* pad leftovers */
+.nt-tgl {
+	position: relative;
+	display: inline-block;
+	width: 40px;
+	height: 24px;
+	border-radius: 12px;
+	background: var(--pico-primary-background);
+	flex: none;
+}
+.nt-tgl::after {
+	content: "";
+	position: absolute;
+	right: 3px;
+	top: 3px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--pico-primary-inverse);
+}
+.nt-pgf {
+	position: absolute;
+	inset: 0 auto 0 0;
+	background: var(--pico-muted-color);
+	opacity: 0.2;
+	pointer-events: none;
+	transition: width 0.4s ease;
+}
+.nt-pgf.full {
+	background: var(--pico-primary);
+	opacity: 0.3;
+}
+.nt-c {
+	position: relative;
+}
+.nt-fi {
+	flex: 1;
+	min-width: 0;
+}
+.nt-pr2,
+.nt-rd {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+.nt-shh {
+	font-weight: 600;
+	font-size: 0.9rem;
+}
+.nt-tr2 {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* home bank tile bits */
+.add-tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.25rem;
+	color: var(--pico-muted-color);
+	cursor: pointer;
+	border: 1px dashed var(--pico-border-color);
+	background: transparent;
+	text-align: center;
+	font-size: 0.78rem;
+}
+.hm-tile-warn-icon {
+	color: var(--pico-del-color);
+	line-height: 0;
+}
+
+/* misc utility used by markup */
+.hero {
+	margin: 0.75rem 0;
+}
+.v,
+.n {
+	white-space: nowrap;
+}
+.de-date {
+	font-size: 0.9rem;
+}
+.de-left {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	min-width: 0;
+}
+.de-right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.1rem;
+	flex: none;
+}
+.de-total {
+	font-size: 1.05rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+.p2p-order-rt {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.15rem;
+	flex: none;
+}
+.p2p-quick-assign {
+	display: flex;
+	gap: 0.35rem;
+	align-items: center;
+	margin-top: 0.25rem;
+}
+.wmi {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+}
+
+/* collapsible extra-hours control */
+.hx-hours {
+	margin-top: 0.15rem;
+}
+.hx-hours > summary {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.8rem;
+	color: var(--pico-muted-color);
+	cursor: pointer;
+	width: fit-content;
+	padding: 0.15rem 0.55rem;
+	border-radius: 999px;
+	background: var(--pico-secondary-background);
+	list-style: none;
+}
+.hx-hours > summary::-webkit-details-marker {
+	display: none;
+}
+.hx-hours > summary::after {
+	display: none;
+}
+.hx-hours > summary .ic {
+	width: 14px;
+	height: 14px;
+}
+.hx-hours > summary .hx-on {
+	color: var(--pico-ins-color);
+	font-weight: 600;
+	white-space: nowrap;
+}
+.hx-hours[open] > summary {
+	background: var(--pico-primary-background);
+	color: var(--pico-primary);
+}
+.hx-hours[open] > summary small {
+	color: var(--pico-primary);
+}
+.hx-hours .hx-chips-row {
+	margin-top: 0.45rem;
+}
+
+/* pad: full-width workspace with left-aligned tabs */
+.nt-page {
+	max-width: none;
+	margin: 0;
+}
+.nt-seg {
+	margin: 0 0 0.75rem;
+}
+@media (min-width: 861px) {
+	.nt-page {
+		max-width: 860px;
+	}
+}
+/* card add-button sits at the end of the row */
+.bgc > .addb {
+	order: 2;
+}
+
+/* full-width single-column page groups (Plan / Debts) */
+.g3 > * > article,
+.g3 article {
+	margin-bottom: 0.75rem;
+}
+.g3 > * {
+	min-width: 0;
+}
+/* details + summary inside cards */
+article > details > summary {
+	cursor: pointer;
+	font-size: 0.88rem;
+	color: var(--pico-muted-color);
+	padding: 0.25rem 0 0.5rem;
+	list-style: none;
+}
+article > details > summary::-webkit-details-marker {
+	display: none;
+}
+article > details > summary::after {
+	display: none;
+}
+article > details > .cb {
+	padding-top: 0.25rem;
+}
+.g3.wide {
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+	align-items: start;
+	gap: 0.9rem;
+}
+
+/* expandable summary head block */
+.xsum .ow {
+	margin-top: 0.05rem;
+	gap: 0.4rem;
+}
+.xsum .ow .big2 {
+	font-size: 1.05rem;
+}
+
+/* narrow screens: row actions wrap instead of overflowing */
+@media (max-width: 560px) {
+	.rw {
+		flex-wrap: wrap;
+	}
+	.rw > .rt {
+		width: 100%;
+		justify-content: flex-end;
+		flex-wrap: wrap;
+		row-gap: 0.35rem;
+	}
+	.hm-src-main {
+		flex-wrap: wrap;
+		row-gap: 0.4rem;
+	}
+	.hm-src-act {
+		margin-left: auto;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+	.hm-onhold-row {
+		flex-wrap: wrap;
+		row-gap: 0.4rem;
+	}
+	.hm-onhold-actions {
+		margin-left: auto;
+	}
+	.wk > summary {
+		flex-wrap: wrap;
+	}
+	.hm-top {
+		grid-template-columns: minmax(0, 1fr) minmax(120px, 0.55fr);
+	}
+}
+
+/* form select rows: keep both selects on one line, shrink instead of overflow */
+.kf .ln,
+.spf .ln,
+.xfm .ln {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: nowrap;
+}
+.ln > select,
+.spf .ln select,
+.xfm .ln select,
+select.in {
+	flex: 1 1 0;
+	min-width: 0;
+	width: 100%;
+}
+@media (max-width: 560px) {
+	.kf .ln,
+	.spf .ln,
+	.xfm .ln,
+	.ln {
+		flex-wrap: wrap;
+	}
+	.ln > select,
+	.ln > input.in {
+		flex: 1 1 100%;
+	}
+}
+
+/* clickable mode / kind chips in forms */
+.chips > .chip {
+	cursor: pointer;
+	border: 1px solid var(--pico-border-color);
+	background: var(--pico-secondary-background);
+	color: var(--pico-muted-color);
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.chips > .chip:hover {
+	border-color: var(--pico-primary-border);
+	color: var(--pico-color);
+}
+.chips > .chip.on {
+	background: var(--pico-primary-background);
+	border-color: var(--pico-primary-border);
+	color: var(--pico-primary);
+	font-weight: 600;
 }

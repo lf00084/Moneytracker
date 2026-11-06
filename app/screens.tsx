@@ -104,7 +104,7 @@ export const DebtsScreen = view<{ s: State }>(({ s }) => {
 				<>
 					<ErrorBanner s={s} />
 					<PageHeader title="Debts" right={`${fmt(c.oweMoney)} ${s.user.currency} ${c.oweExtra}`} />
-					<div class="g3">
+					<div class="g3 wide">
 						<div>
 							<OweDesktop s={s} open storeKey="owe-page" manage />
 						</div>
@@ -152,7 +152,7 @@ export const GoalsScreen = view<{ s: State }>(({ s }) => (
 			<>
 				<ErrorBanner s={s} />
 				<PageHeader title="Plan" right="goals + income" />
-				<div class="g3">
+				<div class="g3 wide">
 					<div>
 						<GoalsExpand s={s} open storeKey="goals-d" manage />
 					</div>
@@ -223,10 +223,13 @@ export const PadScreen = view<{ u: User; d: PadData; tab: PadTab; f: string; err
 		mobile={<PadBody d={d} tab={tab} f={f} error={error} />}
 		dock={<PadComposer d={d} tab={tab} f={f} />}
 		desktop={
-			<div class="chat">
-				<PadBody d={d} tab={tab} f={f} error={error} />
-				<PadComposer d={d} tab={tab} f={f} />
-			</div>
+			<>
+				<PageHeader title="Pad" right="projects · said · home" />
+				<div class="chat">
+					<PadBody d={d} tab={tab} f={f} error={error} />
+					<PadComposer d={d} tab={tab} f={f} />
+				</div>
+			</>
 		}
 	/>
 ))

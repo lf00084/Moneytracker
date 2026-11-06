@@ -181,7 +181,7 @@ export const BigAdd = view<{ label: string; target?: string; right?: boolean }>(
 ))
 
 export const ListCard = view<{ title: RemixNode; right: RemixNode; target: string; label: string; class?: string; children?: RemixNode }>(({ title, right, target, label, class: cls = "", children }) => (
-	<article class={cls ? `bgc ${cls}` : "bgc"}>
+	<article class={cls || undefined}>
 		<header>
 			<strong>{title}</strong>
 			<span class="hd-r">
@@ -189,7 +189,7 @@ export const ListCard = view<{ title: RemixNode; right: RemixNode; target: strin
 				<BigAdd label={label} target={target} right />
 			</span>
 		</header>
-		{children}
+		<div class="cb">{children}</div>
 	</article>
 ))
 
@@ -214,7 +214,7 @@ export const ExpandCard = view<ExpandProps>(({ storeKey, open, title, head, foot
 				{jar >= 0 ? <i class={jar >= 100 ? "xj full" : "xj"} style={{ width: `${jar}%` }}></i> : null}
 				<span class="xsum">
 					<strong>{title}</strong>
-					{head ? <small>{head}</small> : null}
+					{head ? <span class="ow">{head}</span> : null}
 				</span>
 				{label ? (
 					<button type="button" class="xp" data-xplus aria-label={label}>

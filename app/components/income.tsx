@@ -49,18 +49,18 @@ export const ExtraHoursControl = view<{ s: State; x: Source; row?: { hours?: num
 	const cur = s.user.currency
 	const opts = [1, 2, 3, 4]
 	return (
-		<div class="hx-better">
-			<div class="hx-top">
-				<span class="hx-badge">
-					<Icon name="clock" />
-					<b>Extra hours</b>
-					{h > 0 ? (
-						<span class="hx-badge-val pos">+{h}h (+{fmt(Math.round(h * rate))} {cur})</span>
-					) : (
-						<span class="hx-badge-val mu">+{fmt(rate)} {cur} / hour</span>
-					)}
-				</span>
-			</div>
+		<details class="hx-hours" open={h > 0 ? true : undefined}>
+			<summary>
+				<Icon name="clock" />
+				<span>Extra hours</span>
+				{h > 0 ? (
+					<b class="hx-on">
+						+{h}h · +{fmt(Math.round(h * rate))} {cur}
+					</b>
+				) : (
+					<small>+{fmt(rate)} {cur} / hour</small>
+				)}
+			</summary>
 			<div class="hx-chips-row">
 				{opts.map((n) => (
 					<form key={n} method="post" action="/income/hours" style={contents}>
@@ -81,7 +81,7 @@ export const ExtraHoursControl = view<{ s: State; x: Source; row?: { hours?: num
 					<Submit class="xs outline">Save</Submit>
 				</form>
 			</div>
-		</div>
+		</details>
 	)
 })
 
@@ -353,7 +353,7 @@ const ManageRow = view<{ s: State; x: Source }>(({ s, x }) => {
 	const fixedSrc = isFixed(x.type)
 	const fixed = srcAmount(x)
 	const cur = s.user.currency
-	const base = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? `${fmt(fixed)} + ${fmt(rateOf(x))} / hour ${cur}` : x.mode === "auto" ? `${fmt(x.amount)} ${cur}` : ""
+	const base = x.type === "exoclick" ? exoSub(s, x) : fixedSrc ? `${fmt(fixed)} ${cur}${rateOf(x) ? ` + ${fmt(rateOf(x))}/h` : ""}` : x.mode === "auto" ? `${fmt(x.amount)} ${cur}${x.every === "month" ? " / month" : " / day"}` : ""
 	const wait = s.money?.pending.find((p) => p.id === x.id)
 	const days = Number(x.config.pay_days) || 0
 	const inst = Number(x.config.instant) === 1
@@ -435,7 +435,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 						<div class="tg">Pending to receive</div>
 						<b class="big">{fmt(m?.pendingMad ?? 0)} <small>{cur}</small></b>
 					</div>
-					<span class="lb">{pending.length} sources on hold</span>
+					<span class="lb">{pending.length === 1 ? "1 source on hold" : `${pending.length} sources on hold`}</span>
 				</div>
 				{pending.length ? (
 					<div class="hm-onhold-list">
@@ -450,7 +450,7 @@ export const OnHoldPendingList = view<{ s: State }>(({ s }) => {
 								<div class="hm-onhold-actions">
 									<button
 										type="button"
-										class="hm-onhold-amt"
+										class="hm-onhold-amt xs outline"
 										data-sheet-trigger="adjust-pending"
 										data-source-id={p.id}
 										data-source-name={p.name}

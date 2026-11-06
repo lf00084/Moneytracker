@@ -124,23 +124,18 @@ export const OweMobile = view<OweProps>(({ s, open, storeKey, manage = false }) 
 export const OweDesktop = view<OweProps>(({ s, open, storeKey, manage = false }) => {
 	const c = calc(s)
 	return (
-		<article class="sc-grey card-grey bgc">
-			<BigAdd label="Add debt" />
-			<div class="ct">
-				<details data-keep-open={storeKey} open={open ? true : undefined}>
-					<summary class="sh">
-						<span>I owe</span>
-						<span class="rr">
-							<span class="lb">{`${fmt(c.oweMoney)} ${s.user.currency} ${c.oweExtra}`}</span>
-							<span class="chev">
-								<Icon name="chev" />
-							</span>
-						</span>
-					</summary>
-					<DebtList s={s} manage={manage} />
-				</details>
-				<AddDebtPanel s={s} />
+		<article class="card-grey">
+			<header>
+				<strong>I owe</strong>
+				<span class="hd-r">
+					<small>{`${fmt(c.oweMoney)} ${s.user.currency} ${c.oweExtra}`}</small>
+					<BigAdd label="Add debt" />
+				</span>
+			</header>
+			<div class="cb">
+				<DebtList s={s} manage={manage} />
 			</div>
+			<AddDebtPanel s={s} />
 		</article>
 	)
 })

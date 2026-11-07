@@ -20,6 +20,7 @@ const schema = readFileSync(new URL("../database/schema.sql", import.meta.url), 
 await client.executeMultiple(schema)
 
 const addColumns = [
+	"ALTER TABLE users ADD COLUMN day_start INTEGER NOT NULL DEFAULT 5",
 	"ALTER TABLE banks ADD COLUMN icon_url TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE purchases ADD COLUMN bank_id TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE predict_account ADD COLUMN funding_minor INTEGER NOT NULL DEFAULT 0",

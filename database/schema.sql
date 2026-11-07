@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   phone         TEXT NOT NULL DEFAULT '',
   bio           TEXT NOT NULL DEFAULT '',
   run_at        TEXT NOT NULL DEFAULT '06:00',
+  day_start     INTEGER NOT NULL DEFAULT 5,
   week_start    TEXT NOT NULL DEFAULT 'Monday',
   bg_mode       TEXT NOT NULL DEFAULT 'auto',
   bg_url        TEXT NOT NULL DEFAULT '',

@@ -4,5 +4,6 @@ dist
 .dev.vars
 .wrangler
 bun.lock
+package-lock.json
 
 app/client/dist/
